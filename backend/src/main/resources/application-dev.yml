@@ -1,0 +1,8 @@
+app:
+  dev:
+    # Mot de passe des comptes de démonstration créés au démarrage (profil dev uniquement)
+    mot-de-passe: ${DEV_PASSWORD:Demo!2026}
+
+logging:
+  level:
+    com.plateforme.scolaire: DEBUG

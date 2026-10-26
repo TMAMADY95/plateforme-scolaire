@@ -1,0 +1,10 @@
+app:
+  jwt:
+    # Obligatoire en production : pas de valeur par défaut
+    secret: ${JWT_SECRET}
+
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false

@@ -1,0 +1,20 @@
+services:
+  db:
+    image: postgres:17
+    container_name: scolaire-db
+    environment:
+      POSTGRES_DB: scolaire
+      POSTGRES_USER: scolaire
+      POSTGRES_PASSWORD: scolaire
+    ports:
+      - "5433:5432"
+    volumes:
+      - scolaire-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U scolaire -d scolaire"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  scolaire-data:
