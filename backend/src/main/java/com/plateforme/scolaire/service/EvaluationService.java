@@ -154,7 +154,7 @@ public class EvaluationService {
             if (!vus.add(ligne.inscriptionId())) {
                 throw invalide("L'inscription " + ligne.inscriptionId() + " apparaît plusieurs fois");
             }
-            if (ligne.absent() && ligne.valeur() != null) {
+            if (ligne.estAbsent() && ligne.valeur() != null) {
                 throw invalide("Un élève absent ne peut pas avoir de note");
             }
             if (ligne.valeur() != null && ligne.valeur().compareTo(evaluation.getBareme()) > 0) {
@@ -172,7 +172,7 @@ public class EvaluationService {
             Note existante = notes.get(inscriptionId);
             String avant = representer(existante);
 
-            if (!ligne.absent() && ligne.valeur() == null) {
+            if (!ligne.estAbsent() && ligne.valeur() == null) {
                 if (existante != null) {
                     noteRepository.delete(existante);
                     notes.remove(inscriptionId);
@@ -186,8 +186,8 @@ public class EvaluationService {
                 note.setEvaluation(evaluation);
                 note.setInscription(inscritParId.get(inscriptionId));
             }
-            note.setAbsent(ligne.absent());
-            note.setValeur(ligne.absent() ? null : ligne.valeur().setScale(2, RoundingMode.HALF_UP));
+            note.setAbsent(ligne.estAbsent());
+            note.setValeur(ligne.estAbsent() ? null : ligne.valeur().setScale(2, RoundingMode.HALF_UP));
             note.setModifiePar(auteur);
             note.setUpdatedAt(Instant.now(clock));
             notes.put(inscriptionId, noteRepository.save(note));
