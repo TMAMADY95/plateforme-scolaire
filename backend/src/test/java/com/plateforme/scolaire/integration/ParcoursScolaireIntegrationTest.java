@@ -280,6 +280,12 @@ class ParcoursScolaireIntegrationTest {
         post("/api/classes/" + classeId + "/enseignants", jetonEnseignant, affectation).attendre(403);
         post("/api/classes/" + classeId + "/enseignants", jetonDirection, affectation).attendre(201);
         post("/api/classes/" + classeId + "/enseignants", jetonDirection, affectation).attendre(409);
+
+        Reponse mesClasses = get("/api/me/affectations", jetonEnseignant).attendre(200);
+        assertThat(mesClasses.lire("$.length()")).isEqualTo(1);
+        assertThat(mesClasses.texte("$[0].classeNom")).isEqualTo("A");
+        assertThat(mesClasses.id("$[0].classeId")).isEqualTo(classeId);
+        get("/api/me/affectations", jetonDirection).attendre(403); // réservé aux enseignants
     }
 
     @Test
@@ -343,7 +349,18 @@ class ParcoursScolaireIntegrationTest {
         post("/api/eleves/" + eleveId + "/parents", jetonDirection, """
                 {"email":"%s","nom":"Dupont","prenom":"Marie","relation":"mère","responsableLegal":true,"motDePasseInitial":"%s"}"""
                 .formatted(EMAIL_PARENT, MDP_INITIAL)).attendre(201);
+        Reponse parents = get("/api/eleves/" + eleveId + "/parents", jetonDirection).attendre(200);
+        assertThat(parents.lire("$.length()")).isEqualTo(1);
+        assertThat(parents.texte("$[0].email")).isEqualTo(EMAIL_PARENT);
         jetonParent = premiereConnexion(EMAIL_PARENT);
+
+        Reponse enfants = get("/api/me/enfants", jetonParent).attendre(200);
+        assertThat(enfants.lire("$.length()")).isEqualTo(1);
+        assertThat(enfants.id("$[0].eleveId")).isEqualTo(eleveId);
+        assertThat(enfants.texte("$[0].classeNom")).isEqualTo("A");
+        assertThat(enfants.texte("$[0].relation")).isEqualTo("mère");
+        get("/api/me/enfants", jetonDirection).attendre(403); // réservé aux parents
+        get("/api/eleves/" + eleveId + "/parents", jetonParent).attendre(403); // la liste est réservée à la direction
 
         Reponse bulletin = get("/api/eleves/" + eleveId + "/bulletin?periodeId=" + periodeId, jetonParent)
                 .attendre(200);

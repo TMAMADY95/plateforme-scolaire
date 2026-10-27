@@ -20,6 +20,8 @@ import com.plateforme.scolaire.web.dto.AffectationEnseignantDto;
 import com.plateforme.scolaire.web.dto.AffectationEnseignantRequest;
 import com.plateforme.scolaire.web.dto.EnseignantDto;
 import com.plateforme.scolaire.web.dto.EnseignantRequest;
+import com.plateforme.scolaire.web.dto.MonAffectationDto;
+import java.util.Comparator;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -120,5 +122,16 @@ public class EnseignantService {
         affectation.setEnseignant(enseignant);
         affectation.setMatiere(matiere);
         return AffectationEnseignantDto.de(affectationRepository.save(affectation));
+    }
+
+    /** Classes et matières de l'enseignant connecté, de l'année la plus récente à la plus ancienne. */
+    @Transactional(readOnly = true)
+    public List<MonAffectationDto> mesAffectations(Long utilisateurId) {
+        return affectationRepository.findByEnseignantUtilisateurId(utilisateurId).stream()
+                .map(MonAffectationDto::de)
+                .sorted(Comparator.comparing(MonAffectationDto::anneeScolaireId).reversed()
+                        .thenComparing(MonAffectationDto::classeNom)
+                        .thenComparing(MonAffectationDto::matiereLibelle))
+                .toList();
     }
 }

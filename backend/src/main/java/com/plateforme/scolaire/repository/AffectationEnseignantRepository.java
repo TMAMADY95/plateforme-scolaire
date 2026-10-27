@@ -8,6 +8,9 @@ public interface AffectationEnseignantRepository extends JpaRepository<Affectati
 
     List<AffectationEnseignant> findByClasseId(Long classeId);
 
+    /** Toutes les classes et matières d'un enseignant, identifié par son compte utilisateur. */
+    List<AffectationEnseignant> findByEnseignantUtilisateurId(Long utilisateurId);
+
     boolean existsByEnseignantIdAndClasseIdAndMatiereId(Long enseignantId, Long classeId, Long matiereId);
 
     /** Cet utilisateur enseigne-t-il dans cette classe ? */

@@ -1,15 +1,18 @@
 package com.plateforme.scolaire.web;
 
+import com.plateforme.scolaire.security.UtilisateurPrincipal;
 import com.plateforme.scolaire.service.EnseignantService;
 import com.plateforme.scolaire.web.dto.AffectationEnseignantDto;
 import com.plateforme.scolaire.web.dto.AffectationEnseignantRequest;
 import com.plateforme.scolaire.web.dto.EnseignantDto;
 import com.plateforme.scolaire.web.dto.EnseignantRequest;
+import com.plateforme.scolaire.web.dto.MonAffectationDto;
 import jakarta.validation.Valid;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -48,5 +51,12 @@ public class EnseignantController {
     public AffectationEnseignantDto affecter(@PathVariable Long id,
                                              @Valid @RequestBody AffectationEnseignantRequest requete) {
         return enseignantService.affecter(id, requete);
+    }
+
+    /** Les classes et matières de l'enseignant connecté. */
+    @GetMapping("/api/me/affectations")
+    @PreAuthorize("hasRole('ENSEIGNANT')")
+    public List<MonAffectationDto> mesAffectations(@AuthenticationPrincipal UtilisateurPrincipal principal) {
+        return enseignantService.mesAffectations(principal.getId());
     }
 }
