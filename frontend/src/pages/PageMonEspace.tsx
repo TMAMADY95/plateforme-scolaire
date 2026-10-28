@@ -1,6 +1,8 @@
 import { Alert, Group, Loader, Stack, Tabs, Text, Title } from '@mantine/core'
 import { useMonProfilEleve } from '../hooks/useMonProfilEleve'
 import OngletBulletin from './enfant/OngletBulletin'
+import OngletEmploiDuTemps from './enfant/OngletEmploiDuTemps'
+import OngletFactures from './enfant/OngletFactures'
 import OngletPresences from './enfant/OngletPresences'
 import type { Enfant } from '../api/types'
 
@@ -17,7 +19,8 @@ export default function PageMonEspace() {
   }
 
   const p = profil.data
-  // OngletBulletin attend un objet de type Enfant ; on complète les champs parentaux absents.
+  // Les onglets Bulletin et Présences attendent un objet de type Enfant ;
+  // un élève n'ayant pas de lien parental, on complète les champs absents.
   const enfant: Enfant = {
     eleveId: p.eleveId,
     matricule: p.matricule,
@@ -56,12 +59,25 @@ export default function PageMonEspace() {
         <Tabs.List>
           <Tabs.Tab value="bulletin">Bulletin</Tabs.Tab>
           <Tabs.Tab value="presences">Présences</Tabs.Tab>
+          <Tabs.Tab value="emploi-du-temps">Emploi du temps</Tabs.Tab>
+          <Tabs.Tab value="frais">Frais</Tabs.Tab>
         </Tabs.List>
+
         <Tabs.Panel value="bulletin" pt="md">
           <OngletBulletin enfant={enfant} />
         </Tabs.Panel>
+
         <Tabs.Panel value="presences" pt="md">
           <OngletPresences eleveId={p.eleveId} />
+        </Tabs.Panel>
+
+        <Tabs.Panel value="emploi-du-temps" pt="md">
+          <OngletEmploiDuTemps classeId={p.classeId} />
+        </Tabs.Panel>
+
+        <Tabs.Panel value="frais" pt="md">
+          {/* eleveId à null : l'onglet affiche les factures de l'élève connecté. */}
+          <OngletFactures eleveId={null} />
         </Tabs.Panel>
       </Tabs>
     </Stack>

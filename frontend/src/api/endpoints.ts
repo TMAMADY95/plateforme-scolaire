@@ -6,6 +6,9 @@ import type {
   Classe,
   Bulletin,
   ClasseRequete,
+  Creneau,
+  CreneauEleve,
+  CreneauRequete,
   DecisionRequete,
   Enfant,
   Enseignant,
@@ -13,7 +16,12 @@ import type {
   Etablissement,
   Evaluation,
   EvaluationRequete,
+  ExonerationRequete,
+  Facture,
   FeuilleAppel,
+  Frais,
+  FraisRequete,
+  GenererFacturesRequete,
   GrilleNotes,
   Inscription,
   InscriptionRequete,
@@ -29,7 +37,11 @@ import type {
   EleveRequete,
   LienParental,
   ParentRequete,
+  ResultatGeneration,
   ResultatsClasse,
+  Salle,
+  SalleRequete,
+  BilanFinancier,
 } from './types'
 
 export const obtenirEtablissement = (id: number) => api.get<Etablissement>(`/api/etablissements/${id}`)
@@ -125,3 +137,75 @@ export const lierParent = (eleveId: number, requete: ParentRequete) =>
 
 export const obtenirResultats = (classeId: number, periodeId: number) =>
   api.get<ResultatsClasse>(`/api/classes/${classeId}/resultats?periodeId=${periodeId}`)
+
+// ---------- Salles (Étape 2) ----------
+
+export const listerSalles = (etablissementId: number) =>
+  api.get<Salle[]>(`/api/etablissements/${etablissementId}/salles`)
+
+export const creerSalle = (etablissementId: number, requete: SalleRequete) =>
+  api.post<Salle>(`/api/etablissements/${etablissementId}/salles`, requete)
+
+export const supprimerSalle = (etablissementId: number, salleId: number) =>
+  api.post<void>(`/api/etablissements/${etablissementId}/salles/${salleId}/suppression`)
+
+// ---------- Créneaux (Étape 2) ----------
+
+export const listerCreneauxClasse = (classeId: number) =>
+  api.get<Creneau[]>(`/api/classes/${classeId}/creneaux`)
+
+export const listerCreneauxEtablissement = (etablissementId: number, anneeScolaireId: number) =>
+  api.get<Creneau[]>(`/api/etablissements/${etablissementId}/creneaux?anneeScolaireId=${anneeScolaireId}`)
+
+export const creerCreneau = (classeId: number, requete: CreneauRequete) =>
+  api.post<Creneau>(`/api/classes/${classeId}/creneaux`, requete)
+
+export const modifierCreneau = (creneauId: number, requete: CreneauRequete) =>
+  api.put<Creneau>(`/api/creneaux/${creneauId}`, requete)
+
+export const supprimerCreneau = (creneauId: number) =>
+  api.post<void>(`/api/creneaux/${creneauId}/suppression`)
+
+/** Les créneaux d'une classe, vus par l'élève ou le parent. */
+export const emploiDuTempsClasse = (classeId: number) =>
+  api.get<CreneauEleve[]>(`/api/classes/${classeId}/emploi-du-temps`)
+
+// ---------- Frais et factures (Étape 3a) ----------
+
+export const listerFrais = (etablissementId: number, anneeScolaireId?: number) =>
+  api.get<Frais[]>(
+    `/api/etablissements/${etablissementId}/frais${anneeScolaireId ? `?anneeScolaireId=${anneeScolaireId}` : ''}`,
+  )
+
+export const creerFrais = (etablissementId: number, requete: FraisRequete) =>
+  api.post<Frais>(`/api/etablissements/${etablissementId}/frais`, requete)
+
+export const modifierFrais = (fraisId: number, requete: FraisRequete) =>
+  api.put<Frais>(`/api/frais/${fraisId}`, requete)
+
+export const desactiverFrais = (fraisId: number) => api.post<void>(`/api/frais/${fraisId}/desactivation`)
+
+export const listerFactures = (etablissementId: number, anneeScolaireId: number, statut?: string) => {
+  const parametres = new URLSearchParams({ anneeScolaireId: String(anneeScolaireId) })
+  if (statut) parametres.set('statut', statut)
+  return api.get<Facture[]>(`/api/etablissements/${etablissementId}/factures?${parametres.toString()}`)
+}
+
+export const facturesEnRetard = (etablissementId: number) =>
+  api.get<Facture[]>(`/api/etablissements/${etablissementId}/factures/en-retard`)
+
+export const bilanFinancier = (etablissementId: number, anneeScolaireId: number) =>
+  api.get<BilanFinancier>(`/api/etablissements/${etablissementId}/factures/bilan?anneeScolaireId=${anneeScolaireId}`)
+
+export const genererFactures = (etablissementId: number, requete: GenererFacturesRequete) =>
+  api.post<ResultatGeneration>(`/api/etablissements/${etablissementId}/factures/generation`, requete)
+
+export const exonererFacture = (factureId: number, requete: ExonerationRequete) =>
+  api.post<Facture>(`/api/factures/${factureId}/exonerations`, requete)
+
+export const annulerFacture = (factureId: number) => api.post<Facture>(`/api/factures/${factureId}/annulation`)
+
+export const mesFactures = () => api.get<Facture[]>('/api/me/factures')
+
+export const facturesDeMonEnfant = (eleveId: number) =>
+  api.get<Facture[]>(`/api/me/enfants/${eleveId}/factures`)

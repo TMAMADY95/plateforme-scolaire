@@ -1,4 +1,4 @@
-import { Navigate, Route, Routes } from 'react-router'
+import { Navigate, Route, Routes, useParams } from 'react-router'
 import RequiertRole from './auth/RequiertRole'
 import RequiertSession from './auth/RequiertSession'
 import { estEleve, estEnseignant, estGestionnaire, estParent } from './auth/roles'
@@ -9,14 +9,23 @@ import PageClasseEnseignant from './pages/PageClasseEnseignant'
 import PageClasses from './pages/PageClasses'
 import PageConnexion from './pages/PageConnexion'
 import PageEleves from './pages/PageEleves'
+import PageEmploiDuTempsClasse from './pages/PageEmploiDuTempsClasse'
+import PageEmploisDuTemps from './pages/PageEmploisDuTemps'
 import PageEnfant from './pages/PageEnfant'
 import PageEnseignants from './pages/PageEnseignants'
+import PageFinances from './pages/PageFinances'
 import PageInscriptions from './pages/PageInscriptions'
 import PageMesClasses from './pages/PageMesClasses'
 import PageMesEnfants from './pages/PageMesEnfants'
 import PageMonEspace from './pages/PageMonEspace'
 import PagePresences from './pages/PagePresences'
 import PageResultats from './pages/PageResultats'
+
+/** Route paramétrée : l'emploi du temps d'une classe choisie dans la liste. */
+function EmploiDuTempsClasse() {
+  const { classeId } = useParams()
+  return <PageEmploiDuTempsClasse classeId={Number(classeId)} />
+}
 
 export default function App() {
   return (
@@ -46,6 +55,12 @@ export default function App() {
         <Route path="enseignants" element={<RequiertRole autorise={estGestionnaire}><PageEnseignants /></RequiertRole>} />
         <Route path="presences" element={<RequiertRole autorise={estGestionnaire}><PagePresences /></RequiertRole>} />
         <Route path="resultats" element={<RequiertRole autorise={estGestionnaire}><PageResultats /></RequiertRole>} />
+        <Route path="emplois-du-temps" element={<RequiertRole autorise={estGestionnaire}><PageEmploisDuTemps /></RequiertRole>} />
+        <Route
+          path="emplois-du-temps/:classeId"
+          element={<RequiertRole autorise={estGestionnaire}><EmploiDuTempsClasse /></RequiertRole>}
+        />
+        <Route path="finances" element={<RequiertRole autorise={estGestionnaire}><PageFinances /></RequiertRole>} />
 
         {/* Enseignants */}
         <Route path="mes-classes" element={<RequiertRole autorise={estEnseignant}><PageMesClasses /></RequiertRole>} />

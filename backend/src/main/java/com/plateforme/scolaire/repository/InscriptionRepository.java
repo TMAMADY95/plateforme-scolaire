@@ -39,4 +39,7 @@ public interface InscriptionRepository extends JpaRepository<Inscription, Long> 
             + "and i.statut = :statut")
     List<Inscription> findByClasseIdEtStatutAvecEleve(@Param("classeId") Long classeId,
                                                       @Param("statut") String statut);
+
+    /** Cet élève est-il inscrit dans cette classe avec ce statut ? (emploi du temps élève/parent). */
+    boolean existsByClasseIdAndEleveIdAndStatut(Long classeId, Long eleveId, String statut);
 }

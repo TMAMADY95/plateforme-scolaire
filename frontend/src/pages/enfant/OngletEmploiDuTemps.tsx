@@ -1,7 +1,8 @@
 import { Alert, Loader, Stack, Title } from '@mantine/core'
 import { useQuery } from '@tanstack/react-query'
-import { listerCreneauxClasse } from '../api/emploisDuTemps'
-import GrilleEmploiDuTemps from '../components/GrilleEmploiDuTemps'
+import { listerCreneauxClasse } from '../../api/emploisDuTemps'
+import GrilleEmploiDuTemps from '../../components/GrilleEmploiDuTemps'
+import type { Creneau } from '../../api/types'
 
 /** Bloc « Emploi du temps » réutilisable dans l'espace élève et l'espace parent. */
 export default function OngletEmploiDuTemps({ classeId }: { classeId: number | null }) {
@@ -30,7 +31,7 @@ export default function OngletEmploiDuTemps({ classeId }: { classeId: number | n
       )}
       {creneaux.data && (
         <GrilleEmploiDuTemps
-          creneaux={creneaux.data.map((c) => ({
+          creneaux={creneaux.data.map((c: Creneau) => ({
             key: String(c.id),
             matiereLibelle: c.matiereLibelle,
             enseignantNom: c.enseignantNom,

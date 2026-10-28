@@ -2,6 +2,8 @@ import { Alert, Anchor, Group, Loader, Stack, Tabs, Text, Title } from '@mantine
 import { Link, useParams } from 'react-router'
 import { useMesEnfants } from '../hooks/useMesEnfants'
 import OngletBulletin from './enfant/OngletBulletin'
+import OngletEmploiDuTemps from './enfant/OngletEmploiDuTemps'
+import OngletFactures from './enfant/OngletFactures'
 import OngletPresences from './enfant/OngletPresences'
 
 export default function PageEnfant() {
@@ -54,12 +56,25 @@ export default function PageEnfant() {
         <Tabs.List>
           <Tabs.Tab value="bulletin">Bulletin</Tabs.Tab>
           <Tabs.Tab value="presences">Présences</Tabs.Tab>
+          <Tabs.Tab value="emploi-du-temps">Emploi du temps</Tabs.Tab>
+          <Tabs.Tab value="frais">Frais</Tabs.Tab>
         </Tabs.List>
+
         <Tabs.Panel value="bulletin" pt="md">
           <OngletBulletin enfant={enfant} />
         </Tabs.Panel>
+
         <Tabs.Panel value="presences" pt="md">
           <OngletPresences eleveId={enfant.eleveId} />
+        </Tabs.Panel>
+
+        <Tabs.Panel value="emploi-du-temps" pt="md">
+          <OngletEmploiDuTemps classeId={enfant.classeId} />
+        </Tabs.Panel>
+
+        <Tabs.Panel value="frais" pt="md">
+          {/* eleveId de l'enfant : le parent voit les factures de son enfant. */}
+          <OngletFactures eleveId={enfant.eleveId} />
         </Tabs.Panel>
       </Tabs>
     </Stack>

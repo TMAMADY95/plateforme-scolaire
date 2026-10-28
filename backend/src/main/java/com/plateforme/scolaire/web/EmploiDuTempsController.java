@@ -52,7 +52,7 @@ public class EmploiDuTempsController {
     // ---------- Créneaux ----------
 
     @GetMapping("/api/classes/{classeId}/creneaux")
-    @PreAuthorize("@perimetre.peutConsulterPresences(#classeId)")
+    @PreAuthorize("@perimetreEmploiDuTemps.peutConsulterClasse(#classeId)")
     public List<CreneauDto> listerCreneauxClasse(@PathVariable Long classeId) {
         return emploiDuTempsService.listerCreneauxClasse(classeId);
     }

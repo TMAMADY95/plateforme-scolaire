@@ -1,16 +1,14 @@
 import { Alert, Anchor, Loader, Stack, Title } from '@mantine/core'
 import { useQuery } from '@tanstack/react-query'
 import { listerCreneauxClasse } from '../api/emploisDuTemps'
-import { obtenirClasse } from '../api/endpoints'
 import GrilleEmploiDuTemps from '../components/GrilleEmploiDuTemps'
+import type { Creneau } from '../api/types'
 
-/** Emploi du temps d'une classe (direction ou enseignant). */
+/**
+ * Emploi du temps d'une classe (direction ou enseignant).
+ * À placer dans frontend/src/pages/ — les imports partent donc de ../api et ../components.
+ */
 export default function PageEmploiDuTempsClasse({ classeId }: { classeId: number }) {
-  const classe = useQuery({
-    queryKey: ['classe', classeId],
-    queryFn: () => obtenirClasse(classeId),
-  })
-
   const creneaux = useQuery({
     queryKey: ['creneaux-classe', classeId],
     queryFn: () => listerCreneauxClasse(classeId),
@@ -21,20 +19,18 @@ export default function PageEmploiDuTempsClasse({ classeId }: { classeId: number
       <Anchor href="/classes" size="sm">
         ← Classes
       </Anchor>
-      <Title order={2}>
-        Emploi du temps{classe.data ? ` — ${classe.data.nom}` : ''}
-      </Title>
+      <Title order={2}>Emploi du temps</Title>
 
-      {(classe.isPending || creneaux.isPending) && <Loader />}
-      {(classe.isError || creneaux.isError) && (
+      {creneaux.isPending && <Loader />}
+      {creneaux.isError && (
         <Alert color="red" variant="light">
-          {(classe.error ?? creneaux.error)?.message}
+          {creneaux.error.message}
         </Alert>
       )}
 
       {creneaux.data && (
         <GrilleEmploiDuTemps
-          creneaux={creneaux.data.map((c) => ({
+          creneaux={creneaux.data.map((c: Creneau) => ({
             key: String(c.id),
             matiereLibelle: c.matiereLibelle,
             enseignantNom: c.enseignantNom,

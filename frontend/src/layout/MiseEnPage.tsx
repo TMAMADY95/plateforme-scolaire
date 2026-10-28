@@ -1,7 +1,7 @@
 import { AppShell, Badge, Burger, Button, Group, NavLink, Text, Title } from '@mantine/core'
 import { useDisclosure } from '@mantine/hooks'
 import { Link, Outlet, useLocation } from 'react-router'
-import { estEnseignant, estGestionnaire, estParent, LIBELLES_ROLES } from '../auth/roles'
+import { estEleve, estEnseignant, estGestionnaire, estParent, LIBELLES_ROLES } from '../auth/roles'
 import { useAuth, useUtilisateur } from '../auth/useAuth'
 
 interface Lien {
@@ -16,6 +16,7 @@ export default function MiseEnPage() {
   const [menuOuvert, { toggle, close }] = useDisclosure()
 
   const liens: Lien[] = [{ chemin: '/', libelle: 'Accueil' }]
+
   if (estGestionnaire(utilisateur)) {
     liens.push({ chemin: '/classes', libelle: 'Classes' })
     liens.push({ chemin: '/inscriptions', libelle: 'Inscriptions' })
@@ -23,6 +24,8 @@ export default function MiseEnPage() {
     liens.push({ chemin: '/eleves', libelle: 'Élèves' })
     liens.push({ chemin: '/presences', libelle: 'Présences' })
     liens.push({ chemin: '/resultats', libelle: 'Résultats' })
+    liens.push({ chemin: '/emplois-du-temps', libelle: 'Emplois du temps' })
+    liens.push({ chemin: '/finances', libelle: 'Finances' })
   }
 
   if (estEnseignant(utilisateur)) {
@@ -31,6 +34,10 @@ export default function MiseEnPage() {
 
   if (estParent(utilisateur)) {
     liens.push({ chemin: '/mes-enfants', libelle: 'Mes enfants' })
+  }
+
+  if (estEleve(utilisateur)) {
+    liens.push({ chemin: '/mon-espace', libelle: 'Mon espace' })
   }
 
   const roles = [...new Set(utilisateur.affectations.map((a) => LIBELLES_ROLES[a.role]))]

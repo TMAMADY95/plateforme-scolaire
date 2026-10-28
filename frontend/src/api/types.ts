@@ -1,4 +1,5 @@
 // Types miroirs des objets renvoyés par l'API Spring (paquet web.dto du backend).
+// Fichier complet : Étape 1 (espace élève), Étape 2 (emplois du temps), Étape 3a (frais et factures).
 
 export type Role =
   | 'ADMIN_TECHNIQUE'
@@ -256,6 +257,7 @@ export interface Enfant {
   anneeLibelle: string | null
 }
 
+/** Profil de l'élève connecté (Étape 1). */
 export interface MonProfilEleve {
   eleveId: number
   matricule: string
@@ -345,4 +347,137 @@ export interface EleveRequete {
   prenom: string
   dateNaissance: string
   sexe: string | null
+}
+
+// ===================== Étape 2 — emplois du temps =====================
+
+export interface Salle {
+  id: number
+  etablissementId: number
+  nom: string
+  capacite: number | null
+  typeSalle: string | null
+}
+
+export interface SalleRequete {
+  nom: string
+  capacite?: number
+  typeSalle?: string
+}
+
+export interface Creneau {
+  id: number
+  classeId: number
+  classeNom: string
+  matiereId: number
+  matiereLibelle: string
+  enseignantId: number | null
+  enseignantNom: string | null
+  salleId: number | null
+  salleNom: string | null
+  jourSemaine: number
+  heureDebut: string
+  heureFin: string
+}
+
+export interface CreneauRequete {
+  matiereId: number
+  enseignantId?: number | null
+  salleId?: number | null
+  jourSemaine: number
+  heureDebut: string
+  heureFin: string
+}
+
+export interface CreneauEleve {
+  matiereLibelle: string
+  enseignantNom: string | null
+  salleNom: string | null
+  jourSemaine: number
+  heureDebut: string
+  heureFin: string
+}
+
+// ===================== Étape 3a — frais et factures =====================
+
+export interface Frais {
+  id: number
+  etablissementId: number
+  anneeScolaireId: number
+  niveauId: number | null
+  niveauLibelle: string | null
+  libelle: string
+  montant: number
+  devise: string
+  echeance: string | null
+  obligatoire: boolean
+  actif: boolean
+}
+
+export interface FraisRequete {
+  anneeScolaireId: number
+  niveauId?: number | null
+  libelle: string
+  montant: number
+  devise?: string
+  echeance?: string | null
+  obligatoire?: boolean
+  actif?: boolean
+}
+
+export type StatutFacture = 'IMPAYEE' | 'PARTIELLE' | 'PAYEE' | 'EXONEREE' | 'ANNULEE'
+
+export interface Facture {
+  id: number
+  fraisId: number
+  numero: string
+  libelle: string
+  eleveId: number
+  eleveNom: string
+  elevePrenom: string
+  matricule: string
+  etablissementId: number
+  anneeScolaireId: number
+  montantDu: number
+  montantExonere: number
+  montantPaye: number
+  resteAPayer: number
+  devise: string
+  echeance: string | null
+  statut: StatutFacture
+  dateEmission: string
+  enRetard: boolean
+}
+
+export interface GenererFacturesRequete {
+  anneeScolaireId: number
+  classeId?: number | null
+  niveauId?: number | null
+}
+
+export interface ResultatGeneration {
+  facturesCreees: number
+  facturesIgnorees: number
+  elevesTraites: number
+  montantTotalEmis: number
+}
+
+export interface ExonerationRequete {
+  montant: number
+  motif: string
+  typeExoneration?: string
+}
+
+export interface BilanFinancier {
+  etablissementId: number
+  anneeScolaireId: number
+  devise: string
+  totalDu: number
+  totalExonere: number
+  totalPaye: number
+  totalRestant: number
+  nombreFactures: number
+  nombreImpayees: number
+  nombrePayees: number
+  nombreEnRetard: number
 }
