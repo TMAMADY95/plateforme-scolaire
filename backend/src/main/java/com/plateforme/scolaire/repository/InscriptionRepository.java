@@ -33,4 +33,10 @@ public interface InscriptionRepository extends JpaRepository<Inscription, Long> 
     @Query("select i.etablissement.id from Inscription i where i.eleve.id = :eleveId "
             + "and i.statut in ('EN_ATTENTE', 'ACCEPTEE')")
     List<Long> findEtablissementIdsActifsByEleveId(@Param("eleveId") Long eleveId);
+
+    /** Emplois du temps : les inscriptions d'une classe pour une année, avec l'élève chargé. */
+    @Query("select i from Inscription i join fetch i.eleve where i.classe.id = :classeId "
+            + "and i.statut = :statut")
+    List<Inscription> findByClasseIdEtStatutAvecEleve(@Param("classeId") Long classeId,
+                                                      @Param("statut") String statut);
 }

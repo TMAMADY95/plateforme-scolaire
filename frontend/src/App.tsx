@@ -1,7 +1,7 @@
 import { Navigate, Route, Routes } from 'react-router'
 import RequiertRole from './auth/RequiertRole'
 import RequiertSession from './auth/RequiertSession'
-import { estEnseignant, estGestionnaire, estParent } from './auth/roles'
+import { estEleve, estEnseignant, estGestionnaire, estParent } from './auth/roles'
 import MiseEnPage from './layout/MiseEnPage'
 import PageAccueil from './pages/PageAccueil'
 import PageChangementMotDePasse from './pages/PageChangementMotDePasse'
@@ -14,6 +14,7 @@ import PageEnseignants from './pages/PageEnseignants'
 import PageInscriptions from './pages/PageInscriptions'
 import PageMesClasses from './pages/PageMesClasses'
 import PageMesEnfants from './pages/PageMesEnfants'
+import PageMonEspace from './pages/PageMonEspace'
 import PagePresences from './pages/PagePresences'
 import PageResultats from './pages/PageResultats'
 
@@ -56,6 +57,9 @@ export default function App() {
         {/* Parents */}
         <Route path="mes-enfants" element={<RequiertRole autorise={estParent}><PageMesEnfants /></RequiertRole>} />
         <Route path="mes-enfants/:eleveId" element={<RequiertRole autorise={estParent}><PageEnfant /></RequiertRole>} />
+
+        {/* Élèves */}
+        <Route path="mon-espace" element={<RequiertRole autorise={estEleve}><PageMonEspace /></RequiertRole>} />
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>

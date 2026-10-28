@@ -34,6 +34,9 @@ import org.springframework.transaction.annotation.Transactional;
  *       Un parent ou l'élève lui-même accède à son propre dossier.</li>
  *   <li>L'ADMIN_TECHNIQUE n'a jamais d'accès automatique aux données d'un établissement.</li>
  * </ul>
+ *
+ * <p>Les règles des notes sont dans {@link PerimetreNotesService} et celles des emplois du temps
+ * dans {@link PerimetreEmploiDuTempsService}.</p>
  */
 @Service("perimetre")
 @RequiredArgsConstructor
@@ -201,7 +204,8 @@ public class PerimetreService {
     }
 
     private Optional<Long> etablissementDInscription(Long inscriptionId) {
-        return inscriptionId == null ? Optional.empty() : inscriptionRepository.findEtablissementIdById(inscriptionId);
+        return inscriptionId == null ? Optional.empty()
+                : inscriptionRepository.findEtablissementIdById(inscriptionId);
     }
 
     private boolean couvre(UtilisateurPrincipal.AffectationInfo a, Long etablissementId) {

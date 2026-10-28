@@ -21,6 +21,7 @@ import type {
   LigneNoteRequete,
   Matiere,
   MonAffectation,
+  MonProfilEleve,
   Niveau,
   Periode,
   PresenceEleve,
@@ -107,6 +108,10 @@ export const obtenirBulletin = (eleveId: number, periodeId: number) =>
 
 export const historiquePresences = (eleveId: number, du: string, au: string) =>
   api.get<PresenceEleve[]>(`/api/eleves/${eleveId}/presences?du=${du}&au=${au}`)
+
+// ---------- Espace élève ----------
+
+export const monProfilEleve = () => api.get<MonProfilEleve>('/api/me/eleve')
 
 // ---------- Élèves, parents, résultats (direction) ----------
 

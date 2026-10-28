@@ -37,3 +37,7 @@ export function estEnseignant(utilisateur: Moi): boolean {
 export function estParent(utilisateur: Moi): boolean {
   return utilisateur.affectations.some((a) => a.role === 'PARENT')
 }
+
+export function estEleve(utilisateur: Moi): boolean {
+  return utilisateur.affectations.some((a) => a.role === 'ELEVE')
+}

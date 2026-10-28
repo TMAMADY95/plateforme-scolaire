@@ -12,6 +12,9 @@ public interface EleveRepository extends JpaRepository<Eleve, Long> {
 
     Optional<Eleve> findByMatricule(String matricule);
 
+    /** Le dossier élève rattaché à un compte de connexion (rôle ELEVE). */
+    Optional<Eleve> findByUtilisateurId(Long utilisateurId);
+
     boolean existsByIdAndUtilisateurId(Long id, Long utilisateurId);
 
     /** Détection de doublons : même identité, sans tenir compte de la casse. */

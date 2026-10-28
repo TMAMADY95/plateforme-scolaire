@@ -256,6 +256,21 @@ export interface Enfant {
   anneeLibelle: string | null
 }
 
+export interface MonProfilEleve {
+  eleveId: number
+  matricule: string
+  nom: string
+  prenom: string
+  dateNaissance: string
+  sexe: string | null
+  classeId: number | null
+  classeNom: string | null
+  etablissementId: number | null
+  etablissementNom: string | null
+  anneeScolaireId: number | null
+  anneeLibelle: string | null
+}
+
 export interface LigneBulletin {
   matiereId: number
   matiere: string
