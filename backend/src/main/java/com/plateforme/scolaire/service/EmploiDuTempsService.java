@@ -74,6 +74,10 @@ public class EmploiDuTempsService {
         if (!salle.getEtablissement().getId().equals(etablissementId)) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Salle introuvable dans cet établissement");
         }
+        if (creneauRepository.existsBySalleId(salleId)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Cette salle est utilisée par des créneaux : modifiez-les ou supprimez-les d'abord");
+        }
         salleRepository.delete(salle);
     }
 
@@ -110,6 +114,7 @@ public class EmploiDuTempsService {
         if (!r.heureFin().isAfter(r.heureDebut())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "L'heure de fin doit suivre l'heure de début");
         }
+        verifierConflitClasse(classeId, r.jourSemaine(), r.heureDebut(), r.heureFin(), null);
         if (enseignant != null) {
             verifierEnseignantDeLEtablissement(enseignant, classe);
             verifierConflitEnseignant(enseignant.getId(), r.jourSemaine(), r.heureDebut(), r.heureFin(), null);
@@ -143,6 +148,7 @@ public class EmploiDuTempsService {
         if (!r.heureFin().isAfter(r.heureDebut())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "L'heure de fin doit suivre l'heure de début");
         }
+        verifierConflitClasse(classe.getId(), r.jourSemaine(), r.heureDebut(), r.heureFin(), creneauId);
         if (enseignant != null) {
             verifierEnseignantDeLEtablissement(enseignant, classe);
             verifierConflitEnseignant(enseignant.getId(), r.jourSemaine(), r.heureDebut(), r.heureFin(), creneauId);
@@ -167,11 +173,26 @@ public class EmploiDuTempsService {
     /** Emploi du temps d'un élève : les créneaux de la classe de son inscription active. */
     @Transactional(readOnly = true)
     public List<CreneauEleveDto> emploiDuTempsDeLaClasse(Long classeId) {
+        if (!classeRepository.existsById(classeId)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Classe introuvable");
+        }
         return creneauRepository.findByClasseIdOrderByJourSemaineAscHeureDebutAsc(classeId).stream()
                 .map(CreneauEleveDto::de).toList();
     }
 
     // ---------- Contrôles ----------
+
+    /** Une classe ne peut pas avoir deux cours en même temps. */
+    private void verifierConflitClasse(Long classeId, Short jour, java.time.LocalTime debut,
+                                       java.time.LocalTime fin, Long exclureId) {
+        List<Creneau> conflits = creneauRepository.chevauchementsClasse(classeId, jour, debut, fin, exclureId);
+        if (!conflits.isEmpty()) {
+            Creneau c = conflits.get(0);
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Cette classe a déjà un cours sur ce créneau (" + c.getMatiere().getLibelle() + " "
+                            + c.getHeureDebut() + "-" + c.getHeureFin() + ")");
+        }
+    }
 
     private void verifierConflitEnseignant(Long enseignantId, Short jour, java.time.LocalTime debut,
                                            java.time.LocalTime fin, Long exclureId) {

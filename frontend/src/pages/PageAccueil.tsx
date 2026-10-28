@@ -2,7 +2,7 @@ import { Alert, Badge, Card, Group, Loader, Stack, Text, Title } from '@mantine/
 import { useQuery } from '@tanstack/react-query'
 import { Navigate } from 'react-router'
 import { obtenirEtablissement } from '../api/endpoints'
-import { estEnseignant, estParent, etablissementCourant, LIBELLES_ROLES } from '../auth/roles'
+import { estDirectionRegionale, estEnseignant, estMinistere, estParent, etablissementCourant, LIBELLES_ROLES } from '../auth/roles'
 import { useUtilisateur } from '../auth/useAuth'
 
 export default function PageAccueil() {
@@ -15,6 +15,12 @@ export default function PageAccueil() {
     enabled: etablissementId !== undefined,
   })
 
+  if (etablissementId === undefined && estMinistere(utilisateur)) {
+    return <Navigate to="/ministere" replace />
+  }
+  if (etablissementId === undefined && estDirectionRegionale(utilisateur)) {
+    return <Navigate to="/region" replace />
+  }
   if (etablissementId === undefined && estEnseignant(utilisateur)) {
     return <Navigate to="/mes-classes" replace />
   }

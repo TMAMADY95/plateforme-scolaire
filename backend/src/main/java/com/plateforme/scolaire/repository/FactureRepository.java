@@ -1,17 +1,24 @@
 package com.plateforme.scolaire.repository;
 
 import com.plateforme.scolaire.domain.Facture;
+import jakarta.persistence.LockModeType;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 public interface FactureRepository extends JpaRepository<Facture, Long> {
 
     List<Facture> findByEleveIdOrderByDateEmissionDescIdDesc(Long eleveId);
+
+    /** Verrou en écriture : deux paiements simultanés ne peuvent pas dépasser le montant dû. */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select f from Facture f where f.id = :id")
+    Optional<Facture> findByIdPourMiseAJour(@Param("id") Long id);
 
     List<Facture> findByEleveIdAndStatutInOrderByDateEmissionDesc(Long eleveId, List<String> statuts);
 
@@ -24,6 +31,8 @@ public interface FactureRepository extends JpaRepository<Facture, Long> {
     Optional<Facture> findByFraisIdAndEleveId(Long fraisId, Long eleveId);
 
     boolean existsByFraisIdAndEleveId(Long fraisId, Long eleveId);
+
+    boolean existsByFraisId(Long fraisId);
 
     long countByEtablissementIdAndAnneeScolaireIdAndStatutIn(
             Long etablissementId, Long anneeScolaireId, List<String> statuts);

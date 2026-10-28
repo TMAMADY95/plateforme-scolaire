@@ -1,7 +1,16 @@
 import { AppShell, Badge, Burger, Button, Group, NavLink, Text, Title } from '@mantine/core'
 import { useDisclosure } from '@mantine/hooks'
 import { Link, Outlet, useLocation } from 'react-router'
-import { estEleve, estEnseignant, estGestionnaire, estParent, LIBELLES_ROLES } from '../auth/roles'
+import {
+  estDirectionRegionale,
+  estEleve,
+  estEnseignant,
+  estGestionnaire,
+  estMinistere,
+  estDirectionEtablissement,
+  estParent,
+  LIBELLES_ROLES,
+} from '../auth/roles'
 import { useAuth, useUtilisateur } from '../auth/useAuth'
 
 interface Lien {
@@ -26,6 +35,18 @@ export default function MiseEnPage() {
     liens.push({ chemin: '/resultats', libelle: 'Résultats' })
     liens.push({ chemin: '/emplois-du-temps', libelle: 'Emplois du temps' })
     liens.push({ chemin: '/finances', libelle: 'Finances' })
+  }
+
+  if (estDirectionEtablissement(utilisateur)) {
+    liens.push({ chemin: '/comptes', libelle: 'Comptes' })
+  }
+
+  if (estMinistere(utilisateur)) {
+    liens.push({ chemin: '/ministere', libelle: 'Administration nationale' })
+  }
+
+  if (estDirectionRegionale(utilisateur)) {
+    liens.push({ chemin: '/region', libelle: 'Ma région' })
   }
 
   if (estEnseignant(utilisateur)) {

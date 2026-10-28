@@ -5,6 +5,7 @@ import { useQuery } from '@tanstack/react-query'
 import { listerEvaluations, listerPeriodes } from '../../api/endpoints'
 import type { Evaluation } from '../../api/types'
 import { formaterDate } from '../../utils/dates'
+import ModifierEvaluationModal from './ModifierEvaluationModal'
 import NotesModal from './NotesModal'
 import NouvelleEvaluationModal from './NouvelleEvaluationModal'
 
@@ -19,6 +20,7 @@ export default function OngletEvaluations({ classeId, anneeScolaireId, mesMatier
   const [periodeFiltre, setPeriodeFiltre] = useState<string | null>(null)
   const [nouvelleOuverte, { open, close }] = useDisclosure()
   const [ouverte, setOuverte] = useState<Evaluation | null>(null)
+  const [aModifier, setAModifier] = useState<Evaluation | null>(null)
 
   const periodes = useQuery({ queryKey: ['periodes', anneeScolaireId], queryFn: () => listerPeriodes(anneeScolaireId) })
   const evaluations = useQuery({ queryKey: ['evaluations', classeId], queryFn: () => listerEvaluations(classeId) })
@@ -85,9 +87,16 @@ export default function OngletEvaluations({ classeId, anneeScolaireId, mesMatier
                     <Table.Td>{e.coefficient}</Table.Td>
                     <Table.Td>{e.bareme}</Table.Td>
                     <Table.Td>
-                      <Button size="compact-sm" variant={mienne ? 'light' : 'subtle'} onClick={() => setOuverte(e)}>
-                        {mienne ? 'Saisir les notes' : 'Consulter'}
-                      </Button>
+                      <Group gap="xs" wrap="nowrap">
+                        <Button size="compact-sm" variant={mienne ? 'light' : 'subtle'} onClick={() => setOuverte(e)}>
+                          {mienne ? 'Saisir les notes' : 'Consulter'}
+                        </Button>
+                        {mienne && (
+                          <Button size="compact-sm" variant="subtle" onClick={() => setAModifier(e)}>
+                            Modifier
+                          </Button>
+                        )}
+                      </Group>
                     </Table.Td>
                   </Table.Tr>
                 )
@@ -105,6 +114,7 @@ export default function OngletEvaluations({ classeId, anneeScolaireId, mesMatier
           onFermer={close}
         />
       )}
+      {aModifier !== null && <ModifierEvaluationModal evaluation={aModifier} onFermer={() => setAModifier(null)} />}
       {ouverte !== null && (
         <NotesModal
           evaluation={ouverte}

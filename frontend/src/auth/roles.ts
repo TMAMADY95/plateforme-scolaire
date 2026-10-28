@@ -30,6 +30,21 @@ export function estGestionnaire(utilisateur: Moi): boolean {
   return etablissementsGeres(utilisateur).length > 0
 }
 
+/** Direction d'un établissement (le personnel administratif n'administre pas les comptes). */
+export function estDirectionEtablissement(utilisateur: Moi): boolean {
+  return utilisateur.affectations.some(
+    (a) => a.role === 'DIRECTION_ETABLISSEMENT' && a.perimetre === 'ETABLISSEMENT' && a.etablissementId !== null,
+  )
+}
+
+export function estMinistere(utilisateur: Moi): boolean {
+  return utilisateur.affectations.some((a) => a.role === 'MINISTERE')
+}
+
+export function estDirectionRegionale(utilisateur: Moi): boolean {
+  return utilisateur.affectations.some((a) => a.role === 'DIRECTION_REGIONALE')
+}
+
 export function estEnseignant(utilisateur: Moi): boolean {
   return utilisateur.affectations.some((a) => a.role === 'ENSEIGNANT')
 }

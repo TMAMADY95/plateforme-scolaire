@@ -23,6 +23,11 @@ public interface InscriptionRepository extends JpaRepository<Inscription, Long> 
 
     long countByClasseIdAndStatut(Long classeId, String statut);
 
+    long countByAnneeScolaireIdAndStatut(Long anneeScolaireId, String statut);
+
+    long countByEtablissementIdInAndAnneeScolaireIdAndStatut(
+            java.util.Collection<Long> etablissementIds, Long anneeScolaireId, String statut);
+
     /** Inscriptions d'un élève dans un statut donné, de l'année la plus récente à la plus ancienne. */
     List<Inscription> findByEleveIdAndStatutOrderByAnneeScolaireDateDebutDesc(Long eleveId, String statut);
 

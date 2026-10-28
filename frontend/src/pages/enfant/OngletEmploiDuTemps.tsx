@@ -1,14 +1,14 @@
 import { Alert, Loader, Stack, Title } from '@mantine/core'
 import { useQuery } from '@tanstack/react-query'
-import { listerCreneauxClasse } from '../../api/emploisDuTemps'
+import { emploiDuTempsClasse } from '../../api/endpoints'
 import GrilleEmploiDuTemps from '../../components/GrilleEmploiDuTemps'
-import type { Creneau } from '../../api/types'
+import type { CreneauEleve } from '../../api/types'
 
 /** Bloc « Emploi du temps » réutilisable dans l'espace élève et l'espace parent. */
 export default function OngletEmploiDuTemps({ classeId }: { classeId: number | null }) {
   const creneaux = useQuery({
-    queryKey: ['creneaux-classe', classeId],
-    queryFn: () => listerCreneauxClasse(classeId as number),
+    queryKey: ['emploi-du-temps-classe', classeId],
+    queryFn: () => emploiDuTempsClasse(classeId as number),
     enabled: classeId !== null,
   })
 
@@ -31,8 +31,8 @@ export default function OngletEmploiDuTemps({ classeId }: { classeId: number | n
       )}
       {creneaux.data && (
         <GrilleEmploiDuTemps
-          creneaux={creneaux.data.map((c: Creneau) => ({
-            key: String(c.id),
+          creneaux={creneaux.data.map((c: CreneauEleve, i: number) => ({
+            key: `${c.jourSemaine}-${c.heureDebut}-${i}`,
             matiereLibelle: c.matiereLibelle,
             enseignantNom: c.enseignantNom,
             salleNom: c.salleNom,

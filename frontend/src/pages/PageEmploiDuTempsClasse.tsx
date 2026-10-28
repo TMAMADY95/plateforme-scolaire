@@ -1,6 +1,6 @@
 import { Alert, Anchor, Loader, Stack, Title } from '@mantine/core'
 import { useQuery } from '@tanstack/react-query'
-import { listerCreneauxClasse } from '../api/emploisDuTemps'
+import { listerCreneauxClasse } from '../api/endpoints'
 import GrilleEmploiDuTemps from '../components/GrilleEmploiDuTemps'
 import type { Creneau } from '../api/types'
 

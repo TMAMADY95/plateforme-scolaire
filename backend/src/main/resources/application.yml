@@ -28,6 +28,11 @@ app:
     expiration-minutes: 60
   cors:
     allowed-origins: ${CORS_ORIGINS:http://localhost:5173,http://localhost:3000}
+  paiement:
+    # Vide = paiement en ligne désactivé. "simule" = faux prestataire (dev). Un vrai prestataire = son propre adaptateur.
+    fournisseur: ${PAIEMENT_FOURNISSEUR:}
+    # Secret partagé avec le prestataire pour signer les notifications. Obligatoire dès qu'un fournisseur est actif.
+    secret-webhook: ${PAIEMENT_WEBHOOK_SECRET:}
 
 springdoc:
   swagger-ui:

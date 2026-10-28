@@ -74,7 +74,7 @@ public class FacturationController {
     // ---------- Factures ----------
 
     @GetMapping("/api/etablissements/{etablissementId}/factures")
-    @PreAuthorize("@perimetre.peutAccederEtablissement(#etablissementId)")
+    @PreAuthorize("@perimetreFinances.peutConsulterFactures(#etablissementId)")
     public List<FactureDto> listerFactures(@PathVariable Long etablissementId,
                                            @RequestParam Long anneeScolaireId,
                                            @RequestParam(required = false) String statut) {
@@ -82,13 +82,13 @@ public class FacturationController {
     }
 
     @GetMapping("/api/etablissements/{etablissementId}/factures/en-retard")
-    @PreAuthorize("@perimetre.peutAccederEtablissement(#etablissementId)")
+    @PreAuthorize("@perimetreFinances.peutConsulterFactures(#etablissementId)")
     public List<FactureDto> facturesEnRetard(@PathVariable Long etablissementId) {
         return facturationService.facturesEnRetard(etablissementId);
     }
 
     @GetMapping("/api/etablissements/{etablissementId}/factures/bilan")
-    @PreAuthorize("@perimetre.peutAccederEtablissement(#etablissementId)")
+    @PreAuthorize("@perimetreFinances.peutConsulterBilan(#etablissementId)")
     public BilanFinancierDto bilan(@PathVariable Long etablissementId,
                                    @RequestParam Long anneeScolaireId) {
         return facturationService.bilan(etablissementId, anneeScolaireId);

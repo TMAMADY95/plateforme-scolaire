@@ -13,6 +13,10 @@ public interface ClasseRepository extends JpaRepository<Classe, Long> {
 
     List<Classe> findByEtablissementIdOrderByNom(Long etablissementId);
 
+    long countByAnneeScolaireId(Long anneeScolaireId);
+
+    long countByEtablissementIdInAndAnneeScolaireId(java.util.Collection<Long> etablissementIds, Long anneeScolaireId);
+
     List<Classe> findByEtablissementIdAndAnneeScolaireIdOrderByNom(Long etablissementId, Long anneeScolaireId);
 
     Optional<Classe> findByEtablissementIdAndAnneeScolaireIdAndNom(Long etablissementId, Long anneeScolaireId,

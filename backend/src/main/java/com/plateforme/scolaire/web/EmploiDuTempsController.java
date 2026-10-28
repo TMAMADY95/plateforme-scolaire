@@ -2,6 +2,7 @@ package com.plateforme.scolaire.web;
 
 import com.plateforme.scolaire.service.EmploiDuTempsService;
 import com.plateforme.scolaire.web.dto.CreneauDto;
+import com.plateforme.scolaire.web.dto.CreneauEleveDto;
 import com.plateforme.scolaire.web.dto.CreneauRequest;
 import com.plateforme.scolaire.web.dto.SalleDto;
 import com.plateforme.scolaire.web.dto.SalleRequest;
@@ -55,6 +56,13 @@ public class EmploiDuTempsController {
     @PreAuthorize("@perimetreEmploiDuTemps.peutConsulterClasse(#classeId)")
     public List<CreneauDto> listerCreneauxClasse(@PathVariable Long classeId) {
         return emploiDuTempsService.listerCreneauxClasse(classeId);
+    }
+
+    /** Vue allégée (sans identifiants internes) pour l'élève et le parent. */
+    @GetMapping("/api/classes/{classeId}/emploi-du-temps")
+    @PreAuthorize("@perimetreEmploiDuTemps.peutConsulterClasse(#classeId)")
+    public List<CreneauEleveDto> emploiDuTempsClasse(@PathVariable Long classeId) {
+        return emploiDuTempsService.emploiDuTempsDeLaClasse(classeId);
     }
 
     @GetMapping("/api/etablissements/{etablissementId}/creneaux")

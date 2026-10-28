@@ -12,6 +12,9 @@ public interface CreneauRepository extends JpaRepository<Creneau, Long> {
 
     List<Creneau> findByClasseIdOrderByJourSemaineAscHeureDebutAsc(Long classeId);
 
+    /** Une salle utilisée par au moins un créneau ne peut pas être supprimée. */
+    boolean existsBySalleId(Long salleId);
+
     List<Creneau> findByEnseignantIdOrderByJourSemaineAscHeureDebutAsc(Long enseignantId);
 
     /** Créneaux de toutes les classes d'un établissement pour une année scolaire. */
@@ -37,6 +40,16 @@ public interface CreneauRepository extends JpaRepository<Creneau, Long> {
                                            @Param("debut") LocalTime debut,
                                            @Param("fin") LocalTime fin,
                                            @Param("exclureId") Long exclureId);
+
+    /** Chevauchement pour une classe, sur le même principe. */
+    @Query("select c from Creneau c where c.classe.id = :classeId and c.jourSemaine = :jour "
+            + "and c.heureDebut < :fin and c.heureFin > :debut "
+            + "and (:exclureId is null or c.id <> :exclureId)")
+    List<Creneau> chevauchementsClasse(@Param("classeId") Long classeId,
+                                       @Param("jour") Short jour,
+                                       @Param("debut") LocalTime debut,
+                                       @Param("fin") LocalTime fin,
+                                       @Param("exclureId") Long exclureId);
 
     /** Chevauchement pour une salle, sur le même principe. */
     @Query("select c from Creneau c where c.salle.id = :salleId and c.jourSemaine = :jour "

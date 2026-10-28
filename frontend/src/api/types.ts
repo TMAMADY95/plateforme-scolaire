@@ -42,6 +42,8 @@ export interface Etablissement {
   typeEtablissement: string | null
   statut: string
   zoneId: number | null
+  adresse: string | null
+  capacite: number | null
 }
 
 export interface AnneeScolaire {
@@ -70,6 +72,13 @@ export interface Classe {
 
 export interface ClasseRequete {
   anneeScolaireId: number
+  niveauId: number
+  nom: string
+  capacite: number | null
+}
+
+/** L'année scolaire d'une classe ne se modifie pas. */
+export interface ClasseModificationRequete {
   niveauId: number
   nom: string
   capacite: number | null
@@ -216,6 +225,14 @@ export interface Evaluation {
 export interface EvaluationRequete {
   matiereId: number
   periodeId: number
+  titre: string
+  dateEvaluation: string
+  coefficient?: number
+  bareme?: number
+}
+
+/** La matière et la période d'une évaluation ne se modifient pas. */
+export interface EvaluationModificationRequete {
   titre: string
   dateEvaluation: string
   coefficient?: number
@@ -471,7 +488,7 @@ export interface ExonerationRequete {
 export interface BilanFinancier {
   etablissementId: number
   anneeScolaireId: number
-  devise: string
+  devise: string | null
   totalDu: number
   totalExonere: number
   totalPaye: number
@@ -480,4 +497,143 @@ export interface BilanFinancier {
   nombreImpayees: number
   nombrePayees: number
   nombreEnRetard: number
+}
+
+// ===================== Lot 6 — administration nationale =====================
+
+export type StatutEtablissement = 'ACTIF' | 'SUSPENDU' | 'FERME'
+
+export interface Zone {
+  id: number
+  parentId: number | null
+  nom: string
+  typeZone: string
+}
+
+export interface ZoneRequete {
+  parentId: number | null
+  nom: string
+  typeZone: string
+}
+
+export interface EtablissementRequete {
+  codeOfficiel: string
+  nom: string
+  zoneId: number | null
+  typeEtablissement?: string
+  adresse?: string
+  capacite?: number
+}
+
+export interface DirectionRequete {
+  email: string
+  nom: string
+  prenom: string
+  telephone?: string
+  motDePasseInitial: string
+}
+
+export interface ComptePersonnel {
+  id: number
+  email: string
+  nom: string
+  prenom: string
+  role: string
+}
+
+/** Un compte vu par son administrateur (jamais le mot de passe). */
+export interface Compte {
+  id: number
+  email: string
+  nom: string
+  prenom: string
+  role: Role
+  actif: boolean
+  doitChangerMotDePasse: boolean
+}
+
+export interface ElementContexte {
+  libelle: string
+  valeur: string
+}
+
+export interface JournalAudit {
+  id: number
+  date: string
+  utilisateurEmail: string | null
+  utilisateurNom: string | null
+  action: string
+  /** Phrase lisible ("Note modifiée : 14,00 → 16,00"). */
+  resume: string
+  entite: string
+  entiteId: number | null
+  /** Qui ou quoi est concerné : élève, établissement, classe, facture, compte… */
+  contexte: ElementContexte[]
+  details: Record<string, unknown> | null
+  adresseIp: string | null
+}
+
+export interface PageAudit {
+  contenu: JournalAudit[]
+  total: number
+  page: number
+  taille: number
+}
+
+export interface SyntheseNationale {
+  anneeScolaireId: number
+  etablissements: number
+  actifs: number
+  suspendus: number
+  fermes: number
+  classes: number
+  elevesInscrits: number
+}
+
+export interface AnneeScolaireRequete {
+  libelle: string
+  dateDebut: string
+  dateFin: string
+}
+
+export interface NiveauRequete {
+  code: string
+  libelle: string
+  ordre: number
+}
+
+export interface MatiereRequete {
+  code: string
+  libelle: string
+}
+
+// ===================== Étape 3b — paiements =====================
+
+export type ModePaiement = 'ESPECES' | 'VIREMENT' | 'CHEQUE' | 'MOBILE_MONEY'
+export type StatutPaiement = 'EN_ATTENTE' | 'VALIDE' | 'ECHEC' | 'ANNULE'
+
+export interface Paiement {
+  id: number
+  factureId: number
+  montant: number
+  devise: string
+  mode: ModePaiement
+  statut: StatutPaiement
+  referenceInterne: string
+  referenceExterne: string | null
+  createdAt: string
+  valideLe: string | null
+}
+
+export interface PaiementRequete {
+  montant: number
+  mode: 'ESPECES' | 'VIREMENT' | 'CHEQUE'
+  reference?: string
+}
+
+export interface PaiementInitie {
+  reference: string
+  urlPaiement: string
+  montant: number
+  devise: string
 }

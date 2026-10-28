@@ -32,7 +32,7 @@ public class MesFacturesService {
         Eleve eleve = eleveRepository.findByUtilisateurId(utilisateurId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
                         "Aucun dossier élève n'est rattaché à ce compte"));
-        return facturationService.facturesDeLEleve(eleve.getId());
+        return sansAnnulees(facturationService.facturesDeLEleve(eleve.getId()));
     }
 
     /** Les factures d'un enfant du parent connecté, et seulement dans ce cas. */
@@ -41,6 +41,11 @@ public class MesFacturesService {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN,
                     "Cet élève n'est pas rattaché à votre compte");
         }
-        return facturationService.facturesDeLEleve(eleveId);
+        return sansAnnulees(facturationService.facturesDeLEleve(eleveId));
+    }
+
+    /** Une facture annulée (émise par erreur) n'a pas à apparaître chez la famille. */
+    private List<FactureDto> sansAnnulees(List<FactureDto> factures) {
+        return factures.stream().filter(f -> !"ANNULEE".equals(f.statut())).toList();
     }
 }

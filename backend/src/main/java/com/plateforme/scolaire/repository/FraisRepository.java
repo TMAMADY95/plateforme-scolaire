@@ -11,6 +11,12 @@ public interface FraisRepository extends JpaRepository<Frais, Long> {
 
     List<Frais> findByEtablissementIdAndAnneeScolaireIdOrderByLibelle(Long etablissementId, Long anneeScolaireId);
 
+    List<Frais> findByEtablissementIdOrderByLibelle(Long etablissementId);
+
+    /** Vrai s'il existe, pour cet établissement et cette année, un frais exprimé dans une autre devise. */
+    boolean existsByEtablissementIdAndAnneeScolaireIdAndDeviseNot(
+            Long etablissementId, Long anneeScolaireId, String devise);
+
     /** Frais actifs d'un établissement pour une année, un niveau précis ou tous niveaux. */
     @Query("select f from Frais f where f.etablissement.id = :etablissementId "
             + "and f.anneeScolaire.id = :anneeScolaireId and f.actif = true "

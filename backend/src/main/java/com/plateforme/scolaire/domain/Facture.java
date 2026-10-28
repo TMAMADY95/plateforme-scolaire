@@ -53,7 +53,7 @@ public class Facture {
     private BigDecimal montantExonere = BigDecimal.ZERO;
 
     @Column(nullable = false, length = 3)
-    private String devise = "XOF";
+    private String devise;
 
     private LocalDate echeance;
 

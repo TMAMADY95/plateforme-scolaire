@@ -1,12 +1,13 @@
 import { Navigate, Route, Routes, useParams } from 'react-router'
 import RequiertRole from './auth/RequiertRole'
 import RequiertSession from './auth/RequiertSession'
-import { estEleve, estEnseignant, estGestionnaire, estParent } from './auth/roles'
+import { estDirectionEtablissement, estDirectionRegionale, estEleve, estEnseignant, estGestionnaire, estMinistere, estParent } from './auth/roles'
 import MiseEnPage from './layout/MiseEnPage'
 import PageAccueil from './pages/PageAccueil'
 import PageChangementMotDePasse from './pages/PageChangementMotDePasse'
 import PageClasseEnseignant from './pages/PageClasseEnseignant'
 import PageClasses from './pages/PageClasses'
+import PageComptes from './pages/PageComptes'
 import PageConnexion from './pages/PageConnexion'
 import PageEleves from './pages/PageEleves'
 import PageEmploiDuTempsClasse from './pages/PageEmploiDuTempsClasse'
@@ -17,8 +18,11 @@ import PageFinances from './pages/PageFinances'
 import PageInscriptions from './pages/PageInscriptions'
 import PageMesClasses from './pages/PageMesClasses'
 import PageMesEnfants from './pages/PageMesEnfants'
+import PageMinistere from './pages/PageMinistere'
 import PageMonEspace from './pages/PageMonEspace'
+import PagePaiementSimule from './pages/PagePaiementSimule'
 import PagePresences from './pages/PagePresences'
+import PageRegion from './pages/PageRegion'
 import PageResultats from './pages/PageResultats'
 
 /** Route paramétrée : l'emploi du temps d'une classe choisie dans la liste. */
@@ -61,6 +65,16 @@ export default function App() {
           element={<RequiertRole autorise={estGestionnaire}><EmploiDuTempsClasse /></RequiertRole>}
         />
         <Route path="finances" element={<RequiertRole autorise={estGestionnaire}><PageFinances /></RequiertRole>} />
+        <Route path="comptes" element={<RequiertRole autorise={estDirectionEtablissement}><PageComptes /></RequiertRole>} />
+
+        {/* Retour du prestataire de paiement simulé (dev) */}
+        <Route path="paiement-simule/:reference" element={<PagePaiementSimule />} />
+
+        {/* Ministère */}
+        <Route path="ministere" element={<RequiertRole autorise={estMinistere}><PageMinistere /></RequiertRole>} />
+
+        {/* Direction régionale */}
+        <Route path="region" element={<RequiertRole autorise={estDirectionRegionale}><PageRegion /></RequiertRole>} />
 
         {/* Enseignants */}
         <Route path="mes-classes" element={<RequiertRole autorise={estEnseignant}><PageMesClasses /></RequiertRole>} />

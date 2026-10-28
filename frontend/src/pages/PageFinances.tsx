@@ -1,16 +1,30 @@
-import { Alert, Badge, Card, Group, Loader, SimpleGrid, Stack, Table, Text, Title } from '@mantine/core'
-import { useQuery } from '@tanstack/react-query'
-import { bilanFinancier, facturesEnRetard, listerFactures } from '../api/facturation'
+import { useState } from 'react'
+import { Alert, Badge, Button, Card, Group, Loader, SimpleGrid, Stack, Table, Tabs, Text, Title } from '@mantine/core'
+import { notifications } from '@mantine/notifications'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { annulerFacture, bilanFinancier, facturesEnRetard, listerFactures } from '../api/endpoints'
 import { useAnneeScolaire } from '../hooks/useAnneeScolaire'
 import { useAuth } from '../auth/useAuth'
 import { etablissementCourant, etablissementsGeres } from '../auth/roles'
 import { formaterMontant } from '../utils/monnaie'
 import { formaterDate } from '../utils/dates'
+import type { Facture } from '../api/types'
+import ConfirmationModal from '../components/ConfirmationModal'
+import ExonerationModal from './finances/ExonerationModal'
+import GenererFacturesModal from './finances/GenererFacturesModal'
+import GestionFrais from './finances/GestionFrais'
+import PaiementsModal from './finances/PaiementsModal'
 
 /** Vue direction : synthèse financière, impayés et liste des factures. */
 export default function PageFinances() {
   const { utilisateur } = useAuth()
   const annee = useAnneeScolaire()
+  const queryClient = useQueryClient()
+  const [pourPaiements, setPourPaiements] = useState<Facture | null>(null)
+  const [pourExoneration, setPourExoneration] = useState<Facture | null>(null)
+  const [aAnnuler, setAAnnuler] = useState<Facture | null>(null)
+  const [generation, setGeneration] = useState(false)
+  const [erreurAction, setErreurAction] = useState<string | null>(null)
 
   const etablissementId = utilisateur ? etablissementCourant(utilisateur) : undefined
   const anneeId = annee.anneeId === null ? null : Number(annee.anneeId)
@@ -34,6 +48,21 @@ export default function PageFinances() {
     enabled: etablissementId !== undefined,
   })
 
+  const annulation = useMutation({
+    mutationFn: (f: Facture) => annulerFacture(f.id),
+    onSuccess: (f) => {
+      for (const cle of ['factures-etab', 'bilan-financier', 'factures-retard']) {
+        void queryClient.invalidateQueries({ queryKey: [cle] })
+      }
+      notifications.show({ color: 'green', title: 'Facture annulée', message: f.numero })
+      setAAnnuler(null)
+    },
+    onError: (e) => {
+      setAAnnuler(null)
+      setErreurAction(e.message)
+    },
+  })
+
   if (utilisateur === null || etablissementsGeres(utilisateur).length === 0) {
     return (
       <Alert color="blue" variant="light">
@@ -46,10 +75,32 @@ export default function PageFinances() {
 
   return (
     <Stack>
-      <Title order={2}>Finances</Title>
-      <Text c="dimmed" size="sm">
-        {libelleAnnee ? `Année scolaire ${libelleAnnee}` : 'Année scolaire en cours'}
-      </Text>
+      <Group justify="space-between">
+        <div>
+          <Title order={2}>Finances</Title>
+          <Text c="dimmed" size="sm">
+            {libelleAnnee ? `Année scolaire ${libelleAnnee}` : 'Année scolaire en cours'}
+          </Text>
+        </div>
+        <Button disabled={!pret} onClick={() => setGeneration(true)}>
+          Générer les factures
+        </Button>
+      </Group>
+      {erreurAction !== null && (
+        <Alert color="red" variant="light" withCloseButton onClose={() => setErreurAction(null)}>
+          {erreurAction}
+        </Alert>
+      )}
+      <Tabs defaultValue="factures">
+        <Tabs.List>
+          <Tabs.Tab value="factures">Factures</Tabs.Tab>
+          <Tabs.Tab value="bareme">Barème des frais</Tabs.Tab>
+        </Tabs.List>
+        <Tabs.Panel value="bareme" pt="md">
+          {pret && <GestionFrais etablissementId={etablissementId} anneeScolaireId={anneeId} />}
+        </Tabs.Panel>
+        <Tabs.Panel value="factures" pt="md">
+        <Stack>
 
       {(bilan.isPending || factures.isPending || retards.isPending) && pret && <Loader />}
       {(bilan.isError || factures.isError || retards.isError) && (
@@ -150,6 +201,7 @@ export default function PageFinances() {
                 <Table.Th>Payé</Table.Th>
                 <Table.Th>Reste</Table.Th>
                 <Table.Th>Statut</Table.Th>
+                <Table.Th />
               </Table.Tr>
             </Table.Thead>
             <Table.Tbody>
@@ -173,11 +225,51 @@ export default function PageFinances() {
                       )}
                     </Group>
                   </Table.Td>
+                  <Table.Td>
+                    <Group gap="xs" wrap="nowrap">
+                      <Button size="compact-xs" variant="light" onClick={() => setPourPaiements(f)}>
+                        Paiements
+                      </Button>
+                      {f.statut === 'IMPAYEE' && f.montantPaye === 0 && f.resteAPayer > 0 && (
+                        <Button size="compact-xs" variant="light" color="orange" onClick={() => setPourExoneration(f)}>
+                          Exonérer
+                        </Button>
+                      )}
+                      {f.statut !== 'ANNULEE' && f.montantPaye === 0 && (
+                        <Button size="compact-xs" variant="subtle" color="red" onClick={() => setAAnnuler(f)}>
+                          Annuler
+                        </Button>
+                      )}
+                    </Group>
+                  </Table.Td>
                 </Table.Tr>
               ))}
             </Table.Tbody>
           </Table>
         </Table.ScrollContainer>
+      )}
+        </Stack>
+        </Tabs.Panel>
+      </Tabs>
+      {pourPaiements && <PaiementsModal facture={pourPaiements} onFermer={() => setPourPaiements(null)} />}
+      {pourExoneration && <ExonerationModal facture={pourExoneration} onFermer={() => setPourExoneration(null)} />}
+      {generation && pret && (
+        <GenererFacturesModal
+          etablissementId={etablissementId}
+          anneeScolaireId={anneeId}
+          devise={bilan.data?.devise ?? null}
+          onFermer={() => setGeneration(false)}
+        />
+      )}
+      {aAnnuler && (
+        <ConfirmationModal
+          titre="Annuler la facture"
+          message={`Annuler la facture ${aAnnuler.numero} (${aAnnuler.elevePrenom} ${aAnnuler.eleveNom}) ? Cette action est définitive.`}
+          libelleConfirmer="Annuler la facture"
+          enCours={annulation.isPending}
+          onConfirmer={() => annulation.mutate(aAnnuler)}
+          onFermer={() => setAAnnuler(null)}
+        />
       )}
     </Stack>
   )

@@ -1,13 +1,16 @@
-/** Formatage des montants. Le montant arrive de l'API sous forme de nombre. */
-
-const DEVISES_SANS_DECIMALES = ['XOF', 'XAF', 'GNF', 'CDF']
-
-export function formaterMontant(montant: number | null | undefined, devise = 'XOF'): string {
+/**
+ * Formatage des montants. Le montant arrive de l'API sous forme de nombre et la devise
+ * sous forme de code ISO 4217 (EUR, XOF, MAD...). Le nombre de décimales est celui de la devise.
+ */
+export function formaterMontant(montant: number | null | undefined, devise?: string | null): string {
   if (montant === null || montant === undefined) return '—'
-  const sansDecimales = DEVISES_SANS_DECIMALES.includes(devise)
-  const valeur = new Intl.NumberFormat('fr-FR', {
-    minimumFractionDigits: sansDecimales ? 0 : 2,
-    maximumFractionDigits: sansDecimales ? 0 : 2,
-  }).format(montant)
-  return `${valeur} ${devise}`
+  if (!devise) {
+    return new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 2 }).format(montant)
+  }
+  try {
+    return new Intl.NumberFormat('fr-FR', { style: 'currency', currency: devise }).format(montant)
+  } catch {
+    // Code de devise inconnu du navigateur : on affiche le code tel quel.
+    return `${new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 2 }).format(montant)} ${devise}`
+  }
 }

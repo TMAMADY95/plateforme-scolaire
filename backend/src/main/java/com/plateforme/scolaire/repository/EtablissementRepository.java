@@ -8,6 +8,12 @@ import org.springframework.data.repository.query.Param;
 
 public interface EtablissementRepository extends JpaRepository<Etablissement, Long> {
 
+    boolean existsByCodeOfficiel(String codeOfficiel);
+
+    boolean existsByZoneId(Long zoneId);
+
+    long countByStatut(String statut);
+
     /** Établissements d'une zone et de toutes ses sous-zones (requête récursive). */
     @Query(value = """
             WITH RECURSIVE sous_zones AS (

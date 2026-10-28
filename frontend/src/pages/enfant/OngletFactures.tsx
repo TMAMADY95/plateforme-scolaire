@@ -1,6 +1,7 @@
-import { Alert, Badge, Group, Loader, Stack, Table, Text, Title } from '@mantine/core'
-import { useQuery } from '@tanstack/react-query'
-import { facturesDeMonEnfant, mesFactures } from '../../api/facturation'
+import { Alert, Badge, Button, Group, Loader, Stack, Table, Text, Title } from '@mantine/core'
+import { notifications } from '@mantine/notifications'
+import { useMutation, useQuery } from '@tanstack/react-query'
+import { facturesDeMonEnfant, mesFactures, payerEnLigne } from '../../api/endpoints'
 import { formaterMontant } from '../../utils/monnaie'
 import { formaterDate } from '../../utils/dates'
 
@@ -14,9 +15,16 @@ export default function OngletFactures({ eleveId }: { eleveId: number | null }) 
     queryFn: () => (eleveId === null ? mesFactures() : facturesDeMonEnfant(eleveId)),
   })
 
+  const paiement = useMutation({
+    mutationFn: (factureId: number) => payerEnLigne(factureId),
+    // Le payeur termine son paiement chez le prestataire ; la confirmation nous parvient par notification signée.
+    onSuccess: (initie) => window.location.assign(initie.urlPaiement),
+    onError: (e) => notifications.show({ color: 'red', title: 'Paiement impossible', message: e.message }),
+  })
+
   const donnees = factures.data ?? []
   const totalRestant = donnees.reduce((somme, f) => somme + f.resteAPayer, 0)
-  const devise = donnees[0]?.devise ?? 'XOF'
+  const devise = donnees[0]?.devise
 
   return (
     <Stack>
@@ -56,6 +64,7 @@ export default function OngletFactures({ eleveId }: { eleveId: number | null }) 
                   <Table.Th>Reste</Table.Th>
                   <Table.Th>Échéance</Table.Th>
                   <Table.Th>Statut</Table.Th>
+                  <Table.Th />
                 </Table.Tr>
               </Table.Thead>
               <Table.Tbody>
@@ -77,6 +86,17 @@ export default function OngletFactures({ eleveId }: { eleveId: number | null }) 
                         )}
                       </Group>
                     </Table.Td>
+                    <Table.Td>
+                      {['IMPAYEE', 'PARTIELLE'].includes(f.statut) && f.resteAPayer > 0 && (
+                        <Button
+                          size="compact-xs"
+                          loading={paiement.isPending && paiement.variables === f.id}
+                          onClick={() => paiement.mutate(f.id)}
+                        >
+                          Payer
+                        </Button>
+                      )}
+                    </Table.Td>
                   </Table.Tr>
                 ))}
               </Table.Tbody>
@@ -84,7 +104,7 @@ export default function OngletFactures({ eleveId }: { eleveId: number | null }) 
           </Table.ScrollContainer>
 
           <Text size="xs" c="dimmed">
-            Le règlement des frais sera disponible dans une prochaine version. Rapprochez-vous de
+            Le paiement en ligne n'est peut-être pas activé : dans ce cas, rapprochez-vous de
             l'établissement pour connaître les modalités de paiement acceptées.
           </Text>
         </>

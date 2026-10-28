@@ -7,6 +7,7 @@ import com.plateforme.scolaire.domain.Exoneration;
 import com.plateforme.scolaire.domain.Facture;
 import com.plateforme.scolaire.domain.Frais;
 import com.plateforme.scolaire.domain.Inscription;
+import com.plateforme.scolaire.domain.Niveau;
 import com.plateforme.scolaire.domain.Utilisateur;
 import com.plateforme.scolaire.repository.AnneeScolaireRepository;
 import com.plateforme.scolaire.repository.ClasseRepository;
@@ -15,6 +16,8 @@ import com.plateforme.scolaire.repository.ExonerationRepository;
 import com.plateforme.scolaire.repository.FactureRepository;
 import com.plateforme.scolaire.repository.FraisRepository;
 import com.plateforme.scolaire.repository.InscriptionRepository;
+import com.plateforme.scolaire.repository.NiveauRepository;
+import com.plateforme.scolaire.repository.PaiementRepository;
 import com.plateforme.scolaire.repository.UtilisateurRepository;
 import com.plateforme.scolaire.security.PerimetreService;
 import com.plateforme.scolaire.security.UtilisateurPrincipal;
@@ -29,6 +32,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -61,6 +65,7 @@ public class FacturationService {
     private static final String STATUT_PAYEE = "PAYEE";
     private static final String STATUT_EXONEREE = "EXONEREE";
     private static final String STATUT_ANNULEE = "ANNULEE";
+    private static final Set<String> TYPES_EXONERATION = Set.of("BOURSE", "REMISE", "AIDE_SOCIALE", "CORRECTION");
 
     private final FactureRepository factureRepository;
     private final FraisRepository fraisRepository;
@@ -68,10 +73,12 @@ public class FacturationService {
     private final EtablissementRepository etablissementRepository;
     private final AnneeScolaireRepository anneeRepository;
     private final ClasseRepository classeRepository;
+    private final NiveauRepository niveauRepository;
     private final InscriptionRepository inscriptionRepository;
     private final UtilisateurRepository utilisateurRepository;
     private final PerimetreService perimetreService;
     private final AuditService auditService;
+    private final PaiementRepository paiementRepository;
 
     @PersistenceContext
     private EntityManager entityManager;
@@ -124,12 +131,14 @@ public class FacturationService {
         long impayees = 0;
         long payees = 0;
         long enRetard = 0;
-        String devise = "XOF";
+        long nombreFactures = 0;
+        String devise = null;
 
         for (Facture f : factures) {
             if (STATUT_ANNULEE.equals(f.getStatut())) {
                 continue;
             }
+            nombreFactures++;
             totalDu = totalDu.add(f.getMontantDu());
             totalExonere = totalExonere.add(f.getMontantExonere());
             BigDecimal paye = f.getMontantPaye() == null ? BigDecimal.ZERO : f.getMontantPaye();
@@ -144,10 +153,15 @@ public class FacturationService {
                 }
             }
         }
+        if (devise == null) {
+            // Aucune facture encore : on affiche la devise de la grille (une seule par année).
+            devise = fraisRepository.findByEtablissementIdAndAnneeScolaireIdOrderByLibelle(etablissementId, anneeScolaireId)
+                    .stream().map(Frais::getDevise).findFirst().orElse(null);
+        }
         BigDecimal restant = totalDu.subtract(totalExonere).subtract(totalPaye);
         return new BilanFinancierDto(etablissementId, anneeScolaireId, devise,
                 totalDu, totalExonere, totalPaye, restant,
-                factures.size(), impayees, payees, enRetard);
+                nombreFactures, impayees, payees, enRetard);
     }
 
     // ---------- Génération ----------
@@ -187,10 +201,16 @@ public class FacturationService {
                     .findByClasseIdAndStatutOrderByEleveNomAscElevePrenomAsc(classe.getId(), "ACCEPTEE");
             niveauCible = classe.getNiveau().getId();
         } else {
+            Niveau niveau = niveauRepository.findById(r.niveauId())
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Niveau inconnu"));
+            // Seuls les élèves dont la classe est de CE niveau sont facturés.
             inscriptions = inscriptionRepository
                     .findByEtablissementIdAndAnneeScolaireIdOrderByDateDemandeDescIdDesc(etablissementId, annee.getId())
-                    .stream().filter(i -> "ACCEPTEE".equals(i.getStatut())).toList();
-            niveauCible = r.niveauId();
+                    .stream()
+                    .filter(i -> "ACCEPTEE".equals(i.getStatut()))
+                    .filter(i -> i.getClasse() != null && niveau.getId().equals(i.getClasse().getNiveau().getId()))
+                    .toList();
+            niveauCible = niveau.getId();
         }
 
         if (inscriptions.isEmpty()) {
@@ -253,11 +273,18 @@ public class FacturationService {
         if (STATUT_ANNULEE.equals(facture.getStatut())) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Cette facture est annulée");
         }
+        String type = r.typeExoneration() == null || r.typeExoneration().isBlank()
+                ? "REMISE" : r.typeExoneration().trim().toUpperCase();
+        if (!TYPES_EXONERATION.contains(type)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Type d'exonération inconnu (attendu : " + String.join(", ", new java.util.TreeSet<>(TYPES_EXONERATION)) + ")");
+        }
         BigDecimal dejaPaye = montantPaye(facture.getId());
         if (dejaPaye.signum() > 0) {
             throw new ResponseStatusException(HttpStatus.CONFLICT,
                     "Un paiement a déjà été encaissé sur cette facture : l'exonération doit passer par une correction");
         }
+        verifierAucunPaiementEnCours(facture.getId());
         BigDecimal nouveauExonere = facture.getMontantExonere().add(r.montant());
         if (nouveauExonere.compareTo(facture.getMontantDu()) > 0) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
@@ -271,8 +298,7 @@ public class FacturationService {
         exoneration.setFacture(facture);
         exoneration.setMontant(r.montant());
         exoneration.setMotif(r.motif().trim());
-        exoneration.setTypeExoneration(
-                r.typeExoneration() == null || r.typeExoneration().isBlank() ? "REMISE" : r.typeExoneration());
+        exoneration.setTypeExoneration(type);
         exoneration.setDecidePar(decideur);
         exonerationRepository.save(exoneration);
 
@@ -292,6 +318,7 @@ public class FacturationService {
             throw new ResponseStatusException(HttpStatus.CONFLICT,
                     "Impossible d'annuler : des paiements ont été encaissés sur cette facture");
         }
+        verifierAucunPaiementEnCours(facture.getId());
         facture.setStatut(STATUT_ANNULEE);
         auditService.enregistrer("ANNULATION_FACTURE", "facture", facture.getId(),
                 Map.of("numero", facture.getNumero(), "montantDu", facture.getMontantDu().toString()));
@@ -317,6 +344,14 @@ public class FacturationService {
     }
 
     // ---------- Interne ----------
+
+    private void verifierAucunPaiementEnCours(Long factureId) {
+        if (paiementRepository.existsByFactureIdAndStatutAndCreatedAtAfter(
+                factureId, "EN_ATTENTE", java.time.Instant.now().minus(PaiementService.DELAI_EN_ATTENTE))) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Un paiement en ligne est en cours sur cette facture : réessayez dans quelques minutes");
+        }
+    }
 
     private Facture charger(Long id) {
         return factureRepository.findById(id)
@@ -362,38 +397,27 @@ public class FacturationService {
         return String.format("%s-%06d", prefixe, suivant);
     }
 
-    /**
-     * Montant déjà encaissé sur une facture.
-     * Renvoie zéro tant que la table des paiements n'existe pas (Étape 3b) : la requête
-     * est donc conditionnée à la présence de la table.
-     */
+    /** Montant déjà encaissé sur une facture (paiements validés uniquement). */
     private BigDecimal montantPaye(Long factureId) {
-        if (!tablePaiementExiste()) {
-            return BigDecimal.ZERO;
-        }
-        Object resultat = entityManager.createNativeQuery(
-                        "select coalesce(sum(montant), 0) from paiement where facture_id = ?1 and statut = 'VALIDE'")
-                .setParameter(1, factureId)
-                .getSingleResult();
-        return resultat == null ? BigDecimal.ZERO : new BigDecimal(resultat.toString());
+        BigDecimal total = paiementRepository.totalValide(factureId);
+        return total == null ? BigDecimal.ZERO : total;
     }
 
+    /** Renseigne le montant payé de toutes les factures en une seule requête. */
     private List<Facture> avecMontantsPayes(List<Facture> factures) {
-        factures.forEach(this::avecMontantPaye);
+        if (factures.isEmpty()) {
+            return factures;
+        }
+        Map<Long, BigDecimal> payes = new HashMap<>();
+        for (Object[] ligne : paiementRepository.totauxValides(factures.stream().map(Facture::getId).toList())) {
+            payes.put(((Number) ligne[0]).longValue(), (BigDecimal) ligne[1]);
+        }
+        factures.forEach(f -> f.setMontantPaye(payes.getOrDefault(f.getId(), BigDecimal.ZERO)));
         return factures;
     }
 
     private Facture avecMontantPaye(Facture facture) {
         facture.setMontantPaye(montantPaye(facture.getId()));
         return facture;
-    }
-
-    /** La table des paiements est créée à l'Étape 3b. */
-    private boolean tablePaiementExiste() {
-        Object resultat = entityManager.createNativeQuery(
-                        "select count(*) from information_schema.tables "
-                                + "where table_schema = current_schema() and table_name = 'paiement'")
-                .getSingleResult();
-        return ((Number) resultat).longValue() > 0;
     }
 }

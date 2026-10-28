@@ -3,8 +3,21 @@ import type {
   AffectationEnseignant,
   AffectationRequete,
   AnneeScolaire,
+  AnneeScolaireRequete,
+  Compte,
+  ComptePersonnel,
+  PageAudit,
+  DirectionRequete,
+  EtablissementRequete,
+  MatiereRequete,
+  NiveauRequete,
+  StatutEtablissement,
+  SyntheseNationale,
+  Zone,
+  ZoneRequete,
   Classe,
   Bulletin,
+  ClasseModificationRequete,
   ClasseRequete,
   Creneau,
   CreneauEleve,
@@ -15,6 +28,7 @@ import type {
   EnseignantRequete,
   Etablissement,
   Evaluation,
+  EvaluationModificationRequete,
   EvaluationRequete,
   ExonerationRequete,
   Facture,
@@ -31,6 +45,9 @@ import type {
   MonAffectation,
   MonProfilEleve,
   Niveau,
+  Paiement,
+  PaiementInitie,
+  PaiementRequete,
   Periode,
   PresenceEleve,
   Eleve,
@@ -52,6 +69,9 @@ export const listerNiveaux = () => api.get<Niveau[]>('/api/niveaux')
 
 export const listerClasses = (etablissementId: number, anneeScolaireId: number) =>
   api.get<Classe[]>(`/api/etablissements/${etablissementId}/classes?anneeScolaireId=${anneeScolaireId}`)
+
+export const modifierClasse = (classeId: number, requete: ClasseModificationRequete) =>
+  api.put<Classe>(`/api/classes/${classeId}`, requete)
 
 export const creerClasse = (etablissementId: number, requete: ClasseRequete) =>
   api.post<Classe>(`/api/etablissements/${etablissementId}/classes`, requete)
@@ -103,6 +123,9 @@ export const enregistrerAppel = (classeId: number, date: string, lignes: LignePr
 
 export const listerEvaluations = (classeId: number) => api.get<Evaluation[]>(`/api/classes/${classeId}/evaluations`)
 
+export const modifierEvaluation = (evaluationId: number, requete: EvaluationModificationRequete) =>
+  api.put<Evaluation>(`/api/evaluations/${evaluationId}`, requete)
+
 export const creerEvaluation = (classeId: number, requete: EvaluationRequete) =>
   api.post<Evaluation>(`/api/classes/${classeId}/evaluations`, requete)
 
@@ -147,7 +170,7 @@ export const creerSalle = (etablissementId: number, requete: SalleRequete) =>
   api.post<Salle>(`/api/etablissements/${etablissementId}/salles`, requete)
 
 export const supprimerSalle = (etablissementId: number, salleId: number) =>
-  api.post<void>(`/api/etablissements/${etablissementId}/salles/${salleId}/suppression`)
+  api.delete<void>(`/api/etablissements/${etablissementId}/salles/${salleId}`)
 
 // ---------- Créneaux (Étape 2) ----------
 
@@ -164,7 +187,7 @@ export const modifierCreneau = (creneauId: number, requete: CreneauRequete) =>
   api.put<Creneau>(`/api/creneaux/${creneauId}`, requete)
 
 export const supprimerCreneau = (creneauId: number) =>
-  api.post<void>(`/api/creneaux/${creneauId}/suppression`)
+  api.delete<void>(`/api/creneaux/${creneauId}`)
 
 /** Les créneaux d'une classe, vus par l'élève ou le parent. */
 export const emploiDuTempsClasse = (classeId: number) =>
@@ -209,3 +232,86 @@ export const mesFactures = () => api.get<Facture[]>('/api/me/factures')
 
 export const facturesDeMonEnfant = (eleveId: number) =>
   api.get<Facture[]>(`/api/me/enfants/${eleveId}/factures`)
+
+// ---------- Administration nationale (Lot 6, ministère) ----------
+
+export const listerEtablissements = () => api.get<Etablissement[]>('/api/etablissements')
+
+export const creerEtablissement = (requete: EtablissementRequete) =>
+  api.post<Etablissement>('/api/etablissements', requete)
+
+export const modifierEtablissement = (id: number, requete: EtablissementRequete) =>
+  api.put<Etablissement>(`/api/etablissements/${id}`, requete)
+
+export const changerStatutEtablissement = (id: number, statut: StatutEtablissement) =>
+  api.post<Etablissement>(`/api/etablissements/${id}/statut`, { statut })
+
+export const creerDirection = (etablissementId: number, requete: DirectionRequete) =>
+  api.post<ComptePersonnel>(`/api/etablissements/${etablissementId}/direction`, requete)
+
+export const listerZones = () => api.get<Zone[]>('/api/zones')
+
+export const modifierZone = (id: number, requete: ZoneRequete) => api.put<Zone>(`/api/zones/${id}`, requete)
+
+export const supprimerZone = (id: number) => api.delete<void>(`/api/zones/${id}`)
+
+export const creerZone = (requete: ZoneRequete) => api.post<Zone>('/api/zones', requete)
+
+export const syntheseNationale = (anneeScolaireId: number) =>
+  api.get<SyntheseNationale>(`/api/ministere/synthese?anneeScolaireId=${anneeScolaireId}`)
+
+export const creerDirectionRegionale = (zoneId: number, requete: DirectionRequete) =>
+  api.post<ComptePersonnel>(`/api/zones/${zoneId}/direction-regionale`, requete)
+
+export const syntheseRegionale = (anneeScolaireId: number) =>
+  api.get<SyntheseNationale>(`/api/region/synthese?anneeScolaireId=${anneeScolaireId}`)
+
+export const modifierAnnee = (id: number, requete: AnneeScolaireRequete) =>
+  api.put<AnneeScolaire>(`/api/annees-scolaires/${id}`, requete)
+
+export const modifierNiveau = (id: number, requete: NiveauRequete) => api.put<Niveau>(`/api/niveaux/${id}`, requete)
+
+export const modifierMatiere = (id: number, requete: MatiereRequete) =>
+  api.put<Matiere>(`/api/matieres/${id}`, requete)
+
+export const creerAnnee = (requete: AnneeScolaireRequete) => api.post<AnneeScolaire>('/api/annees-scolaires', requete)
+
+export const creerNiveau = (requete: NiveauRequete) => api.post<Niveau>('/api/niveaux', requete)
+
+export const creerMatiere = (requete: MatiereRequete) => api.post<Matiere>('/api/matieres', requete)
+
+// ---------- Paiements (Étape 3b) ----------
+
+export const listerPaiements = (factureId: number) => api.get<Paiement[]>(`/api/factures/${factureId}/paiements`)
+
+export const enregistrerPaiement = (factureId: number, requete: PaiementRequete) =>
+  api.post<Paiement>(`/api/factures/${factureId}/paiements`, requete)
+
+/** Élève ou parent : démarre un paiement en ligne et renvoie l'adresse où finir le paiement. */
+export const payerEnLigne = (factureId: number, montant?: number) =>
+  api.post<PaiementInitie>(`/api/me/factures/${factureId}/paiements`, montant === undefined ? {} : { montant })
+
+/** Profil dev uniquement : joue le rôle du prestataire de paiement simulé. */
+export const simulerPaiement = (reference: string, succes: boolean) =>
+  api.post<void>(`/api/dev/paiements/${encodeURIComponent(reference)}/simuler?succes=${succes}`)
+
+// ---------- Comptes et audit (Lot 10) ----------
+
+export const listerComptes = (etablissementId: number, recherche = '') =>
+  api.get<Compte[]>(`/api/etablissements/${etablissementId}/comptes?q=${encodeURIComponent(recherche)}`)
+
+export const creerPersonnel = (etablissementId: number, requete: DirectionRequete) =>
+  api.post<ComptePersonnel>(`/api/etablissements/${etablissementId}/personnel`, requete)
+
+export const reinitialiserMotDePasse = (utilisateurId: number, motDePasseTemporaire: string) =>
+  api.post<void>(`/api/utilisateurs/${utilisateurId}/reinitialisation-mot-de-passe`, { motDePasseTemporaire })
+
+export const rechercherAudit = (filtres: { action: string; entite: string; page: number; taille: number }) => {
+  const parametres = new URLSearchParams({
+    action: filtres.action,
+    entite: filtres.entite,
+    page: String(filtres.page),
+    taille: String(filtres.taille),
+  })
+  return api.get<PageAudit>(`/api/audit?${parametres.toString()}`)
+}

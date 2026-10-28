@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { Card, Group, Stack, Table, Text } from '@mantine/core'
 import { JOURS, formaterPlage } from '../utils/horaires'
 
@@ -13,7 +14,14 @@ export interface LigneCreneau {
 }
 
 /** Affiche un emploi du temps en cartes, une carte par jour. */
-export default function GrilleEmploiDuTemps({ creneaux }: { creneaux: LigneCreneau[] }) {
+export default function GrilleEmploiDuTemps({
+  creneaux,
+  actions,
+}: {
+  creneaux: LigneCreneau[]
+  /** Boutons d'action facultatifs affichés à droite de chaque ligne (modification, suppression). */
+  actions?: (key: string) => ReactNode
+}) {
   const joursUtilises = JOURS.filter((j) => creneaux.some((c) => c.jourSemaine === j.value))
 
   if (creneaux.length === 0) {
@@ -43,6 +51,7 @@ export default function GrilleEmploiDuTemps({ creneaux }: { creneaux: LigneCrene
                   <Table.Th>Matière</Table.Th>
                   <Table.Th>Enseignant</Table.Th>
                   <Table.Th>Salle</Table.Th>
+                  {actions && <Table.Th />}
                 </Table.Tr>
               </Table.Thead>
               <Table.Tbody>
@@ -52,6 +61,7 @@ export default function GrilleEmploiDuTemps({ creneaux }: { creneaux: LigneCrene
                     <Table.Td>{c.matiereLibelle}</Table.Td>
                     <Table.Td>{c.enseignantNom ?? '—'}</Table.Td>
                     <Table.Td>{c.salleNom ?? '—'}</Table.Td>
+                    {actions && <Table.Td>{actions(c.key)}</Table.Td>}
                   </Table.Tr>
                 ))}
               </Table.Tbody>

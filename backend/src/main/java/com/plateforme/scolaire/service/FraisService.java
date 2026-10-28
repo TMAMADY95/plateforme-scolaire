@@ -52,10 +52,8 @@ public class FraisService {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Établissement introuvable");
         }
         if (anneeScolaireId == null) {
-            return fraisRepository.findAll().stream()
-                    .filter(f -> f.getEtablissement().getId().equals(etablissementId))
-                    .map(FraisDto::de)
-                    .toList();
+            return fraisRepository.findByEtablissementIdOrderByLibelle(etablissementId)
+                    .stream().map(FraisDto::de).toList();
         }
         return fraisRepository.findByEtablissementIdAndAnneeScolaireIdOrderByLibelle(etablissementId, anneeScolaireId)
                 .stream().map(FraisDto::de).toList();
@@ -88,13 +86,16 @@ public class FraisService {
                             + (niveau == null ? "" : " et ce niveau"));
         }
 
+        String devise = r.devise().trim().toUpperCase();
+        verifierUneSeuleDevise(etablissementId, annee.getId(), devise);
+
         Frais frais = new Frais();
         frais.setEtablissement(etablissement);
         frais.setAnneeScolaire(annee);
         frais.setNiveau(niveau);
         frais.setLibelle(libelle);
         frais.setMontant(r.montant());
-        frais.setDevise(r.devise() == null || r.devise().isBlank() ? "XOF" : r.devise());
+        frais.setDevise(devise);
         frais.setEcheance(r.echeance());
         frais.setObligatoire(r.obligatoire() == null || r.obligatoire());
         frais.setActif(r.actif() == null || r.actif());
@@ -121,13 +122,20 @@ public class FraisService {
                     "Un autre frais porte déjà ce libellé pour cette année");
         }
 
+        String devise = r.devise().trim().toUpperCase();
+        if (!devise.equals(frais.getDevise())) {
+            if (factureRepository.existsByFraisId(frais.getId())) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT,
+                        "Des factures existent déjà pour ce frais : sa devise ne peut plus changer");
+            }
+            verifierUneSeuleDevise(frais.getEtablissement().getId(), frais.getAnneeScolaire().getId(), devise);
+        }
+
         BigDecimal ancienMontant = frais.getMontant();
         frais.setNiveau(niveau);
         frais.setLibelle(libelle);
         frais.setMontant(r.montant());
-        if (r.devise() != null && !r.devise().isBlank()) {
-            frais.setDevise(r.devise());
-        }
+        frais.setDevise(devise);
         frais.setEcheance(r.echeance());
         if (r.obligatoire() != null) {
             frais.setObligatoire(r.obligatoire());
@@ -151,6 +159,18 @@ public class FraisService {
     }
 
     // ---------- Interne ----------
+
+    /**
+     * Toute la grille d'un établissement pour une année est dans la même devise : sans cela,
+     * le bilan additionnerait des montants incomparables.
+     */
+    private void verifierUneSeuleDevise(Long etablissementId, Long anneeScolaireId, String devise) {
+        if (fraisRepository.existsByEtablissementIdAndAnneeScolaireIdAndDeviseNot(
+                etablissementId, anneeScolaireId, devise)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Les frais d'une même année doivent tous être dans la même devise");
+        }
+    }
 
     private Frais charger(Long id) {
         return fraisRepository.findById(id)
