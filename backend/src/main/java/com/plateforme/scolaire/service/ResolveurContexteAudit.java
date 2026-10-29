@@ -69,6 +69,11 @@ public class ResolveurContexteAudit {
                 yield "Encaissement de " + nombre(texte(d, "montant")) + " (" + libelleMode(texte(d, "mode"))
                         + ") sur la facture " + texte(d, "facture");
             }
+            case "ANNULATION_PAIEMENT" -> {
+                ajouterFactureDuPaiement(contexte, entiteId);
+                yield "Paiement annulé : " + nombre(texte(d, "montant")) + " (" + libelleMode(texte(d, "mode"))
+                        + ") sur la facture " + texte(d, "facture") + " — motif : " + texte(d, "motif");
+            }
             case "INITIATION_PAIEMENT" -> {
                 ajouterFactureDuPaiement(contexte, entiteId);
                 yield "Paiement en ligne initié : " + nombre(texte(d, "montant")) + " sur la facture " + texte(d, "facture");
@@ -84,6 +89,10 @@ public class ResolveurContexteAudit {
             case "PAIEMENT_ECHEC" -> {
                 ajouterFactureDuPaiement(contexte, entiteId);
                 yield "Paiement en ligne échoué (référence " + texte(d, "reference") + ")";
+            }
+            case "PAIEMENT_EXPIRE" -> {
+                ajouterFactureDuPaiement(contexte, entiteId);
+                yield "Paiement en ligne expiré sans réponse du prestataire (référence " + texte(d, "reference") + ")";
             }
             case "PAIEMENT_MONTANT_INCOHERENT" -> {
                 ajouterFactureDuPaiement(contexte, entiteId);
@@ -146,6 +155,46 @@ public class ResolveurContexteAudit {
                 ajouterZone(contexte, id(d, "zoneId"));
                 ajouterCompte(contexte, entiteId);
                 yield "Compte de direction régionale créé : " + texte(d, "email");
+            }
+            case "DEMANDE_INSCRIPTION" -> {
+                ajouterInscription(contexte, entiteId);
+                yield Boolean.TRUE.equals(booleen(d, "nouvelEleve"))
+                        ? "Inscription demandée pour un nouvel élève" : "Inscription demandée pour un élève existant";
+            }
+            case "ACCEPTATION_INSCRIPTION" -> {
+                ajouterInscription(contexte, entiteId);
+                yield "Inscription acceptée";
+            }
+            case "REFUS_INSCRIPTION" -> {
+                ajouterInscription(contexte, entiteId);
+                yield "Inscription refusée";
+            }
+            case "ANNULATION_INSCRIPTION" -> {
+                ajouterInscription(contexte, entiteId);
+                yield "Inscription annulée (elle était " + statutInscription(texte(d, "statutAvant")) + ")";
+            }
+            case "SAISIE_APPEL" -> {
+                ajouterClasse(contexte, id(d, "classeId"));
+                yield "Appel du " + dateFrancaise(texte(d, "date")) + " : " + texte(d, "presents") + " présent(s), "
+                        + texte(d, "absents") + " absent(s), " + texte(d, "retards") + " retard(s)"
+                        + ("0".equals(texte(d, "corrigees")) ? "" : " — " + texte(d, "corrigees") + " correction(s)");
+            }
+            case "CORRECTION_PRESENCE" -> {
+                ajouterInscription(contexte, id(d, "inscriptionId"));
+                yield "Présence du " + dateFrancaise(texte(d, "date")) + " corrigée : " + libellePresence(texte(d, "avant"))
+                        + " → " + libellePresence(texte(d, "apres"));
+            }
+            case "MODIFICATION_COEFFICIENTS" -> {
+                ajouterClasse(contexte, id(d, "classeId"));
+                yield "Coefficients des matières modifiés : " + resumeChangements(d);
+            }
+            case "DEMANDE_REINITIALISATION_MDP" -> {
+                ajouterCompte(contexte, entiteId);
+                yield "Réinitialisation du mot de passe demandée par e-mail";
+            }
+            case "MOT_DE_PASSE_REINITIALISE_PAR_EMAIL" -> {
+                ajouterCompte(contexte, entiteId);
+                yield "Mot de passe réinitialisé via le lien reçu par e-mail";
             }
             case "REINITIALISATION_MOT_DE_PASSE" -> {
                 ajouterCompte(contexte, entiteId);
@@ -244,6 +293,17 @@ public class ResolveurContexteAudit {
         return null;
     }
 
+    /** {"Maths": "1 → 3"} -> "Maths 1 → 3, …". */
+    static String resumeChangements(Map<String, Object> details) {
+        Object brut = details == null ? null : details.get("changements");
+        if (!(brut instanceof Map<?, ?> changements) || changements.isEmpty()) {
+            return "aucun détail";
+        }
+        return changements.entrySet().stream()
+                .map(e -> e.getKey() + " " + e.getValue())
+                .collect(java.util.stream.Collectors.joining(", "));
+    }
+
     static String texte(Map<String, Object> details, String cle) {
         Object v = details == null ? null : details.get(cle);
         return v == null ? null : v.toString();
@@ -270,6 +330,35 @@ public class ResolveurContexteAudit {
             case "CHEQUE" -> "chèque";
             case "VIREMENT" -> "virement";
             default -> minuscule(mode);
+        };
+    }
+
+    /** "PRESENT" -> "présent" ; "ABSENT (justifié)" -> "absent (justifié)". */
+    static String libellePresence(String valeur) {
+        return minuscule(valeur).replace("present", "présent");
+    }
+
+    static Boolean booleen(Map<String, Object> details, String cle) {
+        Object v = details == null ? null : details.get(cle);
+        return v instanceof Boolean b ? b : null;
+    }
+
+    /** "2026-10-26" -> "26/10/2026". */
+    static String dateFrancaise(String iso) {
+        if (iso == null || !iso.matches("\\d{4}-\\d{2}-\\d{2}")) {
+            return iso == null ? "?" : iso;
+        }
+        return iso.substring(8) + "/" + iso.substring(5, 7) + "/" + iso.substring(0, 4);
+    }
+
+    static String statutInscription(String statut) {
+        if (statut == null) {
+            return "dans un état inconnu";
+        }
+        return switch (statut) {
+            case "EN_ATTENTE" -> "en attente";
+            case "ACCEPTEE" -> "acceptée";
+            default -> minuscule(statut);
         };
     }
 

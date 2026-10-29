@@ -68,9 +68,10 @@ class Moi {
 
   bool get estParent => aLeRole(Role.parent);
   bool get estEleve => aLeRole(Role.eleve);
+  bool get estEnseignant => aLeRole(Role.enseignant);
 
-  /// Cette application mobile sert les parents et les élèves ; les autres rôles passent par le site web.
-  bool get estUtilisateurMobile => estParent || estEleve;
+  /// Cette application mobile sert les familles et les enseignants ; les autres rôles passent par le site web.
+  bool get estUtilisateurMobile => estParent || estEleve || estEnseignant;
 
   List<Role> get roles => {for (final a in affectations) a.role}.toList();
 }

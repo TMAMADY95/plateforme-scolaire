@@ -16,10 +16,13 @@ import PageEnfant from './pages/PageEnfant'
 import PageEnseignants from './pages/PageEnseignants'
 import PageFinances from './pages/PageFinances'
 import PageInscriptions from './pages/PageInscriptions'
+import PageMessages from './pages/PageMessages'
 import PageMesClasses from './pages/PageMesClasses'
 import PageMesEnfants from './pages/PageMesEnfants'
 import PageMinistere from './pages/PageMinistere'
 import PageMonEspace from './pages/PageMonEspace'
+import PageMotDePasseOublie from './pages/PageMotDePasseOublie'
+import PageReinitialisation from './pages/PageReinitialisation'
 import PagePaiementSimule from './pages/PagePaiementSimule'
 import PagePresences from './pages/PagePresences'
 import PageRegion from './pages/PageRegion'
@@ -35,6 +38,8 @@ export default function App() {
   return (
     <Routes>
       <Route path="/connexion" element={<PageConnexion />} />
+      <Route path="/mot-de-passe-oublie" element={<PageMotDePasseOublie />} />
+      <Route path="/reinitialisation" element={<PageReinitialisation />} />
       <Route
         path="/changer-mot-de-passe"
         element={
@@ -84,6 +89,14 @@ export default function App() {
         />
 
         {/* Parents */}
+        <Route
+          path="messages"
+          element={
+            <RequiertRole autorise={(u) => estParent(u) || estEnseignant(u) || estGestionnaire(u)}>
+              <PageMessages />
+            </RequiertRole>
+          }
+        />
         <Route path="mes-enfants" element={<RequiertRole autorise={estParent}><PageMesEnfants /></RequiertRole>} />
         <Route path="mes-enfants/:eleveId" element={<RequiertRole autorise={estParent}><PageEnfant /></RequiertRole>} />
 

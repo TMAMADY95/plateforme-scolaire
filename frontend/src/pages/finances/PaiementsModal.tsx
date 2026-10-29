@@ -3,9 +3,12 @@ import { Alert, Badge, Button, Group, Loader, Modal, NumberInput, Select, Stack,
 import { useForm } from '@mantine/form'
 import { notifications } from '@mantine/notifications'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { enregistrerPaiement, listerPaiements } from '../../api/endpoints'
+import { enregistrerPaiement, listerPaiements, telechargerRecu } from '../../api/endpoints'
+import BoutonTelechargement from '../../components/BoutonTelechargement'
 import type { Facture } from '../../api/types'
 import { formaterMontant } from '../../utils/monnaie'
+import type { Paiement } from '../../api/types'
+import AnnulerPaiementModal from './AnnulerPaiementModal'
 
 const MODES = [
   { value: 'ESPECES', label: 'Espèces' },
@@ -25,6 +28,7 @@ interface Valeurs {
 export default function PaiementsModal({ facture, onFermer }: { facture: Facture; onFermer: () => void }) {
   const queryClient = useQueryClient()
   const [erreur, setErreur] = useState<string | null>(null)
+  const [aAnnuler, setAAnnuler] = useState<Paiement | null>(null)
   const paiements = useQuery({ queryKey: ['paiements', facture.id], queryFn: () => listerPaiements(facture.id) })
 
   const peutEncaisser = ['IMPAYEE', 'PARTIELLE'].includes(facture.statut) && facture.resteAPayer > 0
@@ -57,11 +61,20 @@ export default function PaiementsModal({ facture, onFermer }: { facture: Facture
 
   return (
     <Modal opened onClose={onFermer} title={`Paiements — ${facture.numero}`} size="lg">
+      {aAnnuler && (
+        <AnnulerPaiementModal paiement={aAnnuler} onFermer={() => setAAnnuler(null)} onAnnule={onFermer} />
+      )}
       <Stack>
         <Text size="sm" c="dimmed">
           {facture.elevePrenom} {facture.eleveNom} · {facture.libelle} · reste{' '}
           {formaterMontant(facture.resteAPayer, facture.devise)}
         </Text>
+
+        {paiements.data?.some((p) => p.statut === 'VALIDE') && (
+          <Group>
+            <BoutonTelechargement telecharger={() => telechargerRecu(facture.id)}>Télécharger le reçu (PDF)</BoutonTelechargement>
+          </Group>
+        )}
 
         {paiements.isPending && <Loader />}
         {paiements.isError && (
@@ -80,6 +93,7 @@ export default function PaiementsModal({ facture, onFermer }: { facture: Facture
                   <Table.Th>Montant</Table.Th>
                   <Table.Th>Référence</Table.Th>
                   <Table.Th>Statut</Table.Th>
+                  <Table.Th />
                 </Table.Tr>
               </Table.Thead>
               <Table.Tbody>
@@ -93,6 +107,18 @@ export default function PaiementsModal({ facture, onFermer }: { facture: Facture
                       <Badge color={COULEURS[p.statut] ?? 'gray'} variant="light">
                         {p.statut}
                       </Badge>
+                      {p.motifAnnulation && (
+                        <Text size="xs" c="dimmed">
+                          Motif : {p.motifAnnulation}
+                        </Text>
+                      )}
+                    </Table.Td>
+                    <Table.Td>
+                      {p.statut === 'VALIDE' && p.mode !== 'MOBILE_MONEY' && (
+                        <Button size="compact-xs" color="red" variant="subtle" onClick={() => setAAnnuler(p)}>
+                          Annuler
+                        </Button>
+                      )}
                     </Table.Td>
                   </Table.Tr>
                 ))}

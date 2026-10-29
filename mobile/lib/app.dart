@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
 
+import 'api/service_enseignant.dart';
+import 'api/service_messagerie.dart';
+import 'api/service_scolaire.dart';
 import 'auth/etat_authentification.dart';
 import 'ecrans/ecran_accueil.dart';
 import 'ecrans/ecran_changement_mot_de_passe.dart';
@@ -12,11 +16,24 @@ class Application extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Gestion scolaire',
-      debugShowCheckedModeBanner: false,
-      theme: construireTheme(),
-      home: const _Racine(),
+    return MultiProvider(
+      providers: [
+        Provider<ServiceScolaire>(create: (contexte) => ServiceScolaire(contexte.read<EtatAuthentification>().api)),
+        Provider<ServiceEnseignant>(create: (contexte) => ServiceEnseignant(contexte.read<EtatAuthentification>().api)),
+        Provider<ServiceMessagerie>(create: (contexte) => ServiceMessagerie(contexte.read<EtatAuthentification>().api)),
+      ],
+      child: MaterialApp(
+        title: nomApplication,
+        debugShowCheckedModeBanner: false,
+        theme: construireTheme(),
+        localizationsDelegates: const [
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        supportedLocales: const [Locale('fr'), Locale('en')],
+        home: const _Racine(),
+      ),
     );
   }
 }

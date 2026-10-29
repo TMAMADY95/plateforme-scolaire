@@ -142,6 +142,23 @@ class ResolveurContexteAuditTest {
     }
 
     @Test
+    void lesActionsDInscriptionEtDAppelOntUnephraseLisible() {
+        assertThat(resolveur.decrire(entree("DEMANDE_INSCRIPTION", 1L, details("nouvelEleve", true))).resume())
+                .isEqualTo("Inscription demandée pour un nouvel élève");
+        assertThat(resolveur.decrire(entree("ACCEPTATION_INSCRIPTION", 1L, details("classeId", 3))).resume())
+                .isEqualTo("Inscription acceptée");
+        assertThat(resolveur.decrire(entree("ANNULATION_INSCRIPTION", 1L, details("statutAvant", "ACCEPTEE"))).resume())
+                .isEqualTo("Inscription annulée (elle était acceptée)");
+        assertThat(resolveur.decrire(entree("SAISIE_APPEL", 3L,
+                details("classeId", 3, "date", "2026-10-26", "presents", 25, "absents", 2, "retards", 1,
+                        "creees", 28, "corrigees", 0))).resume())
+                .isEqualTo("Appel du 26/10/2026 : 25 présent(s), 2 absent(s), 1 retard(s)");
+        assertThat(resolveur.decrire(entree("CORRECTION_PRESENCE", 40L,
+                details("inscriptionId", 1, "date", "2026-10-26", "avant", "ABSENT", "apres", "PRESENT"))).resume())
+                .isEqualTo("Présence du 26/10/2026 corrigée : absent → présent");
+    }
+
+    @Test
     void laGenerationSansClasseNeCherchePasDeClasse() {
         when(inscriptionRepository.findById(anyLong())).thenReturn(Optional.empty());
 

@@ -11,13 +11,21 @@ const TAILLE = 25
 export default function JournalAuditNational() {
   const [action, setAction] = useState('')
   const [entite, setEntite] = useState('')
+  const [eleve, setEleve] = useState('')
   const [page, setPage] = useState(0)
   const [actionDiffere] = useDebouncedValue(action, 300)
   const [entiteDiffere] = useDebouncedValue(entite, 300)
+  const [eleveDiffere] = useDebouncedValue(eleve, 300)
 
   const journal = useQuery({
-    queryKey: ['audit', actionDiffere.trim(), entiteDiffere.trim(), page],
-    queryFn: () => rechercherAudit({ action: actionDiffere.trim(), entite: entiteDiffere.trim(), page, taille: TAILLE }),
+    queryKey: ['audit', actionDiffere.trim(), entiteDiffere.trim(), eleveDiffere.trim(), page],
+    queryFn: () => rechercherAudit({
+        action: actionDiffere.trim(),
+        entite: entiteDiffere.trim(),
+        eleve: eleveDiffere.trim(),
+        page,
+        taille: TAILLE,
+      }),
     placeholderData: keepPreviousData,
   })
 
@@ -41,6 +49,16 @@ export default function JournalAuditNational() {
           value={entite}
           onChange={(e) => {
             setEntite(e.currentTarget.value)
+            setPage(0)
+          }}
+        />
+        <TextInput
+          label="Élève"
+          placeholder="Nom, prénom ou matricule"
+          description="Inscriptions, factures, paiements, présences et notes"
+          value={eleve}
+          onChange={(e) => {
+            setEleve(e.currentTarget.value)
             setPage(0)
           }}
         />

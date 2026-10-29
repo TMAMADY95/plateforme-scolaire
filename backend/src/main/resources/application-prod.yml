@@ -3,6 +3,20 @@ app:
     # Obligatoire en production : pas de valeur par défaut
     secret: ${JWT_SECRET}
 
+server:
+  # Derrière un répartiteur de charge ou un proxy inverse : "native" (ou "framework") pour lire l'adresse réelle du
+  # client (journal d'audit, limitation de débit). Laisser "none" si le serveur est exposé directement.
+  forward-headers-strategy: ${FORWARD_HEADERS_STRATEGY:none}
+  shutdown: graceful
+  error:
+    include-message: never
+    include-stacktrace: never
+    include-binding-errors: never
+
+spring:
+  lifecycle:
+    timeout-per-shutdown-phase: 30s
+
 springdoc:
   api-docs:
     enabled: false

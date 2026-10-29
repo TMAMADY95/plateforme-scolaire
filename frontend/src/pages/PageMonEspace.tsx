@@ -1,6 +1,8 @@
-import { Alert, Group, Loader, Stack, Tabs, Text, Title } from '@mantine/core'
+import { Alert, Loader, Stack, Tabs } from '@mantine/core'
+import EnteteEleve from '../components/EnteteEleve'
 import { useMonProfilEleve } from '../hooks/useMonProfilEleve'
 import OngletBulletin from './enfant/OngletBulletin'
+import OngletDevoirs from './enfant/OngletDevoirs'
 import OngletEmploiDuTemps from './enfant/OngletEmploiDuTemps'
 import OngletFactures from './enfant/OngletFactures'
 import OngletPresences from './enfant/OngletPresences'
@@ -40,24 +42,21 @@ export default function PageMonEspace() {
 
   return (
     <Stack>
-      <Title order={2}>Mon espace</Title>
-
-      <Group justify="space-between" align="flex-start">
-        <div>
-          <Text fw={600} size="lg">
-            {p.prenom} {p.nom}
-          </Text>
-          <Text c="dimmed" size="sm">
-            {p.classeNom !== null
-              ? `Classe ${p.classeNom} — ${p.etablissementNom} (${p.anneeLibelle})`
-              : "Pas d'inscription active"}
-          </Text>
-        </div>
-      </Group>
+      <EnteteEleve
+        prenom={p.prenom}
+        nom={p.nom}
+        matricule={p.matricule}
+        sousTitre={
+          p.classeNom !== null
+            ? `Classe ${p.classeNom} — ${p.etablissementNom} (${p.anneeLibelle})`
+            : "Pas d'inscription active"
+        }
+      />
 
       <Tabs defaultValue="bulletin" keepMounted={false}>
         <Tabs.List>
           <Tabs.Tab value="bulletin">Bulletin</Tabs.Tab>
+          <Tabs.Tab value="devoirs">Devoirs</Tabs.Tab>
           <Tabs.Tab value="presences">Présences</Tabs.Tab>
           <Tabs.Tab value="emploi-du-temps">Emploi du temps</Tabs.Tab>
           <Tabs.Tab value="frais">Frais</Tabs.Tab>
@@ -65,6 +64,10 @@ export default function PageMonEspace() {
 
         <Tabs.Panel value="bulletin" pt="md">
           <OngletBulletin enfant={enfant} />
+        </Tabs.Panel>
+
+        <Tabs.Panel value="devoirs" pt="md">
+          <OngletDevoirs classeId={p.classeId} />
         </Tabs.Panel>
 
         <Tabs.Panel value="presences" pt="md">

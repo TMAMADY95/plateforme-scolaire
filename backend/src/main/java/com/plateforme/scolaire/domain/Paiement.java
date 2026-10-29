@@ -46,6 +46,10 @@ public class Paiement {
     @Column(name = "reference_externe", length = 100)
     private String referenceExterne;
 
+    /** Adresse où le payeur termine son paiement en ligne ; permet de le reprendre tant qu'il est ouvert. */
+    @Column(name = "url_paiement", length = 500)
+    private String urlPaiement;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "enregistre_par")
     private Utilisateur enregistrePar;
@@ -55,4 +59,14 @@ public class Paiement {
 
     @Column(name = "valide_le")
     private Instant valideLe;
+
+    @Column(name = "annule_le")
+    private Instant annuleLe;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "annule_par")
+    private Utilisateur annulePar;
+
+    @Column(name = "motif_annulation", length = 255)
+    private String motifAnnulation;
 }

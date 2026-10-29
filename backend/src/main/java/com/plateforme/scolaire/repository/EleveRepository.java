@@ -33,6 +33,12 @@ public interface EleveRepository extends JpaRepository<Eleve, Long> {
     List<Eleve> findParIdentite(@Param("nom") String nom, @Param("prenom") String prenom,
                                 @Param("dateNaissance") LocalDate dateNaissance);
 
+    /** Élèves dont le nom, le prénom (dans les deux ordres) ou le matricule contient le texte. */
+    @Query("select e.id from Eleve e where lower(e.matricule) like lower(concat('%', :q, '%')) "
+            + "or lower(concat(e.prenom, ' ', e.nom)) like lower(concat('%', :q, '%')) "
+            + "or lower(concat(e.nom, ' ', e.prenom)) like lower(concat('%', :q, '%')) order by e.id")
+    List<Long> idsParTexte(@Param("q") String q, org.springframework.data.domain.Pageable limite);
+
     @Query(value = "select nextval('eleve_matricule_seq')", nativeQuery = true)
     Long prochainNumeroMatricule();
 }

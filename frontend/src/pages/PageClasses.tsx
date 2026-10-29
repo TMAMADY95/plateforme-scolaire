@@ -8,6 +8,7 @@ import { creerClasse, listerAnnees, listerClasses, listerNiveaux } from '../api/
 import { etablissementCourant } from '../auth/roles'
 import { useUtilisateur } from '../auth/useAuth'
 import type { Classe } from '../api/types'
+import CoefficientsModal from './classes/CoefficientsModal'
 import ModifierClasseModal from './classes/ModifierClasseModal'
 
 interface ValeursClasse {
@@ -24,6 +25,7 @@ export default function PageClasses() {
   const [modalOuverte, { open, close }] = useDisclosure()
   const [anneeChoisie, setAnneeChoisie] = useState<string | null>(null)
   const [aModifier, setAModifier] = useState<Classe | null>(null)
+  const [coefficientsDe, setCoefficientsDe] = useState<Classe | null>(null)
 
   const annees = useQuery({ queryKey: ['annees'], queryFn: listerAnnees })
   const niveaux = useQuery({ queryKey: ['niveaux'], queryFn: listerNiveaux })
@@ -127,9 +129,14 @@ export default function PageClasses() {
                 <Table.Td>{classe.niveauLibelle}</Table.Td>
                 <Table.Td>{classe.capacite ?? '—'}</Table.Td>
                 <Table.Td>
-                  <Button size="compact-xs" variant="light" onClick={() => setAModifier(classe)}>
-                    Modifier
-                  </Button>
+                  <Group gap="xs" wrap="nowrap">
+                    <Button size="compact-xs" variant="light" onClick={() => setAModifier(classe)}>
+                      Modifier
+                    </Button>
+                    <Button size="compact-xs" variant="light" onClick={() => setCoefficientsDe(classe)}>
+                      Coefficients
+                    </Button>
+                  </Group>
                 </Table.Td>
               </Table.Tr>
             ))}
@@ -140,6 +147,8 @@ export default function PageClasses() {
       {aModifier && niveaux.data && (
         <ModifierClasseModal classe={aModifier} niveaux={niveaux.data} onFermer={() => setAModifier(null)} />
       )}
+
+      {coefficientsDe && <CoefficientsModal classe={coefficientsDe} onFermer={() => setCoefficientsDe(null)} />}
 
       <Modal opened={modalOuverte} onClose={close} title="Nouvelle classe">
         <form onSubmit={formulaire.onSubmit((valeurs) => creation.mutate(valeurs))}>

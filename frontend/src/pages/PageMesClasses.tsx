@@ -1,5 +1,7 @@
-import { Alert, Badge, Button, Card, Group, Loader, Select, SimpleGrid, Stack, Text, Title } from '@mantine/core'
+import { Alert, Badge, Button, Card, Group, Loader, Select, SimpleGrid, Stack, Text, ThemeIcon, Title } from '@mantine/core'
 import { Link } from 'react-router'
+import CarteChiffre from '../components/CarteChiffre'
+import Icone from '../components/Icone'
 import { useAnneeScolaire } from '../hooks/useAnneeScolaire'
 import { useMesAffectations } from '../hooks/useMesAffectations'
 
@@ -28,7 +30,19 @@ export default function PageMesClasses() {
 
   return (
     <Stack>
-      <Title order={2}>Mes classes</Title>
+      <div>
+        <Title order={2}>Mes classes</Title>
+        <Text c="dimmed">Espace enseignant</Text>
+      </div>
+      <SimpleGrid cols={{ base: 1, sm: 3 }}>
+        <CarteChiffre libelle="Classes" valeur={classes.length} icone="classes" />
+        <CarteChiffre
+          libelle="Matières enseignées"
+          valeur={new Set(classes.flatMap((c) => c.matieres)).size}
+          icone="notes"
+          couleur="cyan"
+        />
+      </SimpleGrid>
       <Select
         label="Année scolaire"
         data={options}
@@ -54,12 +68,19 @@ export default function PageMesClasses() {
       <SimpleGrid cols={{ base: 1, sm: 2, lg: 3 }}>
         {classes.map((classe) => (
           <Card key={classe.classeId} withBorder padding="lg">
-            <Text fw={600} size="lg">
-              Classe {classe.nom}
-            </Text>
-            <Text c="dimmed" size="sm" mb="sm">
-              {classe.niveau}
-            </Text>
+            <Group gap="sm" mb="sm" wrap="nowrap">
+              <ThemeIcon size={40} radius="md" variant="light">
+                <Icone nom="classes" taille={22} />
+              </ThemeIcon>
+              <div>
+                <Text fw={600} size="lg" lh={1.2}>
+                  Classe {classe.nom}
+                </Text>
+                <Text c="dimmed" size="sm">
+                  {classe.niveau}
+                </Text>
+              </div>
+            </Group>
             <Group gap="xs" mb="md">
               {classe.matieres.map((matiere) => (
                 <Badge key={matiere} variant="light">
@@ -67,8 +88,8 @@ export default function PageMesClasses() {
                 </Badge>
               ))}
             </Group>
-            <Button component={Link} to={`/mes-classes/${classe.classeId}`} fullWidth variant="light">
-              Ouvrir
+            <Button component={Link} to={`/mes-classes/${classe.classeId}`} fullWidth>
+              Voir la classe
             </Button>
           </Card>
         ))}

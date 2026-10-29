@@ -21,10 +21,12 @@ import com.plateforme.scolaire.web.dto.StatutPresence;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -49,6 +51,7 @@ public class PresenceService {
     private final UtilisateurRepository utilisateurRepository;
     private final PerimetreService perimetreService;
     private final Clock clock;
+    private final AuditService auditService;
 
     /** Feuille d'appel du jour (ou de la date demandée) : tous les élèves acceptés de la classe. */
     @Transactional(readOnly = true)
@@ -87,20 +90,31 @@ public class PresenceService {
         UtilisateurPrincipal courant = perimetreService.utilisateurCourant();
         Utilisateur auteur = courant != null ? utilisateurRepository.getReferenceById(courant.getId()) : null;
 
+        int creees = 0;
+        List<Presence> corrigees = new ArrayList<>();
+        List<String> avant = new ArrayList<>();
         for (LignePresenceRequest ligne : requete.lignes()) {
             Presence presence = presences.get(ligne.inscriptionId());
+            boolean nonPresent = ligne.statut() != StatutPresence.PRESENT;
+            String motif = nonPresent ? nettoyer(ligne.motif()) : null;
+            boolean justifie = nonPresent && Boolean.TRUE.equals(ligne.justifie());
             if (presence == null) {
                 presence = new Presence();
                 presence.setInscription(inscritParId.get(ligne.inscriptionId()));
                 presence.setDateSeance(date);
+                creees++;
+            } else if (!presence.getStatut().equals(ligne.statut().name()) || presence.isJustifie() != justifie
+                    || !Objects.equals(presence.getMotif(), motif)) {
+                corrigees.add(presence);
+                avant.add(presence.getStatut() + (presence.isJustifie() ? " (justifié)" : ""));
             }
-            boolean nonPresent = ligne.statut() != StatutPresence.PRESENT;
             presence.setStatut(ligne.statut().name());
-            presence.setMotif(nonPresent ? nettoyer(ligne.motif()) : null);
-            presence.setJustifie(nonPresent && Boolean.TRUE.equals(ligne.justifie()));
+            presence.setMotif(motif);
+            presence.setJustifie(justifie);
             presence.setSaisiPar(auteur);
             presences.put(ligne.inscriptionId(), presenceRepository.save(presence));
         }
+        journaliser(classeId, date, requete, presences, creees, corrigees, avant);
         return construire(classeId, date, inscrits, presences);
     }
 
@@ -120,6 +134,46 @@ public class PresenceService {
     }
 
     // ---------- Interne ----------
+
+    /**
+     * Une entrée par appel réellement modifié (renvoyer la même requête ne laisse aucune trace), plus une
+     * entrée par présence corrigée : c'est la correction d'une absence déjà saisie qu'il faut pouvoir retrouver.
+     */
+    private void journaliser(Long classeId, LocalDate date, AppelRequest requete, Map<Long, Presence> presences,
+                             int creees, List<Presence> corrigees, List<String> avant) {
+        if (creees == 0 && corrigees.isEmpty()) {
+            return;
+        }
+        int presents = 0;
+        int absents = 0;
+        int retards = 0;
+        for (LignePresenceRequest ligne : requete.lignes()) {
+            switch (ligne.statut()) {
+                case PRESENT -> presents++;
+                case ABSENT -> absents++;
+                case RETARD -> retards++;
+            }
+        }
+        Map<String, Object> details = new LinkedHashMap<>();
+        details.put("classeId", classeId);
+        details.put("date", date.toString());
+        details.put("presents", presents);
+        details.put("absents", absents);
+        details.put("retards", retards);
+        details.put("creees", creees);
+        details.put("corrigees", corrigees.size());
+        auditService.enregistrer("SAISIE_APPEL", "classe", classeId, details);
+
+        for (int i = 0; i < corrigees.size(); i++) {
+            Presence p = corrigees.get(i);
+            Map<String, Object> correction = new LinkedHashMap<>();
+            correction.put("inscriptionId", p.getInscription().getId());
+            correction.put("date", date.toString());
+            correction.put("avant", avant.get(i));
+            correction.put("apres", p.getStatut() + (p.isJustifie() ? " (justifié)" : ""));
+            auditService.enregistrer("CORRECTION_PRESENCE", "presence", p.getId(), correction);
+        }
+    }
 
     private Classe charger(Long classeId) {
         return classeRepository.findById(classeId)

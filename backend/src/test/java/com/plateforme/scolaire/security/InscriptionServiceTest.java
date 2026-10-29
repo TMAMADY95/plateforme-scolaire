@@ -18,6 +18,7 @@ import com.plateforme.scolaire.repository.EleveRepository;
 import com.plateforme.scolaire.repository.EtablissementRepository;
 import com.plateforme.scolaire.repository.InscriptionRepository;
 import com.plateforme.scolaire.repository.UtilisateurRepository;
+import com.plateforme.scolaire.service.AuditService;
 import com.plateforme.scolaire.service.InscriptionService;
 import com.plateforme.scolaire.web.dto.DecisionInscription;
 import com.plateforme.scolaire.web.dto.DecisionRequest;
@@ -43,7 +44,7 @@ class InscriptionServiceTest {
     private final PerimetreService perimetreService = mock(PerimetreService.class);
     private final InscriptionService service = new InscriptionService(
             inscriptionRepository, eleveRepository, etablissementRepository, anneeRepository, classeRepository,
-            mock(UtilisateurRepository.class), perimetreService);
+            mock(UtilisateurRepository.class), perimetreService, mock(AuditService.class));
 
     private Etablissement ecole1;
     private AnneeScolaire annee;

@@ -3,6 +3,7 @@ package com.plateforme.scolaire.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -144,6 +145,90 @@ class PaiementServiceTest {
         assertThat(initie.urlPaiement()).startsWith("http://localhost/paiement-simule/PAY-");
     }
 
+    @Test
+    void unPaiementDejaOuvertEstRepris_sansEnCreerUnSecond() {
+        when(passerelle.getIfAvailable()).thenReturn(new PasserelleSimulee("http://localhost"));
+        when(lienParentalRepository.existsByEleveIdAndUtilisateurId(ELEVE, UTILISATEUR)).thenReturn(true);
+        when(paiementRepository.totalEnAttente(eq(FACTURE), any())).thenReturn(new BigDecimal("80.00"));
+        Paiement ouvert = enAttente();
+        ouvert.setUrlPaiement("http://localhost/paiement-simule/PAY-ABC");
+        when(paiementRepository.findFirstByFactureIdAndStatutAndCreatedAtAfterOrderByCreatedAtDesc(
+                eq(FACTURE), eq("EN_ATTENTE"), any())).thenReturn(Optional.of(ouvert));
+
+        PaiementInitieDto repris = service.initierEnLigne(UTILISATEUR, FACTURE, null);
+
+        assertThat(repris.reference()).isEqualTo("PAY-ABC");
+        assertThat(repris.urlPaiement()).isEqualTo("http://localhost/paiement-simule/PAY-ABC");
+        verify(paiementRepository, never()).save(any());
+    }
+
+    @Test
+    void unPaiementOuvertSansAdresseConnueDonneUnMessageClair() {
+        when(passerelle.getIfAvailable()).thenReturn(new PasserelleSimulee("http://localhost"));
+        when(lienParentalRepository.existsByEleveIdAndUtilisateurId(ELEVE, UTILISATEUR)).thenReturn(true);
+        when(paiementRepository.totalEnAttente(eq(FACTURE), any())).thenReturn(new BigDecimal("80.00"));
+        when(paiementRepository.findFirstByFactureIdAndStatutAndCreatedAtAfterOrderByCreatedAtDesc(
+                eq(FACTURE), eq("EN_ATTENTE"), any())).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.initierEnLigne(UTILISATEUR, FACTURE, null))
+                .hasMessageContaining("déjà en cours")
+                .hasMessageContaining("30 minutes");
+    }
+
+    // ---------- Annulation ----------
+
+    private Paiement valide(String mode) {
+        Paiement p = new Paiement();
+        p.setId(9L);
+        p.setFacture(facture);
+        p.setMontant(new BigDecimal("30.00"));
+        p.setMode(mode);
+        p.setStatut("VALIDE");
+        p.setReferenceInterne("PAY-VAL");
+        when(paiementRepository.findById(9L)).thenReturn(Optional.of(p));
+        return p;
+    }
+
+    @Test
+    void annulerUnEncaissementHorsLigneLeConserveAvecSonMotifEtRecalculeLaFacture() {
+        Paiement p = valide("ESPECES");
+
+        var dto = service.annulerHorsLigne(FACTURE, 9L, "  Erreur de saisie ");
+
+        assertThat(dto.statut()).isEqualTo("ANNULE");
+        assertThat(dto.motifAnnulation()).isEqualTo("Erreur de saisie");
+        assertThat(p.getAnnuleLe()).isEqualTo(Instant.parse("2026-10-28T10:00:00Z"));
+        verify(facturationService).rafraichirStatut(facture);
+    }
+
+    @Test
+    void unPaiementEnLigneNeSAnnulePasIci() {
+        valide("MOBILE_MONEY");
+
+        assertThatThrownBy(() -> service.annulerHorsLigne(FACTURE, 9L, "test"))
+                .hasMessageContaining("prestataire");
+    }
+
+    @Test
+    void seulUnPaiementValidePeutEtreAnnule() {
+        Paiement p = valide("CHEQUE");
+        p.setStatut("ANNULE");
+
+        assertThatThrownBy(() -> service.annulerHorsLigne(FACTURE, 9L, "test"))
+                .hasMessageContaining("validé");
+    }
+
+    @Test
+    void unPaiementDUneAutreFactureEstIntrouvable() {
+        Paiement p = valide("ESPECES");
+        Facture autre = new Facture();
+        autre.setId(99L);
+        p.setFacture(autre);
+
+        assertThatThrownBy(() -> service.annulerHorsLigne(FACTURE, 9L, "test"))
+                .hasMessageContaining("Paiement introuvable");
+    }
+
     // ---------- Notification signée ----------
 
     private Paiement enAttente() {
@@ -222,5 +307,42 @@ class PaiementServiceTest {
 
         assertThatThrownBy(() -> service.traiterNotification(notification("SUCCES", "80.00", "abc")))
                 .isInstanceOf(ResponseStatusException.class);
+    }
+
+    // ---------- Expiration ----------
+
+    private Paiement enAttente(Instant creeLe) {
+        Paiement p = new Paiement();
+        p.setId(9L);
+        p.setFacture(facture);
+        p.setMontant(new BigDecimal("30.00"));
+        p.setMode("MOBILE_MONEY");
+        p.setStatut("EN_ATTENTE");
+        p.setReferenceInterne("PAY-ATT");
+        p.setCreatedAt(creeLe);
+        when(paiementRepository.findById(9L)).thenReturn(Optional.of(p));
+        return p;
+    }
+
+    @Test
+    void unPaiementOuvertDepuisTropLongtempsEstCloture() {
+        Paiement p = enAttente(Instant.parse("2026-10-26T10:00:00Z"));
+
+        boolean cloture = service.expirer(9L, Instant.parse("2026-10-27T10:00:00Z"));
+
+        assertThat(cloture).isTrue();
+        assertThat(p.getStatut()).isEqualTo("ECHEC");
+    }
+
+    @Test
+    void unPaiementDejaTraiteOuRecentNEstPasTouche() {
+        Paiement valide = enAttente(Instant.parse("2026-10-26T10:00:00Z"));
+        valide.setStatut("VALIDE");
+        assertThat(service.expirer(9L, Instant.parse("2026-10-27T10:00:00Z"))).isFalse();
+        assertThat(valide.getStatut()).isEqualTo("VALIDE");
+
+        Paiement recent = enAttente(Instant.parse("2026-10-28T09:00:00Z"));
+        assertThat(service.expirer(9L, Instant.parse("2026-10-27T10:00:00Z"))).isFalse();
+        assertThat(recent.getStatut()).isEqualTo("EN_ATTENTE");
     }
 }

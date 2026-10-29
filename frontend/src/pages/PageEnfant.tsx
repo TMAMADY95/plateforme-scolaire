@@ -1,7 +1,9 @@
-import { Alert, Anchor, Group, Loader, Stack, Tabs, Text, Title } from '@mantine/core'
+import { Alert, Anchor, Loader, Stack, Tabs } from '@mantine/core'
 import { Link, useParams } from 'react-router'
+import EnteteEleve from '../components/EnteteEleve'
 import { useMesEnfants } from '../hooks/useMesEnfants'
 import OngletBulletin from './enfant/OngletBulletin'
+import OngletDevoirs from './enfant/OngletDevoirs'
 import OngletEmploiDuTemps from './enfant/OngletEmploiDuTemps'
 import OngletFactures from './enfant/OngletFactures'
 import OngletPresences from './enfant/OngletPresences'
@@ -39,22 +41,22 @@ export default function PageEnfant() {
       <Anchor component={Link} to="/mes-enfants" size="sm">
         ← Mes enfants
       </Anchor>
-      <Group justify="space-between" align="flex-start">
-        <div>
-          <Title order={2}>
-            {enfant.prenom} {enfant.nom}
-          </Title>
-          <Text c="dimmed" size="sm">
-            {enfant.classeNom !== null
-              ? `Classe ${enfant.classeNom} — ${enfant.etablissementNom} (${enfant.anneeLibelle})`
-              : "Pas d'inscription active"}
-          </Text>
-        </div>
-      </Group>
+      <EnteteEleve
+        prenom={enfant.prenom}
+        nom={enfant.nom}
+        matricule={enfant.matricule}
+        badge={enfant.relation}
+        sousTitre={
+          enfant.classeNom !== null
+            ? `Classe ${enfant.classeNom} — ${enfant.etablissementNom} (${enfant.anneeLibelle})`
+            : "Pas d'inscription active"
+        }
+      />
 
       <Tabs defaultValue="bulletin" keepMounted={false}>
         <Tabs.List>
           <Tabs.Tab value="bulletin">Bulletin</Tabs.Tab>
+          <Tabs.Tab value="devoirs">Devoirs</Tabs.Tab>
           <Tabs.Tab value="presences">Présences</Tabs.Tab>
           <Tabs.Tab value="emploi-du-temps">Emploi du temps</Tabs.Tab>
           <Tabs.Tab value="frais">Frais</Tabs.Tab>
@@ -62,6 +64,10 @@ export default function PageEnfant() {
 
         <Tabs.Panel value="bulletin" pt="md">
           <OngletBulletin enfant={enfant} />
+        </Tabs.Panel>
+
+        <Tabs.Panel value="devoirs" pt="md">
+          <OngletDevoirs classeId={enfant.classeId} />
         </Tabs.Panel>
 
         <Tabs.Panel value="presences" pt="md">

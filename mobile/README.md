@@ -7,14 +7,14 @@ Application des parents et des élèves. Étape 1 : socle (connexion, session, c
 Les dossiers `android/` et `ios/` sont générés par Flutter, pas fournis ici. Depuis la racine du projet :
 
 ```bash
-flutter create --org com.plateforme --project-name gestion_scolaire --platforms android,ios mobile_tmp
-cp -r mobile_tmp/android mobile_tmp/ios mobile/
-rm -rf mobile_tmp
+flutter create --org com.plateforme --project-name gestion\_scolaire --platforms android,ios mobile\_tmp
+cp -r mobile\_tmp/android mobile\_tmp/ios mobile/
+rm -rf mobile\_tmp
 cd mobile
 flutter pub get
 ```
 
-Les fichiers `pubspec.yaml`, `analysis_options.yaml`, `lib/` et `test/` fournis remplacent ceux de Flutter.
+Les fichiers `pubspec.yaml`, `analysis\_options.yaml`, `lib/` et `test/` fournis remplacent ceux de Flutter.
 
 ### Réglages Android (développement)
 
@@ -26,7 +26,7 @@ android:usesCleartextTraffic="true"
 
 Cela autorise le HTTP non chiffré vers votre poste en développement. **À retirer en production** (HTTPS obligatoire).
 
-Dans `android/app/build.gradle(.kts)`, si Gradle se plaint de `flutter_secure_storage` : `minSdk = 23`.
+Dans `android/app/build.gradle(.kts)`, si Gradle se plaint de `flutter\_secure\_storage` : `minSdk = 23`.
 
 ## Lancer
 
@@ -37,16 +37,16 @@ Le backend doit tourner (`mvn spring-boot:run -Dspring-boot.run.profiles=dev`).
 flutter run
 
 # Téléphone réel : adresse IP du poste sur le réseau local
-flutter run --dart-define=API_URL=http://192.168.1.20:8080
+flutter run --dart-define=API\_URL=http://192.168.1.20:8080
 
 # Simulateur iOS
-flutter run --dart-define=API_URL=http://localhost:8080
+flutter run --dart-define=API\_URL=http://localhost:8080
 ```
 
-Comptes de test (profil dev, mot de passe `Demo!2026` sauf si `DEV_PASSWORD` est défini) :
+Comptes de test (profil dev, mot de passe `Demo!2026` sauf si `DEV\_PASSWORD` est défini) :
 
-- élève : `eleve1@example.org` ;
-- parent : aucun compte de démonstration. Créez-en un depuis le site web (menu Élèves > Parents d'un élève) : le compte reçoit un mot de passe initial et l'application demandera de le changer à la première connexion.
+* élève : `eleve1@example.org` ;
+* parent : aucun compte de démonstration. Créez-en un depuis le site web (menu Élèves > Parents d'un élève) : le compte reçoit un mot de passe initial et l'application demandera de le changer à la première connexion.
 
 Les autres rôles (direction, ministère, enseignants) se connectent mais sont renvoyés vers le site web.
 
@@ -56,3 +56,4 @@ Les autres rôles (direction, ministère, enseignants) se connectent mais sont r
 flutter analyze
 flutter test
 ```
+

@@ -23,7 +23,15 @@ public interface PaiementRepository extends JpaRepository<Paiement, Long> {
     /** Un paiement en ligne encore ouvert (non expiré) bloque l'annulation et l'exonération. */
     boolean existsByFactureIdAndStatutAndCreatedAtAfter(Long factureId, String statut, Instant depuis);
 
+    /** Le paiement en ligne ouvert (non expiré) le plus récent, pour le reprendre. */
+    Optional<Paiement> findFirstByFactureIdAndStatutAndCreatedAtAfterOrderByCreatedAtDesc(
+            Long factureId, String statut, Instant depuis);
+
     boolean existsByFactureIdAndStatut(Long factureId, String statut);
+
+    /** Identifiants des paiements encore ouverts créés avant [avant] (tâche d'expiration). */
+    @Query("select p.id from Paiement p where p.statut = 'EN_ATTENTE' and p.createdAt < :avant order by p.id")
+    List<Long> idsEnAttenteAvant(@Param("avant") Instant avant);
 
     /** Total encaissé (null s'il n'y a aucun paiement validé). */
     @Query("select sum(p.montant) from Paiement p where p.facture.id = :factureId and p.statut = 'VALIDE'")

@@ -1,4 +1,4 @@
-import { Alert, Badge, Button, Card, Group, Loader, SimpleGrid, Stack, Text, Title } from '@mantine/core'
+import { Alert, Avatar, Badge, Button, Card, Group, Loader, SimpleGrid, Stack, Text, Title } from '@mantine/core'
 import { Link } from 'react-router'
 import { useMesEnfants } from '../hooks/useMesEnfants'
 import { formaterDate } from '../utils/dates'
@@ -8,7 +8,14 @@ export default function PageMesEnfants() {
 
   return (
     <Stack>
-      <Title order={2}>Mes enfants</Title>
+      <div>
+        <Title order={2}>Mes enfants</Title>
+        {enfants.data && enfants.data.length > 0 && (
+          <Text c="dimmed">
+            {enfants.data.length} {enfants.data.length > 1 ? 'enfants rattachés' : 'enfant rattaché'} à votre compte
+          </Text>
+        )}
+      </div>
 
       {enfants.isPending && <Loader />}
       {enfants.isError && (
@@ -26,22 +33,29 @@ export default function PageMesEnfants() {
       <SimpleGrid cols={{ base: 1, sm: 2, lg: 3 }}>
         {enfants.data?.map((enfant) => (
           <Card key={enfant.eleveId} withBorder padding="lg">
-            <Group justify="space-between" mb={4}>
-              <Text fw={600} size="lg">
-                {enfant.prenom} {enfant.nom}
-              </Text>
-              <Badge variant="light">{enfant.relation}</Badge>
+            <Group wrap="nowrap" align="flex-start" mb="xs">
+              <Avatar size={52} radius="xl" color="marine">
+                {(enfant.prenom.charAt(0) + enfant.nom.charAt(0)).toUpperCase()}
+              </Avatar>
+              <div style={{ flex: 1 }}>
+                <Group justify="space-between" wrap="nowrap" gap="xs">
+                  <Text fw={600} size="lg">
+                    {enfant.prenom} {enfant.nom}
+                  </Text>
+                  <Badge variant="light">{enfant.relation}</Badge>
+                </Group>
+                <Text c="dimmed" size="sm">
+                  Né(e) le {formaterDate(enfant.dateNaissance)} · {enfant.matricule}
+                </Text>
+              </div>
             </Group>
-            <Text c="dimmed" size="sm">
-              Né(e) le {formaterDate(enfant.dateNaissance)} · {enfant.matricule}
-            </Text>
             <Text size="sm" mt="sm" mb="md">
               {enfant.classeNom !== null
                 ? `Classe ${enfant.classeNom} — ${enfant.etablissementNom} (${enfant.anneeLibelle})`
                 : "Pas d'inscription active pour le moment"}
             </Text>
-            <Button component={Link} to={`/mes-enfants/${enfant.eleveId}`} fullWidth variant="light">
-              Bulletin et présences
+            <Button component={Link} to={`/mes-enfants/${enfant.eleveId}`} fullWidth>
+              Voir le détail
             </Button>
           </Card>
         ))}

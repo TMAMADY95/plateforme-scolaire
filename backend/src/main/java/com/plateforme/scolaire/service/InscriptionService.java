@@ -19,7 +19,9 @@ import com.plateforme.scolaire.web.dto.EleveRequest;
 import com.plateforme.scolaire.web.dto.InscriptionDto;
 import com.plateforme.scolaire.web.dto.InscriptionRequest;
 import java.time.LocalDate;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -47,6 +49,7 @@ public class InscriptionService {
     private final ClasseRepository classeRepository;
     private final UtilisateurRepository utilisateurRepository;
     private final PerimetreService perimetreService;
+    private final AuditService auditService;
 
     @Transactional(readOnly = true)
     public List<InscriptionDto> lister(Long etablissementId, Long anneeScolaireId, String statut) {
@@ -101,7 +104,14 @@ public class InscriptionService {
         inscription.setEtablissement(etablissement);
         inscription.setAnneeScolaire(annee);
         inscription.setStatut(EN_ATTENTE);
-        return InscriptionDto.de(inscriptionRepository.save(inscription));
+        Inscription enregistree = inscriptionRepository.save(inscription);
+        Map<String, Object> details = new LinkedHashMap<>();
+        details.put("eleveId", eleve.getId());
+        details.put("etablissementId", etablissement.getId());
+        details.put("anneeScolaireId", annee.getId());
+        details.put("nouvelEleve", avecNouvelEleve);
+        auditService.enregistrer("DEMANDE_INSCRIPTION", "inscription", enregistree.getId(), details);
+        return InscriptionDto.de(enregistree);
     }
 
     public InscriptionDto decider(Long id, DecisionRequest r) {
@@ -116,6 +126,12 @@ public class InscriptionService {
             inscription.setStatut(REFUSEE);
         }
         enregistrerDecision(inscription);
+        if (ACCEPTEE.equals(inscription.getStatut())) {
+            auditService.enregistrer("ACCEPTATION_INSCRIPTION", "inscription", inscription.getId(),
+                    Map.of("classeId", inscription.getClasse().getId()));
+        } else {
+            auditService.enregistrer("REFUS_INSCRIPTION", "inscription", inscription.getId(), Map.of());
+        }
         return InscriptionDto.de(inscription);
     }
 
@@ -125,8 +141,11 @@ public class InscriptionService {
             throw new ResponseStatusException(HttpStatus.CONFLICT,
                     "Seule une inscription en attente ou acceptée peut être annulée");
         }
+        String statutAvant = inscription.getStatut();
         inscription.setStatut(ANNULEE);
         enregistrerDecision(inscription);
+        auditService.enregistrer("ANNULATION_INSCRIPTION", "inscription", inscription.getId(),
+                Map.of("statutAvant", statutAvant));
         return InscriptionDto.de(inscription);
     }
 

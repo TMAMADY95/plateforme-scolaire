@@ -79,4 +79,25 @@ class CalculMoyennesTest {
         Resultat r = CalculMoyennes.calculer(List.of(note(1, MATHS, "45", "100", "1")));
         assertThat(arrondi(r.moyennesGenerales().get(1L))).isEqualByComparingTo("9.00");
     }
+
+    @Test
+    void lesCoefficientsDeMatieresPonderentLaMoyenneGenerale() {
+        // maths 16 (coef 3), langue 8 (coef par défaut 1) : (48 + 8) / 4 = 14
+        Resultat r = CalculMoyennes.calculer(List.of(
+                note(1, MATHS, "16", "20", "1"),
+                note(1, LANGUE, "8", "20", "1")),
+                java.util.Map.of(MATHS, new BigDecimal("3")));
+        assertThat(arrondi(r.moyennesGenerales().get(1L))).isEqualByComparingTo("14.00");
+        assertThat(arrondi(r.moyennesParEleve().get(1L).get(MATHS))).isEqualByComparingTo("16.00");
+    }
+
+    @Test
+    void unCoefficientNeCompteQueSiLEleveAUneNoteDansLaMatiere() {
+        // l'élève 2 n'a pas de note en maths : sa moyenne générale n'est pas tirée vers 0
+        Resultat r = CalculMoyennes.calculer(List.of(
+                note(1, MATHS, "16", "20", "1"),
+                note(2, LANGUE, "10", "20", "1")),
+                java.util.Map.of(MATHS, new BigDecimal("3")));
+        assertThat(arrondi(r.moyennesGenerales().get(2L))).isEqualByComparingTo("10.00");
+    }
 }

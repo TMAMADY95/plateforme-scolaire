@@ -3,6 +3,8 @@ import 'package:provider/provider.dart';
 
 import '../api/api_client.dart';
 import '../auth/etat_authentification.dart';
+import '../theme.dart';
+import 'ecran_mot_de_passe_oublie.dart';
 
 class EcranConnexion extends StatefulWidget {
   const EcranConnexion({super.key});
@@ -60,8 +62,37 @@ class _EtatEcranConnexion extends State<EcranConnexion> {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Text('Gestion scolaire', style: theme.textTheme.headlineMedium, textAlign: TextAlign.center),
-                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(vertical: 28, horizontal: 20),
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [couleurMarine, Color(0xFF0F3C8A)],
+                        ),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Column(
+                        children: [
+                          const Icon(Icons.school, color: Colors.white, size: 44),
+                          const SizedBox(height: 8),
+                          Text(
+                            nomApplication,
+                            style: theme.textTheme.headlineMedium?.copyWith(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            sousTitreApplication,
+                            style: theme.textTheme.bodySmall?.copyWith(color: const Color(0xFFD6E2FB)),
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 24),
                     Text(
                       'Connectez-vous avec votre adresse e-mail.',
                       style: theme.textTheme.bodyMedium,
@@ -110,11 +141,14 @@ class _EtatEcranConnexion extends State<EcranConnexion> {
                           ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
                           : const Text('Se connecter'),
                     ),
-                    const SizedBox(height: 16),
-                    Text(
-                      "Mot de passe oublié ? Contactez la direction de l'établissement : elle peut le réinitialiser.",
-                      style: theme.textTheme.bodySmall,
-                      textAlign: TextAlign.center,
+                    const SizedBox(height: 8),
+                    TextButton(
+                      onPressed: () => Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (_) => EcranMotDePasseOublie(emailInitial: _email.text.trim()),
+                        ),
+                      ),
+                      child: const Text('Mot de passe oublié ?'),
                     ),
                   ],
                 ),

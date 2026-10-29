@@ -1,7 +1,8 @@
 import { Alert, Badge, Button, Group, Loader, Stack, Table, Text, Title } from '@mantine/core'
 import { notifications } from '@mantine/notifications'
 import { useMutation, useQuery } from '@tanstack/react-query'
-import { facturesDeMonEnfant, mesFactures, payerEnLigne } from '../../api/endpoints'
+import { facturesDeMonEnfant, mesFactures, payerEnLigne, telechargerRecu } from '../../api/endpoints'
+import BoutonTelechargement from '../../components/BoutonTelechargement'
 import { formaterMontant } from '../../utils/monnaie'
 import { formaterDate } from '../../utils/dates'
 
@@ -87,6 +88,11 @@ export default function OngletFactures({ eleveId }: { eleveId: number | null }) 
                       </Group>
                     </Table.Td>
                     <Table.Td>
+                      {f.montantPaye > 0 && (
+                        <BoutonTelechargement compact telecharger={() => telechargerRecu(f.id)}>
+                          Reçu
+                        </BoutonTelechargement>
+                      )}
                       {['IMPAYEE', 'PARTIELLE'].includes(f.statut) && f.resteAPayer > 0 && (
                         <Button
                           size="compact-xs"

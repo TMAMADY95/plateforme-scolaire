@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -18,6 +19,7 @@ import com.plateforme.scolaire.repository.ClasseRepository;
 import com.plateforme.scolaire.repository.InscriptionRepository;
 import com.plateforme.scolaire.repository.PresenceRepository;
 import com.plateforme.scolaire.repository.UtilisateurRepository;
+import com.plateforme.scolaire.service.AuditService;
 import com.plateforme.scolaire.service.PresenceService;
 import com.plateforme.scolaire.web.dto.AppelRequest;
 import com.plateforme.scolaire.web.dto.FeuilleAppelDto;
@@ -43,9 +45,11 @@ class PresenceServiceTest {
     private final PresenceRepository presenceRepository = mock(PresenceRepository.class);
     private final InscriptionRepository inscriptionRepository = mock(InscriptionRepository.class);
     private final ClasseRepository classeRepository = mock(ClasseRepository.class);
+    private final AuditService auditService = mock(AuditService.class);
     private final Clock horloge = Clock.fixed(Instant.parse("2026-10-26T10:00:00Z"), ZoneOffset.UTC);
     private final PresenceService service = new PresenceService(presenceRepository, inscriptionRepository,
-            classeRepository, mock(UtilisateurRepository.class), mock(PerimetreService.class), horloge);
+            classeRepository, mock(UtilisateurRepository.class), mock(PerimetreService.class), horloge,
+            auditService);
 
     private Inscription dupont;
     private Inscription martin;
@@ -123,6 +127,46 @@ class PresenceServiceTest {
         assertThat(feuille.lignes().get(1).motif()).isEqualTo("Maladie");
         assertThat(feuille.lignes().get(1).justifie()).isTrue();
         verify(presenceRepository, times(2)).save(any(Presence.class));
+    }
+
+    @Test
+    void unNouvelAppelEstJournalise() {
+        service.enregistrer(CLASSE, AUJOURDHUI, appel(
+                new LignePresenceRequest(12L, StatutPresence.PRESENT, null, null),
+                new LignePresenceRequest(11L, StatutPresence.ABSENT, null, null)));
+
+        verify(auditService).enregistrer(eq("SAISIE_APPEL"), eq("classe"), eq(CLASSE), any());
+        verify(auditService, never()).enregistrer(eq("CORRECTION_PRESENCE"), any(), any(), any());
+    }
+
+    @Test
+    void renvoyerLeMemeAppelNeLaisseAucuneTrace() {
+        Presence existante = new Presence();
+        existante.setInscription(martin);
+        existante.setDateSeance(AUJOURDHUI);
+        existante.setStatut("ABSENT");
+        when(presenceRepository.findByInscriptionClasseIdAndDateSeance(CLASSE, AUJOURDHUI))
+                .thenReturn(List.of(existante));
+
+        service.enregistrer(CLASSE, AUJOURDHUI, appel(new LignePresenceRequest(11L, StatutPresence.ABSENT, null, null)));
+
+        verify(auditService, never()).enregistrer(any(), any(), any(), any());
+    }
+
+    @Test
+    void corrigerUneAbsenceJournaliseLAvantEtLApres() {
+        Presence existante = new Presence();
+        existante.setId(40L);
+        existante.setInscription(martin);
+        existante.setDateSeance(AUJOURDHUI);
+        existante.setStatut("ABSENT");
+        when(presenceRepository.findByInscriptionClasseIdAndDateSeance(CLASSE, AUJOURDHUI))
+                .thenReturn(List.of(existante));
+
+        service.enregistrer(CLASSE, AUJOURDHUI, appel(new LignePresenceRequest(11L, StatutPresence.PRESENT, null, null)));
+
+        verify(auditService).enregistrer(eq("CORRECTION_PRESENCE"), eq("presence"), eq(40L), any());
+        verify(auditService).enregistrer(eq("SAISIE_APPEL"), eq("classe"), eq(CLASSE), any());
     }
 
     @Test

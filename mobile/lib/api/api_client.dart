@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:http/http.dart' as http;
 
@@ -46,9 +47,21 @@ class ApiClient {
 
   Future<dynamic> delete(String chemin) => _envoyer('DELETE', chemin);
 
+  /// Télécharge un fichier protégé (PDF...) : le jeton part dans l'en-tête, pas dans l'adresse.
+  Future<Uint8List> telecharger(String chemin) async => (await _executer('GET', chemin, accept: '*/*')).bodyBytes;
+
   Future<dynamic> _envoyer(String methode, String chemin, {Object? corps, bool sansJeton = false}) async {
+    final reponse = await _executer(methode, chemin, corps: corps, sansJeton: sansJeton);
+    final texte = utf8.decode(reponse.bodyBytes);
+    if (reponse.statusCode == 204 || texte.isEmpty) return null;
+    return _lireJson(texte);
+  }
+
+  /// Envoie la requête ; renvoie la réponse si elle est en 2xx, sinon lève une [ApiException].
+  Future<http.Response> _executer(String methode, String chemin,
+      {Object? corps, bool sansJeton = false, String accept = 'application/json'}) async {
     final avecJeton = _jeton != null && !sansJeton;
-    final entetes = <String, String>{'Accept': 'application/json'};
+    final entetes = <String, String>{'Accept': accept};
     if (corps != null) entetes['Content-Type'] = 'application/json';
     if (avecJeton) entetes['Authorization'] = 'Bearer $_jeton';
 
@@ -64,13 +77,9 @@ class ApiClient {
       throw ApiException(0, 'Le serveur est injoignable. Vérifiez votre connexion.');
     }
 
-    final texte = utf8.decode(reponse.bodyBytes);
-    if (reponse.statusCode >= 200 && reponse.statusCode < 300) {
-      if (reponse.statusCode == 204 || texte.isEmpty) return null;
-      return _lireJson(texte);
-    }
+    if (reponse.statusCode >= 200 && reponse.statusCode < 300) return reponse;
 
-    final erreur = _lireJson(texte);
+    final erreur = _lireJson(utf8.decode(reponse.bodyBytes, allowMalformed: true));
     final corpsErreur = erreur is Map<String, dynamic> ? erreur : const <String, dynamic>{};
     if (reponse.statusCode == 401 && avecJeton) surNonAutorise?.call();
     if (reponse.statusCode == 403 && corpsErreur['erreur'] == 'CHANGEMENT_MOT_DE_PASSE_REQUIS') {

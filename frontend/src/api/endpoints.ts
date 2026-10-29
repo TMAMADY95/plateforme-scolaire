@@ -1,4 +1,4 @@
-import { api } from './client'
+import { api, telecharger } from './client'
 import type {
   AffectationEnseignant,
   AffectationRequete,
@@ -6,6 +6,10 @@ import type {
   AnneeScolaireRequete,
   Compte,
   ComptePersonnel,
+  CoefficientMatiere,
+  Reussite,
+  ReussiteReseau,
+  Statistiques,
   PageAudit,
   DirectionRequete,
   EtablissementRequete,
@@ -23,7 +27,12 @@ import type {
   CreneauEleve,
   CreneauRequete,
   DecisionRequete,
+  Contact,
+  Conversation,
+  Devoir,
+  DevoirRequete,
   Enfant,
+  NouvelleConversationRequete,
   Enseignant,
   EnseignantRequete,
   Etablissement,
@@ -228,6 +237,19 @@ export const exonererFacture = (factureId: number, requete: ExonerationRequete) 
 
 export const annulerFacture = (factureId: number) => api.post<Facture>(`/api/factures/${factureId}/annulation`)
 
+/** Sans jeton : l'utilisateur a oublié son mot de passe. Répond toujours pareil, que l'adresse existe ou non. */
+export const demanderReinitialisation = (email: string) =>
+  api.post<void>('/api/auth/mot-de-passe-oublie', { email }, { sansJeton: true })
+
+export const reinitialiserAvecJeton = (jeton: string, nouveauMotDePasse: string) =>
+  api.post<void>('/api/auth/reinitialisation', { jeton, nouveauMotDePasse }, { sansJeton: true })
+
+export const telechargerBulletin = (eleveId: number, periodeId: number) =>
+  telecharger(`/api/eleves/${eleveId}/bulletin.pdf?periodeId=${periodeId}`, `bulletin-${eleveId}-${periodeId}.pdf`)
+
+export const telechargerRecu = (factureId: number) =>
+  telecharger(`/api/factures/${factureId}/recu.pdf`, `recu-facture-${factureId}.pdf`)
+
 export const mesFactures = () => api.get<Facture[]>('/api/me/factures')
 
 export const facturesDeMonEnfant = (eleveId: number) =>
@@ -287,6 +309,9 @@ export const listerPaiements = (factureId: number) => api.get<Paiement[]>(`/api/
 export const enregistrerPaiement = (factureId: number, requete: PaiementRequete) =>
   api.post<Paiement>(`/api/factures/${factureId}/paiements`, requete)
 
+export const annulerPaiement = (factureId: number, paiementId: number, motif: string) =>
+  api.post<Paiement>(`/api/factures/${factureId}/paiements/${paiementId}/annulation`, { motif })
+
 /** Élève ou parent : démarre un paiement en ligne et renvoie l'adresse où finir le paiement. */
 export const payerEnLigne = (factureId: number, montant?: number) =>
   api.post<PaiementInitie>(`/api/me/factures/${factureId}/paiements`, montant === undefined ? {} : { montant })
@@ -306,12 +331,68 @@ export const creerPersonnel = (etablissementId: number, requete: DirectionRequet
 export const reinitialiserMotDePasse = (utilisateurId: number, motDePasseTemporaire: string) =>
   api.post<void>(`/api/utilisateurs/${utilisateurId}/reinitialisation-mot-de-passe`, { motDePasseTemporaire })
 
-export const rechercherAudit = (filtres: { action: string; entite: string; page: number; taille: number }) => {
+export const rechercherAudit = (filtres: { action: string; entite: string; eleve: string; page: number; taille: number }) => {
   const parametres = new URLSearchParams({
     action: filtres.action,
     entite: filtres.entite,
+    eleve: filtres.eleve,
     page: String(filtres.page),
     taille: String(filtres.taille),
   })
   return api.get<PageAudit>(`/api/audit?${parametres.toString()}`)
 }
+
+// ---------- Coefficients des matières ----------
+
+export const listerCoefficients = (classeId: number) =>
+  api.get<CoefficientMatiere[]>(`/api/classes/${classeId}/coefficients`)
+
+export const enregistrerCoefficients = (classeId: number, lignes: { matiereId: number; coefficient: number }[]) =>
+  api.put<CoefficientMatiere[]>(`/api/classes/${classeId}/coefficients`, { lignes })
+
+// ---------- Statistiques des tableaux de bord ----------
+
+export const statistiquesNationales = (anneeScolaireId: number) =>
+  api.get<Statistiques>(`/api/ministere/statistiques?anneeScolaireId=${anneeScolaireId}`)
+
+export const statistiquesRegionales = (anneeScolaireId: number) =>
+  api.get<Statistiques>(`/api/region/statistiques?anneeScolaireId=${anneeScolaireId}`)
+
+export const statistiquesEtablissement = (etablissementId: number, anneeScolaireId: number) =>
+  api.get<Statistiques>(`/api/etablissements/${etablissementId}/statistiques?anneeScolaireId=${anneeScolaireId}`)
+
+export const reussiteEtablissement = (etablissementId: number, anneeScolaireId: number, periodeId: number) =>
+  api.get<Reussite>(
+    `/api/etablissements/${etablissementId}/reussite?anneeScolaireId=${anneeScolaireId}&periodeId=${periodeId}`,
+  )
+
+export const reussiteNationale = (anneeScolaireId: number, periodeId: number) =>
+  api.get<ReussiteReseau>(`/api/ministere/reussite?anneeScolaireId=${anneeScolaireId}&periodeId=${periodeId}`)
+
+export const reussiteRegionale = (anneeScolaireId: number, periodeId: number) =>
+  api.get<ReussiteReseau>(`/api/region/reussite?anneeScolaireId=${anneeScolaireId}&periodeId=${periodeId}`)
+
+export const listerDevoirs = (classeId: number) => api.get<Devoir[]>(`/api/classes/${classeId}/devoirs`)
+
+export const creerDevoir = (classeId: number, requete: DevoirRequete) =>
+  api.post<Devoir>(`/api/classes/${classeId}/devoirs`, requete)
+
+export const modifierDevoir = (devoirId: number, requete: DevoirRequete) =>
+  api.put<Devoir>(`/api/devoirs/${devoirId}`, requete)
+
+export const supprimerDevoir = (devoirId: number) => api.delete<void>(`/api/devoirs/${devoirId}`)
+
+export const contactsMessagerie = (eleveId: number) =>
+  api.get<Contact[]>(`/api/messagerie/contacts?eleveId=${eleveId}`)
+
+export const listerConversations = () => api.get<Conversation[]>('/api/messagerie/conversations')
+
+export const demarrerConversation = (requete: NouvelleConversationRequete) =>
+  api.post<Conversation>('/api/messagerie/conversations', requete)
+
+export const ouvrirConversation = (id: number) => api.get<Conversation>(`/api/messagerie/conversations/${id}`)
+
+export const repondreConversation = (id: number, contenu: string) =>
+  api.post<Conversation>(`/api/messagerie/conversations/${id}/messages`, { contenu })
+
+export const messagesNonLus = () => api.get<{ nonLus: number }>('/api/messagerie/non-lus')

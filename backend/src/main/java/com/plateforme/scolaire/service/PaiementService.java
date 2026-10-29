@@ -24,6 +24,7 @@ import java.time.Instant;
 import java.util.HexFormat;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import javax.crypto.Mac;
@@ -60,6 +61,7 @@ public class PaiementService {
     private static final String VALIDE = "VALIDE";
     private static final String EN_ATTENTE = "EN_ATTENTE";
     private static final String ECHEC = "ECHEC";
+    private static final String ANNULE = "ANNULE";
 
     private final PaiementRepository paiementRepository;
     private final FactureRepository factureRepository;
@@ -119,6 +121,40 @@ public class PaiementService {
         return PaiementDto.de(paiement);
     }
 
+    /**
+     * Annule un paiement validé saisi hors ligne (erreur de saisie, chèque rejeté...). Rien n'est supprimé :
+     * le paiement passe en ANNULE avec son motif, et la facture retrouve son solde. Un paiement en ligne se
+     * rembourse auprès du prestataire : l'annuler ici créerait un écart avec son relevé.
+     */
+    public PaiementDto annulerHorsLigne(Long factureId, Long paiementId, String motif) {
+        Facture facture = verrouiller(factureId);
+        Paiement paiement = paiementRepository.findById(paiementId)
+                .filter(p -> p.getFacture().getId().equals(factureId))
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Paiement introuvable"));
+        if (!VALIDE.equals(paiement.getStatut())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Seul un paiement validé peut être annulé");
+        }
+        if (!MODES_HORS_LIGNE.contains(paiement.getMode())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Un paiement en ligne ne s'annule pas ici : il se rembourse auprès du prestataire de paiement");
+        }
+
+        paiement.setStatut(ANNULE);
+        paiement.setAnnuleLe(Instant.now(clock));
+        paiement.setMotifAnnulation(motif.trim());
+        UtilisateurPrincipal courant = perimetreService.utilisateurCourant();
+        if (courant != null) {
+            paiement.setAnnulePar(utilisateurRepository.getReferenceById(courant.getId()));
+        }
+        paiementRepository.save(paiement);
+        facturationService.rafraichirStatut(facture);
+
+        auditService.enregistrer("ANNULATION_PAIEMENT", "paiement", paiement.getId(),
+                Map.of("facture", facture.getNumero(), "montant", paiement.getMontant().toPlainString(),
+                        "mode", paiement.getMode(), "motif", paiement.getMotifAnnulation()));
+        return PaiementDto.de(paiement);
+    }
+
     // ---------- En ligne ----------
 
     public PaiementInitieDto initierEnLigne(Long utilisateurId, Long factureId, BigDecimal montantDemande) {
@@ -138,8 +174,20 @@ public class PaiementService {
         BigDecimal enAttente = nvl(paiementRepository.totalEnAttente(facture.getId(), limite));
         BigDecimal disponible = resteAPayer(facture).subtract(enAttente);
         if (disponible.signum() <= 0) {
+            // Reprise : le solde est déjà couvert par un paiement ouvert, on renvoie le même lien plutôt que d'en créer un autre.
+            if (montantDemande == null) {
+                Optional<Paiement> ouvert = paiementRepository
+                        .findFirstByFactureIdAndStatutAndCreatedAtAfterOrderByCreatedAtDesc(
+                                facture.getId(), EN_ATTENTE, limite);
+                if (ouvert.isPresent() && ouvert.get().getUrlPaiement() != null) {
+                    Paiement repris = ouvert.get();
+                    return new PaiementInitieDto(repris.getReferenceInterne(), repris.getUrlPaiement(),
+                            repris.getMontant(), facture.getDevise());
+                }
+            }
             throw new ResponseStatusException(HttpStatus.CONFLICT,
-                    "Un paiement est déjà en cours pour le solde de cette facture");
+                    "Un paiement est déjà en cours pour cette facture. Terminez-le auprès du prestataire, "
+                            + "ou réessayez dans " + DELAI_EN_ATTENTE.toMinutes() + " minutes au plus.");
         }
         BigDecimal montant = montantDemande == null ? disponible : montantDemande.setScale(2, RoundingMode.HALF_UP);
         if (montant.signum() <= 0 || montant.compareTo(disponible) > 0) {
@@ -151,6 +199,7 @@ public class PaiementService {
         PasserelleDePaiement.ResultatInitiation resultat = prestataire.initier(new PasserelleDePaiement.DemandePaiement(
                 paiement.getReferenceInterne(), montant, facture.getDevise(), facture.getLibelle()));
         paiement.setReferenceExterne(resultat.referenceExterne());
+        paiement.setUrlPaiement(resultat.urlPaiement());
         paiementRepository.save(paiement);
 
         auditService.enregistrer("INITIATION_PAIEMENT", "paiement", paiement.getId(),
@@ -206,6 +255,30 @@ public class PaiementService {
         auditService.enregistrer(reste.signum() < 0 ? "PAIEMENT_SURPAIEMENT" : "PAIEMENT_VALIDE", "paiement",
                 paiement.getId(), Map.of("reference", paiement.getReferenceInterne(),
                         "montant", paiement.getMontant().toPlainString()));
+    }
+
+    /**
+     * Clôture un paiement en ligne resté EN_ATTENTE trop longtemps (statut ECHEC). Verrouille la facture avant de
+     * relire le paiement, comme le fait la notification du prestataire : si celle-ci est arrivée entre-temps, le
+     * paiement n'est plus EN_ATTENTE et rien n'est modifié.
+     *
+     * @return true si le paiement a été clôturé
+     */
+    public boolean expirer(Long paiementId, Instant avant) {
+        Long factureId = paiementRepository.findById(paiementId)
+                .map(p -> p.getFacture().getId()).orElse(null);
+        if (factureId == null) {
+            return false;
+        }
+        verrouiller(factureId);
+        Paiement paiement = paiementRepository.findById(paiementId).orElse(null);
+        if (paiement == null || !EN_ATTENTE.equals(paiement.getStatut()) || !paiement.getCreatedAt().isBefore(avant)) {
+            return false;
+        }
+        paiement.setStatut(ECHEC);
+        auditService.enregistrer("PAIEMENT_EXPIRE", "paiement", paiement.getId(),
+                Map.of("reference", paiement.getReferenceInterne()));
+        return true;
     }
 
     /** Signature HMAC-SHA256 (hexadécimal minuscule) d'une notification. */

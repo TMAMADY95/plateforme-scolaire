@@ -19,8 +19,9 @@ public class AuditController {
     @PreAuthorize("hasRole('MINISTERE')")
     public PageAuditDto rechercher(@RequestParam(defaultValue = "") String action,
                                    @RequestParam(defaultValue = "") String entite,
+                                   @RequestParam(defaultValue = "") String eleve,
                                    @RequestParam(defaultValue = "0") int page,
                                    @RequestParam(defaultValue = "25") int taille) {
-        return consultationAuditService.rechercher(action, entite, page, taille);
+        return consultationAuditService.rechercher(action, entite, eleve, page, taille);
     }
 }

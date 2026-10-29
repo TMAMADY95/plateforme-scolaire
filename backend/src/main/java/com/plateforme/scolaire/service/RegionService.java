@@ -31,7 +31,8 @@ public class RegionService {
     private final InscriptionRepository inscriptionRepository;
     private final PerimetreService perimetreService;
 
-    public SyntheseNationaleDto synthese(Long anneeScolaireId) {
+    /** Les établissements des zones (et sous-zones) confiées à l'utilisateur par un rôle DIRECTION_REGIONALE. */
+    public Map<Long, Etablissement> etablissementsDeLaRegion() {
         UtilisateurPrincipal p = perimetreService.utilisateurCourant();
         Map<Long, Etablissement> etablissements = new LinkedHashMap<>();
         if (p != null) {
@@ -42,6 +43,11 @@ public class RegionService {
                 }
             }
         }
+        return etablissements;
+    }
+
+    public SyntheseNationaleDto synthese(Long anneeScolaireId) {
+        Map<Long, Etablissement> etablissements = etablissementsDeLaRegion();
         if (etablissements.isEmpty()) {
             return new SyntheseNationaleDto(anneeScolaireId, 0, 0, 0, 0, 0, 0);
         }

@@ -2,7 +2,7 @@ import { Stack, Tabs, Title } from '@mantine/core'
 import JournalAuditNational from './ministere/JournalAuditNational'
 import ListeEtablissements from './ministere/ListeEtablissements'
 import Referentiels from './ministere/Referentiels'
-import { syntheseNationale } from '../api/endpoints'
+import { reussiteNationale, statistiquesNationales, syntheseNationale } from '../api/endpoints'
 import SyntheseNationale from './ministere/SyntheseNationale'
 
 /** Administration nationale : chiffres clés, établissements et référentiels. */
@@ -18,7 +18,12 @@ export default function PageMinistere() {
           <Tabs.Tab value="audit">Journal d'audit</Tabs.Tab>
         </Tabs.List>
         <Tabs.Panel value="synthese">
-          <SyntheseNationale cle="synthese-nationale" charger={syntheseNationale} />
+          <SyntheseNationale
+            cle="synthese-nationale"
+            charger={syntheseNationale}
+            chargerStatistiques={statistiquesNationales}
+            chargerReussite={reussiteNationale}
+          />
         </Tabs.Panel>
         <Tabs.Panel value="etablissements">
           <ListeEtablissements />

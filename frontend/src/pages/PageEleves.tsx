@@ -1,11 +1,13 @@
 import { useState } from 'react'
 import { Alert, Button, Group, Loader, Select, Stack, Table, Text, TextInput, Title } from '@mantine/core'
 import { useQuery } from '@tanstack/react-query'
+import { useNavigate } from 'react-router'
 import { listerClasses, listerInscriptions } from '../api/endpoints'
 import type { Inscription } from '../api/types'
 import { etablissementCourant } from '../auth/roles'
 import { useUtilisateur } from '../auth/useAuth'
 import { useAnneeScolaire } from '../hooks/useAnneeScolaire'
+import NouveauMessageModal from '../components/messagerie/NouveauMessageModal'
 import { formaterDate } from '../utils/dates'
 import ModifierEleveModal from './eleves/ModifierEleveModal'
 import ParentsModal from './eleves/ParentsModal'
@@ -18,6 +20,8 @@ export default function PageEleves() {
   const [recherche, setRecherche] = useState('')
   const [aModifier, setAModifier] = useState<Inscription | null>(null)
   const [parentsDe, setParentsDe] = useState<Inscription | null>(null)
+  const [ecrireA, setEcrireA] = useState<Inscription | null>(null)
+  const navigate = useNavigate()
 
   const inscriptions = useQuery({
     queryKey: ['inscriptions', etablissementId, anneeId, 'ACCEPTEE'],
@@ -119,6 +123,9 @@ export default function PageEleves() {
                         <Button size="compact-sm" variant="light" color="teal" onClick={() => setParentsDe(i)}>
                           Parents
                         </Button>
+                        <Button size="compact-sm" variant="light" color="grape" onClick={() => setEcrireA(i)}>
+                          Écrire
+                        </Button>
                       </Group>
                     </Table.Td>
                   </Table.Tr>
@@ -134,6 +141,13 @@ export default function PageEleves() {
 
       {aModifier !== null && (
         <ModifierEleveModal eleve={aModifier.eleve} etablissementId={etablissementId} onFermer={() => setAModifier(null)} />
+      )}
+      {ecrireA !== null && (
+        <NouveauMessageModal
+          eleve={{ id: ecrireA.eleve.id, libelle: `${ecrireA.eleve.prenom} ${ecrireA.eleve.nom}` }}
+          onFermer={() => setEcrireA(null)}
+          onCree={(id) => void navigate(`/messages?c=${id}`)}
+        />
       )}
       {parentsDe !== null && <ParentsModal eleve={parentsDe.eleve} onFermer={() => setParentsDe(null)} />}
     </Stack>

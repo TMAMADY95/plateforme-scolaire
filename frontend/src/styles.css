@@ -1,0 +1,43 @@
+:root {
+  --fond-application: #f3f6fb;
+  --marine-fonce: #0a2a63;
+  --marine-menu: #0b2f6b;
+}
+
+body {
+  background: var(--fond-application);
+}
+
+/* Menu latéral foncé */
+.menu-lateral {
+  background: linear-gradient(180deg, #0b2f6b 0%, #0a2a63 100%);
+  border-right: none;
+  color: #fff;
+}
+
+.menu-lateral .mantine-NavLink-root {
+  color: #d6e2fb;
+  border-radius: var(--mantine-radius-md);
+  margin-bottom: 2px;
+}
+
+.menu-lateral .mantine-NavLink-root:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.menu-lateral .mantine-NavLink-root[data-active] {
+  background: #1f5bcc;
+  color: #fff;
+}
+
+.menu-lateral .mantine-NavLink-root[data-active]:hover {
+  background: #2f6be6;
+}
+
+/* Connexion : panneau d'accueil à gauche */
+.connexion-panneau {
+  background:
+    radial-gradient(circle at 20% 20%, rgba(79, 133, 233, 0.35), transparent 55%),
+    linear-gradient(160deg, #0a2a63 0%, #0f3c8a 100%);
+  color: #fff;
+}

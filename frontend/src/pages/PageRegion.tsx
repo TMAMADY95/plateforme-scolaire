@@ -1,6 +1,6 @@
 import { Alert, Badge, Loader, Stack, Table, Tabs, Text, Title } from '@mantine/core'
 import { useQuery } from '@tanstack/react-query'
-import { listerEtablissements, syntheseRegionale } from '../api/endpoints'
+import { listerEtablissements, reussiteRegionale, statistiquesRegionales, syntheseRegionale } from '../api/endpoints'
 import SyntheseNationale from './ministere/SyntheseNationale'
 
 const COULEURS: Record<string, string> = { ACTIF: 'green', SUSPENDU: 'orange', FERME: 'gray' }
@@ -18,7 +18,12 @@ export default function PageRegion() {
           <Tabs.Tab value="etablissements">Établissements de la zone</Tabs.Tab>
         </Tabs.List>
         <Tabs.Panel value="synthese">
-          <SyntheseNationale cle="synthese-regionale" charger={syntheseRegionale} />
+          <SyntheseNationale
+            cle="synthese-regionale"
+            charger={syntheseRegionale}
+            chargerStatistiques={statistiquesRegionales}
+            chargerReussite={reussiteRegionale}
+          />
         </Tabs.Panel>
         <Tabs.Panel value="etablissements">
           <Stack mt="md">

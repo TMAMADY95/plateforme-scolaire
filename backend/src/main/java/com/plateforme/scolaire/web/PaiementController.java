@@ -2,6 +2,7 @@ package com.plateforme.scolaire.web;
 
 import com.plateforme.scolaire.security.PerimetreService;
 import com.plateforme.scolaire.service.PaiementService;
+import com.plateforme.scolaire.web.dto.AnnulationPaiementRequest;
 import com.plateforme.scolaire.web.dto.InitierPaiementRequest;
 import com.plateforme.scolaire.web.dto.NotificationPaiement;
 import com.plateforme.scolaire.web.dto.PaiementDto;
@@ -40,6 +41,14 @@ public class PaiementController {
     @PreAuthorize("@perimetreFinances.peutGererFacture(#id)")
     public PaiementDto enregistrer(@PathVariable Long id, @Valid @RequestBody PaiementRequest requete) {
         return paiementService.enregistrerHorsLigne(id, requete);
+    }
+
+    /** Annulation d'un encaissement hors ligne (erreur de saisie...) par la direction ou l'administration. */
+    @PostMapping("/api/factures/{factureId}/paiements/{paiementId}/annulation")
+    @PreAuthorize("@perimetreFinances.peutGererFacture(#factureId)")
+    public PaiementDto annuler(@PathVariable Long factureId, @PathVariable Long paiementId,
+                               @Valid @RequestBody AnnulationPaiementRequest requete) {
+        return paiementService.annulerHorsLigne(factureId, paiementId, requete.motif());
     }
 
     /** Paiement en ligne d'une de SES factures (élève) ou de celles de ses enfants (parent). */

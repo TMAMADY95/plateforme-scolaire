@@ -8,6 +8,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.plateforme.scolaire.domain.JournalAudit;
+import com.plateforme.scolaire.repository.EleveRepository;
 import com.plateforme.scolaire.repository.JournalAuditRepository;
 import com.plateforme.scolaire.web.dto.PageAuditDto;
 import java.util.List;
@@ -22,7 +23,8 @@ class ConsultationAuditServiceTest {
 
     private final JournalAuditRepository repository = mock(JournalAuditRepository.class);
     private final ResolveurContexteAudit resolveur = mock(ResolveurContexteAudit.class);
-    private final ConsultationAuditService service = new ConsultationAuditService(repository, resolveur);
+    private final EleveRepository eleveRepository = mock(EleveRepository.class);
+    private final ConsultationAuditService service = new ConsultationAuditService(repository, resolveur, eleveRepository);
 
     {
         when(resolveur.decrire(any())).thenReturn(new ResolveurContexteAudit.Description("Résumé", List.of()));
@@ -73,5 +75,26 @@ class ConsultationAuditServiceTest {
         assertThat(dto.total()).isEqualTo(42);
         assertThat(dto.contenu()).hasSize(1);
         assertThat(dto.contenu().get(0).utilisateurEmail()).isNull();
+    }
+
+    @Test
+    void uneRechercheParEleveSeLimiteAuxElevesTrouves() {
+        when(eleveRepository.idsParTexte(eq("Diallo"), any(Pageable.class))).thenReturn(List.of(4L, 9L));
+        when(repository.rechercherPourEleves(any(), any(), any(), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(), PageRequest.of(0, 25), 0));
+
+        service.rechercher("", "", "  Diallo ", 0, 25);
+
+        verify(repository).rechercherPourEleves(eq(""), eq(""), eq(List.of(4L, 9L)), any(Pageable.class));
+    }
+
+    @Test
+    void sansEleveCorrespondantLaReponseEstVideSansInterrogerLeJournal() {
+        when(eleveRepository.idsParTexte(any(), any(Pageable.class))).thenReturn(List.of());
+
+        PageAuditDto dto = service.rechercher("", "", "inconnu", 0, 25);
+
+        assertThat(dto.total()).isZero();
+        assertThat(dto.contenu()).isEmpty();
     }
 }

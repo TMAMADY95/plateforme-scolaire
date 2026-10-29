@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { Alert, Badge, Card, Group, Loader, Select, Stack, Table, Text, Title } from '@mantine/core'
 import { useQuery } from '@tanstack/react-query'
-import { listerPeriodes, obtenirBulletin } from '../../api/endpoints'
+import { listerPeriodes, obtenirBulletin, telechargerBulletin } from '../../api/endpoints'
+import BoutonTelechargement from '../../components/BoutonTelechargement'
 import type { Enfant, Periode } from '../../api/types'
 import { aujourdhui } from '../../utils/dates'
 import { formaterEcart, formaterNote, formaterRang } from '../../utils/notes'
@@ -43,14 +44,21 @@ export default function OngletBulletin({ enfant }: { enfant: Enfant }) {
 
   return (
     <Stack>
-      <Select
-        label="Période"
-        data={options}
-        value={periodeId}
-        onChange={setChoix}
-        allowDeselect={false}
-        w={240}
-      />
+      <Group align="flex-end">
+        <Select
+          label="Période"
+          data={options}
+          value={periodeId}
+          onChange={setChoix}
+          allowDeselect={false}
+          w={240}
+        />
+        {bulletin.data && periodeId !== null && (
+          <BoutonTelechargement telecharger={() => telechargerBulletin(enfant.eleveId, Number(periodeId))}>
+            Télécharger en PDF
+          </BoutonTelechargement>
+        )}
+      </Group>
 
       {(periodes.isPending || (bulletin.isPending && periodeId !== null)) && <Loader />}
       {periodes.isError && (
@@ -106,6 +114,7 @@ export default function OngletBulletin({ enfant }: { enfant: Enfant }) {
                 <Table.Thead>
                   <Table.Tr>
                     <Table.Th>Matière</Table.Th>
+                    <Table.Th>Coef.</Table.Th>
                     <Table.Th>Moyenne</Table.Th>
                     <Table.Th>Moyenne de la classe</Table.Th>
                     <Table.Th>Écart</Table.Th>
@@ -115,6 +124,7 @@ export default function OngletBulletin({ enfant }: { enfant: Enfant }) {
                   {bulletin.data.matieres.map((m) => (
                     <Table.Tr key={m.matiereId}>
                       <Table.Td>{m.matiere}</Table.Td>
+                      <Table.Td>{m.coefficient}</Table.Td>
                       <Table.Td fw={600}>{formaterNote(m.moyenneEleve)}</Table.Td>
                       <Table.Td>{formaterNote(m.moyenneClasse)}</Table.Td>
                       <Table.Td

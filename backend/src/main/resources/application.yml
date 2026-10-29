@@ -22,17 +22,32 @@ spring:
     locations: classpath:db/migration
 
 app:
+  # Taille maximale d'une requête (en-tête Content-Length). Au-delà : 413.
+  taille-requete-max: ${TAILLE_REQUETE_MAX:1MB}
+  reussite:
+    # Durée de conservation du taux de réussite national/régional (0 = pas de cache).
+    cache-minutes: ${REUSSITE_CACHE_MINUTES:10}
   jwt:
     # 32 caractères minimum. Valeur de développement uniquement.
     secret: ${JWT_SECRET:dev-only-secret-change-me-dev-only-secret-change-me}
     expiration-minutes: 60
   cors:
     allowed-origins: ${CORS_ORIGINS:http://localhost:5173,http://localhost:3000}
+  mail:
+    # Expéditeur et adresse du site web (lien de réinitialisation du mot de passe).
+    # Le serveur SMTP se règle par variables d'environnement : SPRING_MAIL_HOST, SPRING_MAIL_PORT,
+    # SPRING_MAIL_USERNAME, SPRING_MAIL_PASSWORD. Sans SPRING_MAIL_HOST, aucun e-mail n'est envoyé.
+    de: ${MAIL_DE:no-reply@plateforme-scolaire.local}
+    url-front: ${FRONT_URL:http://localhost:5173}
+    journaliser: ${MAIL_JOURNALISER:false}
   paiement:
     # Vide = paiement en ligne désactivé. "simule" = faux prestataire (dev). Un vrai prestataire = son propre adaptateur.
     fournisseur: ${PAIEMENT_FOURNISSEUR:}
     # Secret partagé avec le prestataire pour signer les notifications. Obligatoire dès qu'un fournisseur est actif.
     secret-webhook: ${PAIEMENT_WEBHOOK_SECRET:}
+    # Un paiement en ligne resté EN_ATTENTE plus longtemps est clôturé (ECHEC) par une tâche horaire.
+    expiration-heures: ${PAIEMENT_EXPIRATION_HEURES:24}
+    expiration-cron: "0 5 * * * *"
 
 springdoc:
   swagger-ui:

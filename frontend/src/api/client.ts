@@ -103,6 +103,31 @@ async function requete<T>(
   throw new ApiError(reponse.status, erreur.detail ?? erreur.message ?? messageParDefaut(reponse.status))
 }
 
+/** Télécharge un fichier protégé (le jeton ne passe pas par un simple lien) et l'enregistre sous `nomFichier`. */
+export async function telecharger(chemin: string, nomFichier: string): Promise<void> {
+  const entetes: Record<string, string> = {}
+  if (jetonCourant !== null) entetes.Authorization = `Bearer ${jetonCourant}`
+  let reponse: Response
+  try {
+    reponse = await fetch(`${BASE}${chemin}`, { headers: entetes })
+  } catch {
+    throw new ApiError(0, 'Le serveur est injoignable. Vérifiez votre connexion.')
+  }
+  if (!reponse.ok) {
+    const erreur = enCorpsErreur(lireJson(await reponse.text()))
+    if (reponse.status === 401) rappels.nonAutorise?.()
+    throw new ApiError(reponse.status, erreur.detail ?? erreur.message ?? messageParDefaut(reponse.status))
+  }
+  const url = URL.createObjectURL(await reponse.blob())
+  const lien = document.createElement('a')
+  lien.href = url
+  lien.download = nomFichier
+  document.body.appendChild(lien)
+  lien.click()
+  lien.remove()
+  URL.revokeObjectURL(url)
+}
+
 export const api = {
   get: <T>(chemin: string) => requete<T>('GET', chemin),
   post: <T>(chemin: string, corps?: unknown, options?: Options) => requete<T>('POST', chemin, corps, options),

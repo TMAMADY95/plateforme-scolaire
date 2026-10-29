@@ -295,6 +295,8 @@ export interface LigneBulletin {
   matiere: string
   moyenneEleve: number | null
   moyenneClasse: number | null
+  /** Poids de la matière dans la moyenne générale (1 par défaut). */
+  coefficient: number
 }
 
 export interface Bulletin {
@@ -623,6 +625,8 @@ export interface Paiement {
   referenceExterne: string | null
   createdAt: string
   valideLe: string | null
+  annuleLe: string | null
+  motifAnnulation: string | null
 }
 
 export interface PaiementRequete {
@@ -636,4 +640,141 @@ export interface PaiementInitie {
   urlPaiement: string
   montant: number
   devise: string
+}
+
+/** Coefficient d'une matière dans une classe ; `defini` est faux quand c'est la valeur par défaut (1). */
+export interface CoefficientMatiere {
+  matiereId: number
+  code: string
+  libelle: string
+  coefficient: number
+  defini: boolean
+}
+
+// ===================== Statistiques des tableaux de bord =====================
+
+export interface Repartition {
+  libelle: string
+  valeur: number
+}
+
+export interface PointMois {
+  /** AAAA-MM */
+  mois: string
+  nombre: number
+}
+
+export interface Statistiques {
+  anneeScolaireId: number
+  etablissements: number
+  enseignants: number
+  classes: number
+  elevesInscrits: number
+  /** Pourcentage (présents et retards), null quand aucune présence n'a été saisie. */
+  tauxPresence: number | null
+  joursPresence: number
+  repartitionParType: Repartition[]
+  effectifsParNiveau: Repartition[]
+  effectifsParZone: Repartition[]
+  inscriptionsParMois: PointMois[]
+}
+
+export interface ReussiteClasse {
+  classeId: number
+  classe: string
+  niveau: string
+  evalues: number
+  admis: number
+  /** Pourcentage, null sans aucun élève noté. */
+  taux: number | null
+  moyenneClasse: number | null
+}
+
+export interface Reussite {
+  etablissementId: number
+  anneeScolaireId: number
+  periodeId: number
+  seuil: number
+  evalues: number
+  admis: number
+  taux: number | null
+  classes: ReussiteClasse[]
+}
+
+export interface GroupeReussite {
+  libelle: string
+  evalues: number
+  admis: number
+  /** Pourcentage, null sans aucun élève noté. */
+  taux: number | null
+}
+
+export interface ReussiteReseau {
+  anneeScolaireId: number
+  periodeId: number
+  seuil: number
+  evalues: number
+  admis: number
+  taux: number | null
+  parNiveau: GroupeReussite[]
+  parZone: GroupeReussite[]
+  /** Triés du meilleur taux au moins bon. */
+  etablissements: GroupeReussite[]
+}
+
+export interface Contact {
+  utilisateurId: number
+  nom: string
+  role: string
+}
+
+export interface MessageConversation {
+  id: number
+  auteurId: number
+  auteur: string
+  moi: boolean
+  contenu: string
+  envoyeLe: string
+}
+
+/** Dans les listes, `messages` est vide et `active` vaut false : seul le détail les renseigne. */
+export interface Conversation {
+  id: number
+  eleveId: number
+  eleve: string
+  sujet: string
+  interlocuteur: string
+  roleInterlocuteur: string
+  dernierMessageLe: string
+  apercu: string
+  nonLu: boolean
+  active: boolean
+  messages: MessageConversation[]
+}
+
+export interface NouvelleConversationRequete {
+  eleveId: number
+  destinataireId: number
+  sujet: string
+  contenu: string
+}
+
+export interface Devoir {
+  id: number
+  classeId: number
+  matiereId: number
+  matiere: string
+  enseignant: string
+  titre: string
+  consigne: string | null
+  dateLimite: string
+  creeLe: string
+}
+
+/** matiereId est requis à la création ; il est ignoré à la modification. */
+export interface DevoirRequete {
+  matiereId?: number
+  titre: string
+  consigne?: string
+  dateLimite: string
 }

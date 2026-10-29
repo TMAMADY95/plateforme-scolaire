@@ -37,6 +37,7 @@ public class MoyennesService {
     private final ClasseRepository classeRepository;
     private final PeriodeRepository periodeRepository;
     private final InscriptionRepository inscriptionRepository;
+    private final CoefficientMatiereService coefficientMatiereService;
 
     /** Moyennes de tous les élèves de la classe pour une période, avec le rang de chacun. */
     public ResultatsClasseDto resultatsClasse(Long classeId, Long periodeId) {
@@ -59,7 +60,7 @@ public class MoyennesService {
         Resultat resultat = CalculMoyennes.calculer(notes.stream()
                 .map(n -> new NoteCalcul(n.getInscription().getId(), n.getEvaluation().getMatiere().getId(),
                         n.getValeur(), n.getEvaluation().getBareme(), n.getEvaluation().getCoefficient()))
-                .toList());
+                .toList(), coefficientMatiereService.coefficientsDe(classeId));
 
         List<LigneResultatDto> eleves = inscrits.stream().map(i -> {
             Map<Long, BigDecimal> moyennes = new LinkedHashMap<>();
@@ -97,9 +98,11 @@ public class MoyennesService {
                 .findFirst()
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Élève introuvable dans la classe"));
 
+        Map<Long, BigDecimal> coefficients = coefficientMatiereService.coefficientsDe(inscription.getClasse().getId());
         List<LigneBulletinDto> matieres = resultats.matieres().stream()
                 .map(m -> new LigneBulletinDto(m.id(), m.libelle(), ligne.moyennesParMatiere().get(m.id()),
-                        resultats.moyennesClasseParMatiere().get(m.id())))
+                        resultats.moyennesClasseParMatiere().get(m.id()),
+                        coefficients.getOrDefault(m.id(), BigDecimal.ONE)))
                 .toList();
         int effectif = (int) resultats.eleves().stream().filter(l -> l.rang() != null).count();
 

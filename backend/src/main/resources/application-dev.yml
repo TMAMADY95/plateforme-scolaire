@@ -2,6 +2,9 @@ app:
   dev:
     # Mot de passe des comptes de démonstration créés au démarrage (profil dev uniquement)
     mot-de-passe: ${DEV_PASSWORD:Demo!2026}
+  mail:
+    # Sans SMTP, le message (avec son lien) est écrit dans les journaux du serveur.
+    journaliser: true
   paiement:
     fournisseur: simule
     secret-webhook: dev-secret-webhook-ne-pas-utiliser-en-production
