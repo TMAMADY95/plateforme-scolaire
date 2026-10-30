@@ -2,11 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../api/modeles_enseignant.dart';
+import '../api/modeles_resume.dart';
 import '../api/modeles_scolaires.dart';
 import '../api/service_enseignant.dart';
 import '../api/service_scolaire.dart';
 import '../auth/etat_authentification.dart';
 import '../theme.dart';
+import '../utils/format.dart';
 import '../widgets/chargeur_donnees.dart';
 import 'ecran_changement_mot_de_passe.dart';
 import 'ecran_classe.dart';
@@ -141,19 +143,29 @@ class _MesEnfants extends StatelessWidget {
   final bool estParent;
   final bool estEleve;
 
-  Future<List<Enfant>> _charger(ServiceScolaire service) async {
+  Future<({List<Enfant> enfants, Map<int, ResumeEnfant> resumes})> _charger(ServiceScolaire service) async {
     final resultat = <Enfant>[];
     if (estEleve) resultat.add(await service.monProfil());
     if (estParent) resultat.addAll(await service.mesEnfants());
-    return resultat;
+    // Le point du jour est un plus : s'il échoue, la liste des enfants s'affiche quand même.
+    final resumes = <int, ResumeEnfant>{};
+    if (estParent && resultat.isNotEmpty) {
+      try {
+        for (final r in await service.resumeParent()) {
+          resumes[r.eleveId] = r;
+        }
+      } catch (_) {}
+    }
+    return (enfants: resultat, resumes: resumes);
   }
 
   @override
   Widget build(BuildContext context) {
     final service = context.read<ServiceScolaire>();
-    return ChargeurDonnees<List<Enfant>>(
+    return ChargeurDonnees<({List<Enfant> enfants, Map<int, ResumeEnfant> resumes})>(
       charger: () => _charger(service),
-      construire: (contexte, enfants) {
+      construire: (contexte, donnees) {
+        final enfants = donnees.enfants;
         if (enfants.isEmpty) {
           return const _Carte(
             titre: 'Aucun enfant rattaché',
@@ -167,7 +179,9 @@ class _MesEnfants extends StatelessWidget {
             const SizedBox(height: 8),
             for (final enfant in enfants)
               Card(
-                child: ListTile(
+                child: Column(
+                  children: [
+                ListTile(
                   leading: _Initiales(texte: enfant.nomComplet),
                   title: Text(enfant.nomComplet),
                   subtitle: Text([
@@ -180,10 +194,77 @@ class _MesEnfants extends StatelessWidget {
                     MaterialPageRoute<void>(builder: (_) => EcranEnfant(enfant: enfant)),
                   ),
                 ),
+                if (donnees.resumes[enfant.eleveId] != null) _PointDuJour(resume: donnees.resumes[enfant.eleveId]!),
+                  ],
+                ),
               ),
           ],
         );
       },
+    );
+  }
+}
+
+/// Moyenne, présences de la semaine, prochain devoir et frais d'un enfant.
+class _PointDuJour extends StatelessWidget {
+  const _PointDuJour({required this.resume});
+
+  final ResumeEnfant resume;
+
+  @override
+  Widget build(BuildContext context) {
+    final r = resume;
+    final theme = Theme.of(context);
+    final devoir = r.prochainDevoir;
+    Widget ligne(String libelle, String valeur, {bool alerte = false}) => Padding(
+          padding: const EdgeInsets.symmetric(vertical: 2),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(libelle, style: theme.textTheme.bodySmall),
+              const SizedBox(width: 12),
+              Flexible(
+                child: Text(
+                  valeur,
+                  textAlign: TextAlign.end,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: alerte ? theme.colorScheme.error : null,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
+      child: Column(
+        children: [
+          const Divider(height: 8),
+          if (r.classeId != null) ...[
+            ligne(
+              r.periode ?? 'Moyenne',
+              r.moyenneGenerale == null
+                  ? 'Pas encore de note'
+                  : '${formaterNote(r.moyenneGenerale)}/20${r.rang != null ? ' · ${formaterRang(r.rang!)}/${r.effectif}' : ''}',
+            ),
+            ligne(
+              '7 derniers jours',
+              resumePresences(r.absencesSemaine, r.absencesNonJustifiees, r.retardsSemaine),
+              alerte: r.absencesNonJustifiees > 0,
+            ),
+            ligne('Prochain devoir', devoir == null ? 'Aucun' : '${devoir.matiere} · ${formaterDate(devoir.dateLimite)}'),
+          ],
+          ligne(
+            'Frais',
+            r.facturesImpayees == 0
+                ? 'À jour'
+                : '${r.resteAPayer == null ? '${r.facturesImpayees} facture${r.facturesImpayees > 1 ? 's' : ''}' : formaterMontant(r.resteAPayer!, r.devise ?? '')} à payer${r.facturesEnRetard > 0 ? ' (en retard)' : ''}',
+            alerte: r.facturesEnRetard > 0,
+          ),
+        ],
+      ),
     );
   }
 }

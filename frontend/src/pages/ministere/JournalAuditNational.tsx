@@ -1,9 +1,10 @@
 import { useState } from 'react'
-import { Alert, Button, Code, Group, Loader, Pagination, Popover, Stack, Table, Text, TextInput } from '@mantine/core'
+import { Alert, Button, Group, Loader, Pagination, Popover, Stack, Table, Text, TextInput } from '@mantine/core'
 import { useDebouncedValue } from '@mantine/hooks'
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { rechercherAudit } from '../../api/endpoints'
 import { formaterAdresse } from '../../utils/adresses'
+import { lignesDetails } from '../../utils/detailsAudit'
 
 const TAILLE = 25
 
@@ -127,16 +128,33 @@ export default function JournalAuditNational() {
                     </Table.Td>
                     <Table.Td>{formaterAdresse(j.adresseIp)}</Table.Td>
                     <Table.Td>
-                      <Popover width={420} position="left" withArrow shadow="md">
-                        <Popover.Target>
-                          <Button size="compact-xs" variant="subtle">
-                            Données brutes
-                          </Button>
-                        </Popover.Target>
-                        <Popover.Dropdown>
-                          <Code block>{JSON.stringify(j.details ?? {}, null, 2)}</Code>
-                        </Popover.Dropdown>
-                      </Popover>
+                      {(() => {
+                        const lignes = lignesDetails(j.action, j.details)
+                        if (lignes.length === 0) return null
+                        return (
+                          <Popover width={320} position="left" withArrow shadow="md">
+                            <Popover.Target>
+                              <Button size="compact-xs" variant="subtle">
+                                Détails
+                              </Button>
+                            </Popover.Target>
+                            <Popover.Dropdown>
+                              <Stack gap={6}>
+                                {lignes.map((l) => (
+                                  <Group key={l.libelle} justify="space-between" wrap="nowrap" align="flex-start">
+                                    <Text size="sm" c="dimmed">
+                                      {l.libelle}
+                                    </Text>
+                                    <Text size="sm" fw={500} ta="right" style={{ wordBreak: 'break-word' }}>
+                                      {l.valeur}
+                                    </Text>
+                                  </Group>
+                                ))}
+                              </Stack>
+                            </Popover.Dropdown>
+                          </Popover>
+                        )
+                      })()}
                     </Table.Td>
                   </Table.Tr>
                 ))}

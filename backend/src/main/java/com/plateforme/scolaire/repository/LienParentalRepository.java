@@ -27,6 +27,12 @@ public interface LienParentalRepository extends JpaRepository<LienParental, Long
     List<com.plateforme.scolaire.domain.Utilisateur> rechercherParents(
             @Param("etablissementId") Long etablissementId, @Param("q") String q);
 
+    /** Adresses des parents (comptes actifs) dont un enfant est inscrit, inscription acceptée, dans cette classe. */
+    @Query("select distinct u.email from LienParental l join l.utilisateur u where u.actif = true "
+            + "and u.email is not null and l.eleve.id in "
+            + "(select i.eleve.id from Inscription i where i.classe.id = :classeId and i.statut = 'ACCEPTEE')")
+    List<String> emailsParentsDeLaClasse(@Param("classeId") Long classeId);
+
     /** Les identifiants des enfants rattachés à un utilisateur (parent). */
     @Query("select l.eleve.id from LienParental l where l.utilisateur.id = :utilisateurId")
     List<Long> findEleveIdsByUtilisateurId(@Param("utilisateurId") Long utilisateurId);

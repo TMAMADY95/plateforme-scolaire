@@ -4,6 +4,7 @@ import { Link, Navigate } from 'react-router'
 import { bilanFinancier, obtenirEtablissement, statistiquesEtablissement } from '../api/endpoints'
 import { estDirectionRegionale, estEleve, estEnseignant, estMinistere, estParent, etablissementCourant, LIBELLES_ROLES } from '../auth/roles'
 import { useUtilisateur } from '../auth/useAuth'
+import { BadgeSecteur, BadgesCycles } from '../components/BadgesEtablissement'
 import CarteChiffre from '../components/CarteChiffre'
 import CarteReussite from '../components/CarteReussite'
 import { Barres, Courbe, libelleMois } from '../components/graphiques/Graphiques'
@@ -193,11 +194,10 @@ export default function PageAccueil() {
           <Text c="dimmed" size="sm">
             Code officiel : {etablissement.data.codeOfficiel}
           </Text>
-          {etablissement.data.typeEtablissement && (
-            <Text c="dimmed" size="sm">
-              Type : {etablissement.data.typeEtablissement}
-            </Text>
-          )}
+          <Group gap="xs" mt="xs">
+            <BadgeSecteur secteur={etablissement.data.secteur} />
+            <BadgesCycles cycles={etablissement.data.cycles} />
+          </Group>
         </Card>
       )}
     </Stack>

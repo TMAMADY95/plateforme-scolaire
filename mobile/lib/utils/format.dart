@@ -14,6 +14,16 @@ String formaterEcart(double? ecart) {
   return ecart > 0 ? '+$texte' : texte;
 }
 
+/// Libellé court du point du jour sur les présences : « Aucune absence », « 2 absences (1 à justifier) · 1 retard ».
+String resumePresences(int absences, int nonJustifiees, int retards) {
+  if (absences == 0 && retards == 0) return 'Aucune absence';
+  final parties = <String>[
+    if (absences > 0) '$absences absence${absences > 1 ? 's' : ''}${nonJustifiees > 0 ? ' ($nonJustifiees à justifier)' : ''}',
+    if (retards > 0) '$retards retard${retards > 1 ? 's' : ''}',
+  ];
+  return parties.join(' · ');
+}
+
 /// 1 -> "1er", 2 -> "2e".
 String formaterRang(int rang) => rang == 1 ? '1er' : '${rang}e';
 

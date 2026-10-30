@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import '../api/modeles_scolaires.dart';
 import '../api/service_scolaire.dart';
+import 'onglet_annonces.dart';
 import 'onglet_bulletin.dart';
 import 'onglet_devoirs.dart';
 import 'onglet_emploi_du_temps.dart';
@@ -19,7 +20,7 @@ class EcranEnfant extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
-      length: 5,
+      length: 6,
       child: Scaffold(
         appBar: AppBar(
           title: Text(enfant.nomComplet),
@@ -29,7 +30,9 @@ class EcranEnfant extends StatelessWidget {
             tabs: [
               Tab(text: 'Bulletin'),
               Tab(text: 'Devoirs'),
-              Tab(text: 'Présences'),               Tab(text: 'Emploi du temps'),
+              Tab(text: 'Annonces'),
+              Tab(text: 'Présences'),
+              Tab(text: 'Emploi du temps'),
               Tab(text: 'Factures'),
             ],
           ),
@@ -38,7 +41,12 @@ class EcranEnfant extends StatelessWidget {
             ? TabBarView(
                 children: [
                   OngletBulletin(enfant: enfant),
-                  OngletDevoirs(charger: () => context.read<ServiceScolaire>().devoirs(enfant.classeId!)),
+                  OngletDevoirs(
+                    charger: () => context.read<ServiceScolaire>().devoirsEleve(enfant.eleveId),
+                    surBascule: (devoir, fait) =>
+                        context.read<ServiceScolaire>().marquerDevoirFait(devoir.id, enfant.eleveId, fait),
+                  ),
+                  OngletAnnonces(charger: () => context.read<ServiceScolaire>().annonces(enfant.classeId!)),
                   OngletPresences(enfant: enfant),
                   OngletEmploiDuTemps(enfant: enfant),
                   OngletFactures(enfant: enfant),

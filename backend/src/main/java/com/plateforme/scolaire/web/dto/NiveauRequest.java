@@ -7,5 +7,6 @@ import jakarta.validation.constraints.Size;
 
 public record NiveauRequest(@NotBlank @Size(max = 30) String code,
                             @NotBlank @Size(max = 100) String libelle,
-                            @NotNull @Min(1) Integer ordre) {
+                            @NotNull @Min(1) Integer ordre,
+                            Long cycleId) {
 }

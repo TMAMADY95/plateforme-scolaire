@@ -5,6 +5,7 @@ import com.plateforme.scolaire.domain.Matiere;
 import com.plateforme.scolaire.domain.Niveau;
 import com.plateforme.scolaire.domain.Periode;
 import com.plateforme.scolaire.repository.AnneeScolaireRepository;
+import com.plateforme.scolaire.repository.CycleScolaireRepository;
 import com.plateforme.scolaire.repository.MatiereRepository;
 import com.plateforme.scolaire.repository.NiveauRepository;
 import com.plateforme.scolaire.repository.PeriodeRepository;
@@ -34,6 +35,7 @@ public class ReferentielService {
     private final PeriodeRepository periodeRepository;
     private final NiveauRepository niveauRepository;
     private final MatiereRepository matiereRepository;
+    private final CycleScolaireRepository cycleRepository;
 
     // ---------- Années scolaires ----------
 
@@ -97,6 +99,25 @@ public class ReferentielService {
         return PeriodeDto.de(periodeRepository.save(p));
     }
 
+    public PeriodeDto modifierPeriode(Long id, PeriodeRequest r) {
+        Periode p = periodeRepository.findById(id).orElseThrow(() -> introuvable("Période introuvable"));
+        AnneeScolaire annee = p.getAnneeScolaire();
+        verifierDates(r.dateDebut(), r.dateFin());
+        if (r.dateDebut().isBefore(annee.getDateDebut()) || r.dateFin().isAfter(annee.getDateFin())) {
+            throw invalide("La période doit être comprise dans l'année scolaire");
+        }
+        boolean ordrePris = periodeRepository.findByAnneeScolaireIdOrderByOrdre(annee.getId()).stream()
+                .anyMatch(autre -> !autre.getId().equals(id) && autre.getOrdre() == r.ordre());
+        if (ordrePris) {
+            throw conflit("Une période de cette année a déjà ce numéro d'ordre");
+        }
+        p.setLibelle(r.libelle());
+        p.setOrdre(r.ordre());
+        p.setDateDebut(r.dateDebut());
+        p.setDateFin(r.dateFin());
+        return PeriodeDto.de(p);
+    }
+
     // ---------- Niveaux ----------
 
     @Transactional(readOnly = true)
@@ -124,6 +145,8 @@ public class ReferentielService {
         n.setCode(r.code());
         n.setLibelle(r.libelle());
         n.setOrdre(r.ordre());
+        n.setCycle(r.cycleId() == null ? null : cycleRepository.findById(r.cycleId())
+                .orElseThrow(() -> invalide("Cycle inconnu")));
         return n;
     }
 

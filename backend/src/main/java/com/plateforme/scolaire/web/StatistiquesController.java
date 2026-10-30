@@ -6,6 +6,9 @@ import com.plateforme.scolaire.service.StatistiquesService;
 import com.plateforme.scolaire.web.dto.ReussiteDto;
 import com.plateforme.scolaire.web.dto.ReussiteReseauDto;
 import com.plateforme.scolaire.web.dto.StatistiquesDto;
+import com.plateforme.scolaire.web.dto.LigneEtablissementStatDto;
+import com.plateforme.scolaire.web.dto.LigneZoneStatDto;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -24,8 +27,30 @@ public class StatistiquesController {
 
     @GetMapping("/api/ministere/statistiques")
     @PreAuthorize("hasRole('MINISTERE')")
-    public StatistiquesDto nationales(@RequestParam Long anneeScolaireId) {
-        return statistiquesService.nationales(anneeScolaireId);
+    public StatistiquesDto nationales(@RequestParam Long anneeScolaireId, @RequestParam(required = false) Long zoneId) {
+        return zoneId == null ? statistiquesService.nationales(anneeScolaireId)
+                : statistiquesService.zone(zoneId, anneeScolaireId);
+    }
+
+    /** Une ligne par établissement, pour tout le pays ou pour une zone (région…) et ses sous-zones. */
+    @GetMapping("/api/ministere/statistiques/etablissements")
+    @PreAuthorize("hasRole('MINISTERE')")
+    public List<LigneEtablissementStatDto> etablissementsNationaux(@RequestParam Long anneeScolaireId,
+                                                                   @RequestParam(required = false) Long zoneId) {
+        return statistiquesService.lignesNationales(anneeScolaireId, zoneId);
+    }
+
+    /** Une ligne par zone, sous-zones comprises. */
+    @GetMapping("/api/ministere/statistiques/zones")
+    @PreAuthorize("hasRole('MINISTERE')")
+    public List<LigneZoneStatDto> zones(@RequestParam Long anneeScolaireId) {
+        return statistiquesService.lignesParZone(anneeScolaireId);
+    }
+
+    @GetMapping("/api/region/statistiques/etablissements")
+    @PreAuthorize("hasRole('DIRECTION_REGIONALE')")
+    public List<LigneEtablissementStatDto> etablissementsRegionaux(@RequestParam Long anneeScolaireId) {
+        return statistiquesService.lignesRegionales(anneeScolaireId);
     }
 
     @GetMapping("/api/region/statistiques")
@@ -34,8 +59,10 @@ public class StatistiquesController {
         return statistiquesService.regionales(anneeScolaireId);
     }
 
+    /** La direction de l'établissement, et le ministère ou la direction régionale pour les établissements de leur périmètre. */
     @GetMapping("/api/etablissements/{etablissementId}/statistiques")
-    @PreAuthorize("@perimetre.peutGererEtablissement(#etablissementId)")
+    @PreAuthorize("@perimetre.peutGererEtablissement(#etablissementId) or "
+            + "(hasAnyRole('MINISTERE', 'DIRECTION_REGIONALE') and @perimetre.peutAccederEtablissement(#etablissementId))")
     public StatistiquesDto etablissement(@PathVariable Long etablissementId, @RequestParam Long anneeScolaireId) {
         return statistiquesService.etablissement(etablissementId, anneeScolaireId);
     }

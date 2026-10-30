@@ -29,6 +29,7 @@ public class DevReferentielsInitializer implements CommandLineRunner {
     private final PeriodeRepository periodeRepository;
     private final NiveauRepository niveauRepository;
     private final MatiereRepository matiereRepository;
+    private final com.plateforme.scolaire.repository.CycleScolaireRepository cycleRepository;
 
     @Override
     @Transactional
@@ -72,6 +73,7 @@ public class DevReferentielsInitializer implements CommandLineRunner {
         n.setCode(code);
         n.setLibelle(libelle);
         n.setOrdre(ordre);
+        cycleRepository.findByCode("PRIMAIRE").ifPresent(n::setCycle);
         niveauRepository.save(n);
     }
 

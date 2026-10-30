@@ -10,6 +10,7 @@ class AffectationEnseignant {
     required this.anneeScolaireId,
     required this.anneeLibelle,
     required this.matiere,
+    this.matiereId,
   });
 
   final int classeId;
@@ -18,6 +19,7 @@ class AffectationEnseignant {
   final int anneeScolaireId;
   final String anneeLibelle;
   final String matiere;
+  final int? matiereId;
 
   factory AffectationEnseignant.depuisJson(Map<String, dynamic> json) => AffectationEnseignant(
         classeId: (json['classeId'] as num).toInt(),
@@ -26,7 +28,16 @@ class AffectationEnseignant {
         anneeScolaireId: (json['anneeScolaireId'] as num).toInt(),
         anneeLibelle: json['anneeLibelle'] as String? ?? '',
         matiere: json['matiereLibelle'] as String? ?? '',
+        matiereId: (json['matiereId'] as num?)?.toInt(),
       );
+}
+
+/// Une matière assurée par l'enseignant dans une classe.
+class MatiereEnseignee {
+  const MatiereEnseignee(this.id, this.libelle);
+
+  final int id;
+  final String libelle;
 }
 
 /// Une classe, avec les matières que l'enseignant y assure.
@@ -46,6 +57,9 @@ class ClasseEnseignee {
   final String anneeLibelle;
   final List<String> matieres = [];
 
+  /// Les mêmes matières avec leur identifiant (nécessaire pour publier un devoir).
+  final List<MatiereEnseignee> matieresAvecId = [];
+
   /// Regroupe les affectations par classe ; les années les plus récentes d'abord, puis l'ordre alphabétique.
   static List<ClasseEnseignee> grouper(List<AffectationEnseignant> affectations) {
     final parClasse = <int, ClasseEnseignee>{};
@@ -61,6 +75,9 @@ class ClasseEnseignee {
         ),
       );
       if (a.matiere.isNotEmpty && !classe.matieres.contains(a.matiere)) classe.matieres.add(a.matiere);
+      if (a.matiere.isNotEmpty && a.matiereId != null && !classe.matieresAvecId.any((m) => m.id == a.matiereId)) {
+        classe.matieresAvecId.add(MatiereEnseignee(a.matiereId!, a.matiere));
+      }
     }
     final classes = parClasse.values.toList()
       ..sort((a, b) {

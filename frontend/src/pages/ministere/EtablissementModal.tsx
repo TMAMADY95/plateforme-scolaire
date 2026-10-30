@@ -1,28 +1,45 @@
 import { useState } from 'react'
-import { Alert, Button, Group, Modal, NumberInput, Select, Stack, TextInput } from '@mantine/core'
+import {
+  Alert,
+  Button,
+  Chip,
+  Divider,
+  Group,
+  Input,
+  Modal,
+  NumberInput,
+  SegmentedControl,
+  Select,
+  Stack,
+  Text,
+  TextInput,
+} from '@mantine/core'
 import { useForm } from '@mantine/form'
 import { notifications } from '@mantine/notifications'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { creerEtablissement, modifierEtablissement } from '../../api/endpoints'
-import type { Etablissement, Zone } from '../../api/types'
+import type { Cycle, Etablissement, Secteur, Zone } from '../../api/types'
 
 interface Props {
   /** Absent = création. */
   etablissement?: Etablissement
   zones: Zone[]
+  /** Les cycles du référentiel (primaire, collège, lycée…). */
+  cycles: Cycle[]
   onFermer: () => void
 }
 
 interface Valeurs {
   codeOfficiel: string
   nom: string
+  secteur: Secteur
+  cycleIds: string[]
   zoneId: string | null
-  typeEtablissement: string
   adresse: string
   capacite: number | string
 }
 
-export default function EtablissementModal({ etablissement, zones, onFermer }: Props) {
+export default function EtablissementModal({ etablissement, zones, cycles, onFermer }: Props) {
   const queryClient = useQueryClient()
   const [erreur, setErreur] = useState<string | null>(null)
 
@@ -30,14 +47,16 @@ export default function EtablissementModal({ etablissement, zones, onFermer }: P
     initialValues: {
       codeOfficiel: etablissement?.codeOfficiel ?? '',
       nom: etablissement?.nom ?? '',
+      secteur: etablissement?.secteur ?? 'PUBLIC',
+      cycleIds: etablissement?.cycles.map((c) => String(c.id)) ?? [],
       zoneId: etablissement?.zoneId != null ? String(etablissement.zoneId) : null,
-      typeEtablissement: etablissement?.typeEtablissement ?? '',
       adresse: etablissement?.adresse ?? '',
       capacite: etablissement?.capacite ?? '',
     },
     validate: {
       codeOfficiel: (v) => (v.trim() === '' ? 'Code requis' : null),
       nom: (v) => (v.trim() === '' ? 'Nom requis' : null),
+      cycleIds: (v) => (v.length === 0 ? 'Choisissez au moins un cycle' : null),
       capacite: (v) => (v === '' || Number(v) > 0 ? null : 'Nombre positif attendu'),
     },
   })
@@ -48,7 +67,8 @@ export default function EtablissementModal({ etablissement, zones, onFermer }: P
         codeOfficiel: v.codeOfficiel.trim(),
         nom: v.nom.trim(),
         zoneId: v.zoneId === null ? null : Number(v.zoneId),
-        typeEtablissement: v.typeEtablissement.trim() || undefined,
+        secteur: v.secteur,
+        cycleIds: v.cycleIds.map(Number),
         adresse: v.adresse.trim() || undefined,
         capacite: v.capacite === '' ? undefined : Number(v.capacite),
       }
@@ -76,6 +96,7 @@ export default function EtablissementModal({ etablissement, zones, onFermer }: P
         })}
       >
         <Stack>
+          <Divider label="Identification" labelPosition="left" />
           <Group grow align="flex-start">
             <TextInput
               label="Code officiel"
@@ -85,16 +106,49 @@ export default function EtablissementModal({ etablissement, zones, onFermer }: P
             />
             <TextInput label="Nom" {...formulaire.getInputProps('nom')} />
           </Group>
-          <Group grow align="flex-start">
-            <TextInput label="Type (facultatif)" placeholder="Primaire, collège, lycée…" {...formulaire.getInputProps('typeEtablissement')} />
-            <Select
-              label="Zone (facultatif)"
-              data={zones.map((z) => ({ value: String(z.id), label: `${z.nom} (${z.typeZone})` }))}
-              clearable
-              searchable
-              {...formulaire.getInputProps('zoneId')}
+
+          <Divider label="Nature de l'établissement" labelPosition="left" />
+          <Input.Wrapper label="Secteur">
+            <SegmentedControl
+              fullWidth
+              mt={4}
+              data={[
+                { value: 'PUBLIC', label: 'Public' },
+                { value: 'PRIVE', label: 'Privé' },
+              ]}
+              value={formulaire.values.secteur}
+              onChange={(v) => formulaire.setFieldValue('secteur', v as Secteur)}
             />
-          </Group>
+          </Input.Wrapper>
+          <Input.Wrapper
+            label="Cycles proposés"
+            description="Un seul, ou plusieurs si l'établissement regroupe plusieurs cycles."
+            error={formulaire.errors.cycleIds}
+          >
+            <Chip.Group multiple value={formulaire.values.cycleIds} onChange={(v) => formulaire.setFieldValue('cycleIds', v)}>
+              <Group mt="xs" gap="xs">
+                {cycles.map((c) => (
+                  <Chip key={c.id} value={String(c.id)} variant="outline">
+                    {c.libelle}
+                  </Chip>
+                ))}
+              </Group>
+            </Chip.Group>
+            {cycles.length === 0 && (
+              <Text size="sm" c="dimmed" mt="xs">
+                Aucun cycle défini : ajoutez-en dans l'onglet « Référentiels ».
+              </Text>
+            )}
+          </Input.Wrapper>
+
+          <Divider label="Localisation" labelPosition="left" />
+          <Select
+            label="Zone (facultatif)"
+            data={zones.map((z) => ({ value: String(z.id), label: `${z.nom} (${z.typeZone})` }))}
+            clearable
+            searchable
+            {...formulaire.getInputProps('zoneId')}
+          />
           <TextInput label="Adresse (facultatif)" {...formulaire.getInputProps('adresse')} />
           <NumberInput label="Capacité d'accueil (facultatif)" min={1} allowDecimal={false} {...formulaire.getInputProps('capacite')} />
           {erreur !== null && (

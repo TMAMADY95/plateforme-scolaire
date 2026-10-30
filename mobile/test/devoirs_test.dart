@@ -68,4 +68,46 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Aucun devoir à venir.'), findsOneWidget);
   });
+
+  testWidgets('cocher un devoir prévient le serveur et barre le titre', (tester) async {
+    final appels = <String>[];
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: OngletDevoirs(
+            maintenant: DateTime(2026, 10, 29),
+            charger: () async => const [
+              Devoir(id: 4, matiere: 'Maths', enseignant: 'Awa Diallo', titre: 'Exercices', dateLimite: '2026-11-03', fait: false),
+            ],
+            surBascule: (d, fait) async => appels.add('${d.id}:$fait'),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byType(Checkbox));
+    await tester.pumpAndSettle();
+
+    expect(appels, ['4:true']);
+    expect(find.text('Fait'), findsOneWidget);
+  });
+
+  testWidgets('la progression est visible pour l\'enseignant', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: OngletDevoirs(
+            charger: () async => const [
+              Devoir(id: 4, matiere: 'Maths', enseignant: 'Awa', titre: 'Exercices', dateLimite: '2026-11-03', faits: 12, effectif: 28),
+            ],
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('12/28 élèves ont terminé'), findsOneWidget);
+    expect(find.byType(Checkbox), findsNothing);
+  });
 }

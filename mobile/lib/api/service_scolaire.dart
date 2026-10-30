@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 
 import 'api_client.dart';
+import 'modeles_resume.dart';
 import 'modeles_scolaires.dart';
 
 /// Les appels de lecture réservés aux parents et aux élèves.
@@ -26,6 +27,22 @@ class ServiceScolaire {
 
   Future<List<CreneauEleve>> emploiDuTemps(int classeId) async =>
       CreneauEleve.listeDepuisJson(await _api.get('/api/classes/$classeId/emploi-du-temps'));
+
+  /// Annonces de la classe, les plus récentes d'abord.
+  Future<List<Annonce>> annonces(int classeId) async =>
+      Annonce.listeDepuisJson(await _api.get('/api/classes/$classeId/annonces'));
+
+  /// Devoirs de la classe de l'élève, chacun avec son état « fait ».
+  Future<List<Devoir>> devoirsEleve(int eleveId) async =>
+      Devoir.listeDepuisJson(await _api.get('/api/eleves/$eleveId/devoirs'));
+
+  /// Coche ou décoche un devoir pour l'élève (lui-même ou son enfant).
+  Future<void> marquerDevoirFait(int devoirId, int eleveId, bool fait) async {
+    await _api.put('/api/devoirs/$devoirId/fait', corps: {'eleveId': eleveId, 'fait': fait});
+  }
+
+  /// Le point du jour sur chaque enfant du parent connecté.
+  Future<List<ResumeEnfant>> resumeParent() async => ResumeEnfant.listeDepuisJson(await _api.get('/api/me/resume'));
 
   /// Devoirs de la classe, par date limite croissante.
   Future<List<Devoir>> devoirs(int classeId) async =>

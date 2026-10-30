@@ -4,6 +4,11 @@ import type {
   AffectationRequete,
   AnneeScolaire,
   AnneeScolaireRequete,
+  Cycle,
+  CycleRequete,
+  LigneEtablissementStat,
+  LigneZoneStat,
+  PeriodeRequete,
   Compte,
   ComptePersonnel,
   CoefficientMatiere,
@@ -29,7 +34,9 @@ import type {
   DecisionRequete,
   Contact,
   Conversation,
+  Annonce,
   Devoir,
+  ResumeEnfant,
   DevoirRequete,
   Enfant,
   NouvelleConversationRequete,
@@ -257,6 +264,12 @@ export const facturesDeMonEnfant = (eleveId: number) =>
 
 // ---------- Administration nationale (Lot 6, ministère) ----------
 
+export const listerCycles = () => api.get<Cycle[]>('/api/cycles')
+
+export const creerCycle = (requete: CycleRequete) => api.post<Cycle>('/api/cycles', requete)
+
+export const modifierCycle = (id: number, requete: CycleRequete) => api.put<Cycle>(`/api/cycles/${id}`, requete)
+
 export const listerEtablissements = () => api.get<Etablissement[]>('/api/etablissements')
 
 export const creerEtablissement = (requete: EtablissementRequete) =>
@@ -287,6 +300,12 @@ export const creerDirectionRegionale = (zoneId: number, requete: DirectionRequet
 
 export const syntheseRegionale = (anneeScolaireId: number) =>
   api.get<SyntheseNationale>(`/api/region/synthese?anneeScolaireId=${anneeScolaireId}`)
+
+export const creerPeriode = (anneeScolaireId: number, requete: PeriodeRequete) =>
+  api.post<Periode>(`/api/annees-scolaires/${anneeScolaireId}/periodes`, requete)
+
+export const modifierPeriode = (id: number, requete: PeriodeRequete) =>
+  api.put<Periode>(`/api/periodes/${id}`, requete)
 
 export const modifierAnnee = (id: number, requete: AnneeScolaireRequete) =>
   api.put<AnneeScolaire>(`/api/annees-scolaires/${id}`, requete)
@@ -352,8 +371,21 @@ export const enregistrerCoefficients = (classeId: number, lignes: { matiereId: n
 
 // ---------- Statistiques des tableaux de bord ----------
 
-export const statistiquesNationales = (anneeScolaireId: number) =>
-  api.get<Statistiques>(`/api/ministere/statistiques?anneeScolaireId=${anneeScolaireId}`)
+export const statistiquesNationales = (anneeScolaireId: number, zoneId?: number) =>
+  api.get<Statistiques>(
+    `/api/ministere/statistiques?anneeScolaireId=${anneeScolaireId}${zoneId === undefined ? '' : `&zoneId=${zoneId}`}`,
+  )
+
+export const statistiquesParEtablissement = (anneeScolaireId: number, zoneId?: number) =>
+  api.get<LigneEtablissementStat[]>(
+    `/api/ministere/statistiques/etablissements?anneeScolaireId=${anneeScolaireId}${zoneId === undefined ? '' : `&zoneId=${zoneId}`}`,
+  )
+
+export const statistiquesParZone = (anneeScolaireId: number) =>
+  api.get<LigneZoneStat[]>(`/api/ministere/statistiques/zones?anneeScolaireId=${anneeScolaireId}`)
+
+export const statistiquesRegionalesParEtablissement = (anneeScolaireId: number) =>
+  api.get<LigneEtablissementStat[]>(`/api/region/statistiques/etablissements?anneeScolaireId=${anneeScolaireId}`)
 
 export const statistiquesRegionales = (anneeScolaireId: number) =>
   api.get<Statistiques>(`/api/region/statistiques?anneeScolaireId=${anneeScolaireId}`)
@@ -380,6 +412,11 @@ export const creerDevoir = (classeId: number, requete: DevoirRequete) =>
 export const modifierDevoir = (devoirId: number, requete: DevoirRequete) =>
   api.put<Devoir>(`/api/devoirs/${devoirId}`, requete)
 
+export const devoirsEleve = (eleveId: number) => api.get<Devoir[]>(`/api/eleves/${eleveId}/devoirs`)
+
+export const marquerDevoirFait = (devoirId: number, eleveId: number, fait: boolean) =>
+  api.put<Devoir>(`/api/devoirs/${devoirId}/fait`, { eleveId, fait })
+
 export const supprimerDevoir = (devoirId: number) => api.delete<void>(`/api/devoirs/${devoirId}`)
 
 export const contactsMessagerie = (eleveId: number) =>
@@ -396,3 +433,12 @@ export const repondreConversation = (id: number, contenu: string) =>
   api.post<Conversation>(`/api/messagerie/conversations/${id}/messages`, { contenu })
 
 export const messagesNonLus = () => api.get<{ nonLus: number }>('/api/messagerie/non-lus')
+
+export const resumeParent = () => api.get<ResumeEnfant[]>('/api/me/resume')
+
+export const listerAnnonces = (classeId: number) => api.get<Annonce[]>(`/api/classes/${classeId}/annonces`)
+
+export const publierAnnonce = (classeId: number, requete: { titre: string; contenu: string }) =>
+  api.post<Annonce>(`/api/classes/${classeId}/annonces`, requete)
+
+export const supprimerAnnonce = (annonceId: number) => api.delete<void>(`/api/annonces/${annonceId}`)

@@ -35,11 +35,28 @@ export interface LoginResponse {
   changementMotDePasseRequis: boolean
 }
 
+export interface Cycle {
+  id: number
+  code: string
+  libelle: string
+  ordre: number
+}
+
+export interface CycleRequete {
+  code: string
+  libelle: string
+  ordre: number
+}
+
+export type Secteur = 'PUBLIC' | 'PRIVE'
+
 export interface Etablissement {
   id: number
   codeOfficiel: string
   nom: string
-  typeEtablissement: string | null
+  secteur: Secteur
+  /** Un ou plusieurs cycles, dans l'ordre (primaire, collège, lycée…). */
+  cycles: Cycle[]
   statut: string
   zoneId: number | null
   adresse: string | null
@@ -58,6 +75,9 @@ export interface Niveau {
   code: string
   libelle: string
   ordre: number
+  /** Cycle du niveau ; null tant qu'il n'est pas renseigné. */
+  cycleId: number | null
+  cycle: string | null
 }
 
 export interface Classe {
@@ -522,7 +542,8 @@ export interface EtablissementRequete {
   codeOfficiel: string
   nom: string
   zoneId: number | null
-  typeEtablissement?: string
+  secteur: Secteur
+  cycleIds: number[]
   adresse?: string
   capacite?: number
 }
@@ -598,10 +619,18 @@ export interface AnneeScolaireRequete {
   dateFin: string
 }
 
+export interface PeriodeRequete {
+  libelle: string
+  ordre: number
+  dateDebut: string
+  dateFin: string
+}
+
 export interface NiveauRequete {
   code: string
   libelle: string
   ordre: number
+  cycleId: number | null
 }
 
 export interface MatiereRequete {
@@ -668,13 +697,18 @@ export interface Statistiques {
   anneeScolaireId: number
   etablissements: number
   enseignants: number
+  /** Direction et personnel administratif. */
+  personnelDirection: number
   classes: number
   elevesInscrits: number
   /** Pourcentage (présents et retards), null quand aucune présence n'a été saisie. */
   tauxPresence: number | null
   joursPresence: number
   repartitionParType: Repartition[]
+  repartitionParSecteur: Repartition[]
+  effectifsParCycle: Repartition[]
   effectifsParNiveau: Repartition[]
+  effectifsParSexe: Repartition[]
   effectifsParZone: Repartition[]
   inscriptionsParMois: PointMois[]
 }
@@ -759,6 +793,40 @@ export interface NouvelleConversationRequete {
   contenu: string
 }
 
+export interface ResumeEnfant {
+  eleveId: number
+  prenom: string
+  nom: string
+  relation: string
+  classeId: number | null
+  classeNom: string | null
+  periode: string | null
+  moyenneGenerale: number | null
+  moyenneClasse: number | null
+  rang: number | null
+  effectif: number
+  absencesSemaine: number
+  absencesNonJustifiees: number
+  retardsSemaine: number
+  prochainsDevoirs: { id: number; matiere: string; titre: string; dateLimite: string }[]
+  facturesImpayees: number
+  facturesEnRetard: number
+  /** null quand les factures sont dans des devises différentes (pas de total) */
+  resteAPayer: number | null
+  devise: string | null
+}
+
+export interface Annonce {
+  id: number
+  classeId: number
+  auteur: string
+  titre: string
+  contenu: string
+  publieLe: string
+  /** L'utilisateur courant peut la supprimer (auteur ou direction). */
+  modifiable: boolean
+}
+
 export interface Devoir {
   id: number
   classeId: number
@@ -769,6 +837,11 @@ export interface Devoir {
   consigne: string | null
   dateLimite: string
   creeLe: string
+  /** Renseigné dans la liste d'un élève. */
+  fait: boolean | null
+  /** Renseignés dans la liste destinée à l'équipe : élèves ayant terminé / élèves de la classe. */
+  faits: number | null
+  effectif: number | null
 }
 
 /** matiereId est requis à la création ; il est ignoré à la modification. */
@@ -777,4 +850,33 @@ export interface DevoirRequete {
   titre: string
   consigne?: string
   dateLimite: string
+}
+
+/** Les effectifs d'un établissement pour une année (tableau « par établissement »). */
+export interface LigneEtablissementStat {
+  id: number
+  codeOfficiel: string
+  nom: string
+  secteur: Secteur
+  cycles: Cycle[]
+  statut: string
+  zoneId: number | null
+  zone: string | null
+  eleves: number
+  enseignants: number
+  personnelDirection: number
+  classes: number
+}
+
+/** Les effectifs d'une zone (région, département…), sous-zones comprises. */
+export interface LigneZoneStat {
+  zoneId: number
+  nom: string
+  typeZone: string
+  parentId: number | null
+  etablissements: number
+  eleves: number
+  enseignants: number
+  personnelDirection: number
+  classes: number
 }

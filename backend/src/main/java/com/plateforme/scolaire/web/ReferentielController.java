@@ -67,6 +67,12 @@ public class ReferentielController {
         return referentielService.creerPeriode(id, requete);
     }
 
+    @PutMapping("/periodes/{id}")
+    @PreAuthorize(GESTION_REFERENTIEL)
+    public PeriodeDto modifierPeriode(@PathVariable Long id, @Valid @RequestBody PeriodeRequest requete) {
+        return referentielService.modifierPeriode(id, requete);
+    }
+
     // ---------- Niveaux ----------
 
     @GetMapping("/niveaux")

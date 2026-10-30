@@ -2,9 +2,11 @@ package com.plateforme.scolaire.web;
 
 import com.plateforme.scolaire.security.UtilisateurPrincipal;
 import com.plateforme.scolaire.service.ParentService;
+import com.plateforme.scolaire.service.ResumeParentService;
 import com.plateforme.scolaire.web.dto.EnfantDto;
 import com.plateforme.scolaire.web.dto.LienParentalDto;
 import com.plateforme.scolaire.web.dto.ParentRequest;
+import com.plateforme.scolaire.web.dto.ResumeEnfantDto;
 import jakarta.validation.Valid;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -23,6 +25,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class ParentController {
 
     private final ParentService parentService;
+    private final ResumeParentService resumeParentService;
 
     @PostMapping("/api/eleves/{id}/parents")
     @ResponseStatus(HttpStatus.CREATED)
@@ -36,6 +39,13 @@ public class ParentController {
     @PreAuthorize("hasRole('PARENT')")
     public List<EnfantDto> mesEnfants(@AuthenticationPrincipal UtilisateurPrincipal principal) {
         return parentService.mesEnfants(principal.getId());
+    }
+
+    /** Le point du jour sur chaque enfant du parent connecté. */
+    @GetMapping("/api/me/resume")
+    @PreAuthorize("hasRole('PARENT')")
+    public List<ResumeEnfantDto> resume(@AuthenticationPrincipal UtilisateurPrincipal principal) {
+        return resumeParentService.resume(principal.getId());
     }
 
     /** Les parents d'un élève, pour la direction qui le gère. */

@@ -171,6 +171,7 @@ class ParcoursScolaireIntegrationTest {
     private long eleve2Id;
     private long enseignantId;
     private long evaluationId;
+    private long devoirId;
 
     // ---------- Parcours ----------
 
@@ -377,6 +378,125 @@ class ParcoursScolaireIntegrationTest {
 
     @Test
     @Order(12)
+    void lesDevoirsSontPublies_consultesEtMarquesFaits() throws Exception {
+        String limite = aujourdhui.plusDays(3).toString();
+        String devoir = """
+                {"matiereId":%d,"titre":"Exercices 1 à 5","consigne":"Page 42","dateLimite":"%s"}""";
+
+        post("/api/classes/" + classeId + "/devoirs", jetonParent, devoir.formatted(matiereId, limite)).attendre(403);
+        post("/api/classes/" + classeId + "/devoirs", jetonEnseignant,
+                devoir.formatted(matiereId, aujourdhui.minusDays(1))).attendre(400); // date passée
+        devoirId = post("/api/classes/" + classeId + "/devoirs", jetonEnseignant, devoir.formatted(matiereId, limite))
+                .attendre(201).id("$.id");
+
+        // Le parent voit le devoir de son enfant, pas encore fait.
+        Reponse avant = get("/api/eleves/" + eleveId + "/devoirs", jetonParent).attendre(200);
+        assertThat(avant.lire("$.length()")).isEqualTo(1);
+        assertThat(avant.texte("$[0].titre")).isEqualTo("Exercices 1 à 5");
+        assertThat(avant.lire("$[0].fait")).isEqualTo(false);
+        get("/api/eleves/" + eleve2Id + "/devoirs", jetonParent).attendre(403); // pas son enfant
+
+        // Il le marque fait ; l'enseignant voit la progression.
+        put("/api/devoirs/" + devoirId + "/fait", jetonParent, """
+                {"eleveId":%d,"fait":true}""".formatted(eleve2Id)).attendre(403);
+        put("/api/devoirs/" + devoirId + "/fait", jetonParent, """
+                {"eleveId":%d,"fait":true}""".formatted(eleveId)).attendre(200);
+        assertThat(get("/api/eleves/" + eleveId + "/devoirs", jetonParent).attendre(200)
+                .lire("$[0].fait")).isEqualTo(true);
+        Reponse equipe = get("/api/classes/" + classeId + "/devoirs", jetonEnseignant).attendre(200);
+        assertThat(equipe.nombre("$[0].faits")).isEqualTo(1.0);
+        assertThat(equipe.nombre("$[0].effectif")).isEqualTo(1.0);
+
+        // Seul l'enseignant de la matière modifie ou supprime.
+        String suppression = "/api/devoirs/" + devoirId;
+        appeler("DELETE", suppression, jetonParent, null).attendre(403);
+        long second = post("/api/classes/" + classeId + "/devoirs", jetonEnseignant,
+                devoir.formatted(matiereId, limite)).attendre(201).id("$.id");
+        appeler("DELETE", "/api/devoirs/" + second, jetonEnseignant, null).attendre(204);
+        // Un devoir supprimé n'existe plus : le contrôle d'accès répond 403, sans révéler s'il a existé.
+        appeler("DELETE", "/api/devoirs/" + second, jetonEnseignant, null).attendre(403);
+    }
+
+    @Test
+    @Order(13)
+    void lesAnnoncesVontAuxParentsDeLaClasse() throws Exception {
+        String annonce = """
+                {"titre":"Sortie scolaire","contenu":"Vendredi à 8h devant l'école."}""";
+        post("/api/classes/" + classeId + "/annonces", jetonParent, annonce).attendre(403);
+        post("/api/classes/" + classeId + "/annonces", jetonEnseignant, """
+                {"titre":"   ","contenu":"x"}""").attendre(400);
+        long annonceId = post("/api/classes/" + classeId + "/annonces", jetonEnseignant, annonce)
+                .attendre(201).id("$.id");
+
+        Reponse vue = get("/api/classes/" + classeId + "/annonces", jetonParent).attendre(200);
+        assertThat(vue.lire("$.length()")).isEqualTo(1);
+        assertThat(vue.texte("$[0].titre")).isEqualTo("Sortie scolaire");
+        assertThat(vue.lire("$[0].modifiable")).isEqualTo(false);
+        assertThat(get("/api/classes/" + classeId + "/annonces", jetonEnseignant).attendre(200)
+                .lire("$[0].modifiable")).isEqualTo(true);
+
+        appeler("DELETE", "/api/annonces/" + annonceId, jetonParent, null).attendre(403);
+        appeler("DELETE", "/api/annonces/" + annonceId, jetonEnseignant, null).attendre(204);
+        assertThat(get("/api/classes/" + classeId + "/annonces", jetonParent).attendre(200)
+                .lire("$.length()")).isEqualTo(0);
+    }
+
+    @Test
+    @Order(14)
+    void laMessagerieRelieLeParentAuPersonnelDeSonEnfant() throws Exception {
+        long enseignantUtilisateur = jdbc.queryForObject(
+                "select id from utilisateur where email = ?", Long.class, EMAIL_ENSEIGNANT);
+
+        Reponse contacts = get("/api/messagerie/contacts?eleveId=" + eleveId, jetonParent).attendre(200);
+        assertThat(((List<?>) contacts.lire("$[*].utilisateurId")).stream().map(o -> ((Number) o).longValue()))
+                .contains(enseignantUtilisateur);
+        get("/api/messagerie/contacts?eleveId=" + eleve2Id, jetonParent).attendre(403); // pas son enfant
+
+        long conversationId = post("/api/messagerie/conversations", jetonParent, """
+                {"eleveId":%d,"destinataireId":%d,"sujet":"Absence de Jean","contenu":"Il était malade."}"""
+                .formatted(eleveId, enseignantUtilisateur)).attendre(201).id("$.id");
+
+        // L'enseignant a un message non lu, l'ouvre (il est alors lu) et répond.
+        assertThat(get("/api/messagerie/non-lus", jetonEnseignant).attendre(200).nombre("$.nonLus")).isEqualTo(1.0);
+        Reponse ouverte = get("/api/messagerie/conversations/" + conversationId, jetonEnseignant).attendre(200);
+        assertThat(ouverte.lire("$.messages.length()")).isEqualTo(1);
+        assertThat(get("/api/messagerie/non-lus", jetonEnseignant).attendre(200).nombre("$.nonLus")).isEqualTo(0.0);
+        post("/api/messagerie/conversations/" + conversationId + "/messages", jetonEnseignant, """
+                {"contenu":"Merci de m'avoir prévenue."}""").attendre(201);
+
+        assertThat(get("/api/messagerie/non-lus", jetonParent).attendre(200).nombre("$.nonLus")).isEqualTo(1.0);
+        Reponse vueParent = get("/api/messagerie/conversations/" + conversationId, jetonParent).attendre(200);
+        assertThat(vueParent.lire("$.messages.length()")).isEqualTo(2);
+        assertThat(vueParent.lire("$.messages[1].moi")).isEqualTo(false);
+
+        // Une personne étrangère à la conversation ne la voit pas, même de la direction.
+        get("/api/messagerie/conversations/" + conversationId, jetonDirection).attendre(404);
+        post("/api/messagerie/conversations/" + conversationId + "/messages", jetonDirection, """
+                {"contenu":"Je m'invite."}""").attendre(404);
+        // Écrire à quelqu'un qui n'est pas dans le personnel de l'enfant est refusé.
+        long ministere = jdbc.queryForObject(
+                "select id from utilisateur where email = ?", Long.class, "ministere@example.org");
+        assertThat(post("/api/messagerie/conversations", jetonParent, """
+                {"eleveId":%d,"destinataireId":%d,"sujet":"Test","contenu":"Test"}"""
+                .formatted(eleveId, ministere)).statut()).isBetween(400, 403);
+    }
+
+    @Test
+    @Order(15)
+    void leResumeDuParentRassembleLEssentiel() throws Exception {
+        Reponse resume = get("/api/me/resume", jetonParent).attendre(200);
+        assertThat(resume.lire("$.length()")).isEqualTo(1);
+        assertThat(resume.id("$[0].eleveId")).isEqualTo(eleveId);
+        assertThat(resume.texte("$[0].classeNom")).isEqualTo("A");
+        assertThat(resume.nombre("$[0].moyenneGenerale")).isEqualTo(16.0);
+        assertThat(resume.nombre("$[0].rang")).isEqualTo(1.0);
+        assertThat(resume.nombre("$[0].absencesSemaine")).isEqualTo(1.0);
+        assertThat(resume.nombre("$[0].absencesNonJustifiees")).isEqualTo(0.0); // l'absence était justifiée
+        get("/api/me/resume", jetonDirection).attendre(403); // réservé aux parents
+    }
+
+    @Test
+    @Order(16)
     void leMinistereConsulteSansModifier() throws Exception {
         get("/api/eleves/" + eleveId, jetonMinistere).attendre(200);
         put("/api/eleves/" + eleveId, jetonMinistere, """
@@ -384,7 +504,7 @@ class ParcoursScolaireIntegrationTest {
     }
 
     @Test
-    @Order(13)
+    @Order(17)
     void cinqEchecsVerrouillentLeCompte() throws Exception {
         for (int i = 0; i < 5; i++) {
             connecter(EMAIL_PARENT, "mauvais-mot-de-passe").attendre(401);

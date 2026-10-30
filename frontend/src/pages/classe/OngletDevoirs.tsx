@@ -58,6 +58,7 @@ export default function OngletDevoirs({ classeId, mesMatieres }: Props) {
                 <Table.Th>Matière</Table.Th>
                 <Table.Th>Devoir</Table.Th>
                 <Table.Th>Publié par</Table.Th>
+                <Table.Th>Terminé</Table.Th>
                 <Table.Th />
               </Table.Tr>
             </Table.Thead>
@@ -80,6 +81,7 @@ export default function OngletDevoirs({ classeId, mesMatieres }: Props) {
                       )}
                     </Table.Td>
                     <Table.Td>{d.enseignant}</Table.Td>
+                    <Table.Td>{d.faits !== null && d.effectif !== null ? `${d.faits} / ${d.effectif}` : '—'}</Table.Td>
                     <Table.Td>
                       {mien && (
                         <Group gap="xs" wrap="nowrap">

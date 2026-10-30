@@ -5,6 +5,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import java.time.Instant;
+import java.util.LinkedHashSet;
+import java.util.Set;
 
 @Entity
 @Table(name = "etablissement")
@@ -27,8 +29,16 @@ public class Etablissement {
     @JoinColumn(name = "zone_id")
     private ZoneGeographique zone;
 
-    @Column(name = "type_etablissement", length = 50)
-    private String typeEtablissement;
+    /** PUBLIC ou PRIVE */
+    @Column(nullable = false, length = 10)
+    private String secteur = "PUBLIC";
+
+    /** Cycles proposés : un seul ou plusieurs (primaire, collège, lycée…). */
+    @ManyToMany(fetch = FetchType.EAGER)
+    @JoinTable(name = "etablissement_cycle",
+            joinColumns = @JoinColumn(name = "etablissement_id"),
+            inverseJoinColumns = @JoinColumn(name = "cycle_id"))
+    private Set<CycleScolaire> cycles = new LinkedHashSet<>();
 
     @Column(length = 300)
     private String adresse;

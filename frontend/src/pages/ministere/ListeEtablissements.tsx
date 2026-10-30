@@ -1,16 +1,54 @@
 import { useState } from 'react'
-import { ActionIcon, Alert, Badge, Button, Group, Loader, Menu, Stack, Table, Text } from '@mantine/core'
+import {
+  ActionIcon,
+  Alert,
+  Badge,
+  Button,
+  Card,
+  Group,
+  Loader,
+  Menu,
+  Select,
+  SegmentedControl,
+  SimpleGrid,
+  Stack,
+  Table,
+  Text,
+  TextInput,
+} from '@mantine/core'
 import { useDisclosure } from '@mantine/hooks'
 import { notifications } from '@mantine/notifications'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { changerStatutEtablissement, creerDirection, listerEtablissements, listerZones } from '../../api/endpoints'
+import {
+  changerStatutEtablissement,
+  creerDirection,
+  listerCycles,
+  listerEtablissements,
+  listerZones,
+} from '../../api/endpoints'
 import type { Etablissement, StatutEtablissement } from '../../api/types'
+import { BadgeSecteur, BadgesCycles } from '../../components/BadgesEtablissement'
 import ConfirmationModal from '../../components/ConfirmationModal'
+import EnteteSection from '../../components/EnteteSection'
 import ComptesDirectionModal from './ComptesDirectionModal'
 import DirectionModal from './DirectionModal'
 import EtablissementModal from './EtablissementModal'
 
 const COULEURS: Record<string, string> = { ACTIF: 'green', SUSPENDU: 'orange', FERME: 'gray' }
+const LIBELLES_STATUT: Record<string, string> = { ACTIF: 'Actif', SUSPENDU: 'Suspendu', FERME: 'Fermé' }
+
+function Compteur({ libelle, valeur, couleur }: { libelle: string; valeur: number; couleur: string }) {
+  return (
+    <Card withBorder padding="sm">
+      <Text size="xs" c="dimmed" tt="uppercase" fw={600}>
+        {libelle}
+      </Text>
+      <Text fz={28} fw={700} lh={1.2} c={couleur}>
+        {valeur}
+      </Text>
+    </Card>
+  )
+}
 
 export default function ListeEtablissements() {
   const queryClient = useQueryClient()
@@ -21,9 +59,14 @@ export default function ListeEtablissements() {
   const [changement, setChangement] = useState<{ etablissement: Etablissement; statut: StatutEtablissement } | null>(
     null,
   )
+  const [recherche, setRecherche] = useState('')
+  const [secteur, setSecteur] = useState('TOUS')
+  const [cycle, setCycle] = useState<string | null>(null)
+  const [statutFiltre, setStatutFiltre] = useState<string | null>(null)
 
   const etablissements = useQuery({ queryKey: ['etablissements'], queryFn: listerEtablissements })
   const zones = useQuery({ queryKey: ['zones'], queryFn: listerZones })
+  const cycles = useQuery({ queryKey: ['cycles'], queryFn: listerCycles })
   const nomsZones = new Map((zones.data ?? []).map((z) => [z.id, z.nom]))
 
   const statut = useMutation({
@@ -40,11 +83,23 @@ export default function ListeEtablissements() {
     },
   })
 
+  const tous = etablissements.data ?? []
+  const requete = recherche.trim().toLowerCase()
+  const visibles = tous.filter(
+    (e) =>
+      (requete === '' || e.nom.toLowerCase().includes(requete) || e.codeOfficiel.toLowerCase().includes(requete)) &&
+      (secteur === 'TOUS' || e.secteur === secteur) &&
+      (cycle === null || e.cycles.some((c) => String(c.id) === cycle)) &&
+      (statutFiltre === null || e.statut === statutFiltre),
+  )
+
   return (
-    <Stack mt="md">
-      <Group justify="flex-end">
-        <Button onClick={ouvrirCreation}>Nouvel établissement</Button>
-      </Group>
+    <Stack mt="md" gap="lg">
+      <EnteteSection
+        titre="Établissements"
+        description="Écoles, collèges et lycées du réseau, publics ou privés."
+        action={<Button onClick={ouvrirCreation}>Nouvel établissement</Button>}
+      />
 
       {etablissements.isPending && <Loader />}
       {etablissements.isError && (
@@ -52,74 +107,158 @@ export default function ListeEtablissements() {
           {etablissements.error.message}
         </Alert>
       )}
+
+      {etablissements.data && (
+        <SimpleGrid cols={{ base: 2, sm: 4 }}>
+          <Compteur libelle="Établissements" valeur={tous.length} couleur="marine" />
+          <Compteur libelle="Publics" valeur={tous.filter((e) => e.secteur === 'PUBLIC').length} couleur="blue" />
+          <Compteur libelle="Privés" valeur={tous.filter((e) => e.secteur === 'PRIVE').length} couleur="grape" />
+          <Compteur libelle="Actifs" valeur={tous.filter((e) => e.statut === 'ACTIF').length} couleur="green" />
+        </SimpleGrid>
+      )}
+
       {etablissements.data && etablissements.data.length === 0 && (
         <Text c="dimmed">Aucun établissement. Créez le premier avec « Nouvel établissement ».</Text>
       )}
+
       {etablissements.data && etablissements.data.length > 0 && (
-        <Table.ScrollContainer minWidth={640}>
-          <Table striped highlightOnHover withTableBorder>
-            <Table.Thead>
-              <Table.Tr>
-                <Table.Th>Code</Table.Th>
-                <Table.Th>Nom</Table.Th>
-                <Table.Th>Type</Table.Th>
-                <Table.Th>Zone</Table.Th>
-                <Table.Th>Statut</Table.Th>
-                <Table.Th />
-              </Table.Tr>
-            </Table.Thead>
-            <Table.Tbody>
-              {etablissements.data.map((e) => (
-                <Table.Tr key={e.id}>
-                  <Table.Td>{e.codeOfficiel}</Table.Td>
-                  <Table.Td>{e.nom}</Table.Td>
-                  <Table.Td>{e.typeEtablissement ?? '—'}</Table.Td>
-                  <Table.Td>{e.zoneId === null ? '—' : (nomsZones.get(e.zoneId) ?? '—')}</Table.Td>
-                  <Table.Td>
-                    <Badge color={COULEURS[e.statut] ?? 'gray'}>{e.statut}</Badge>
-                  </Table.Td>
-                  <Table.Td>
-                    <Menu position="bottom-end" withinPortal>
-                      <Menu.Target>
-                        <ActionIcon variant="subtle" aria-label={`Actions pour ${e.nom}`}>
-                          …
-                        </ActionIcon>
-                      </Menu.Target>
-                      <Menu.Dropdown>
-                        <Menu.Item onClick={() => setAModifier(e)}>Modifier</Menu.Item>
-                        <Menu.Item disabled={e.statut !== 'ACTIF'} onClick={() => setPourDirection(e)}>
-                          Créer le compte de direction
-                        </Menu.Item>
-                        <Menu.Item onClick={() => setPourComptes(e)}>Comptes de direction</Menu.Item>
-                        <Menu.Divider />
-                        {e.statut !== 'ACTIF' && (
-                          <Menu.Item onClick={() => setChangement({ etablissement: e, statut: 'ACTIF' })}>
-                            Réactiver
-                          </Menu.Item>
-                        )}
-                        {e.statut === 'ACTIF' && (
-                          <Menu.Item color="orange" onClick={() => setChangement({ etablissement: e, statut: 'SUSPENDU' })}>
-                            Suspendre
-                          </Menu.Item>
-                        )}
-                        {e.statut !== 'FERME' && (
-                          <Menu.Item color="red" onClick={() => setChangement({ etablissement: e, statut: 'FERME' })}>
-                            Fermer
-                          </Menu.Item>
-                        )}
-                      </Menu.Dropdown>
-                    </Menu>
-                  </Table.Td>
-                </Table.Tr>
-              ))}
-            </Table.Tbody>
-          </Table>
-        </Table.ScrollContainer>
+        <Card withBorder padding="md">
+          <Stack gap="md">
+            <Group align="flex-end" gap="md">
+              <TextInput
+                label="Rechercher"
+                placeholder="Nom ou code officiel"
+                value={recherche}
+                onChange={(e) => setRecherche(e.currentTarget.value)}
+                style={{ flex: 1, minWidth: 200 }}
+              />
+              <div>
+                <Text size="sm" fw={500} mb={4}>
+                  Secteur
+                </Text>
+                <SegmentedControl
+                  value={secteur}
+                  onChange={setSecteur}
+                  data={[
+                    { value: 'TOUS', label: 'Tous' },
+                    { value: 'PUBLIC', label: 'Public' },
+                    { value: 'PRIVE', label: 'Privé' },
+                  ]}
+                />
+              </div>
+              <Select
+                label="Cycle"
+                placeholder="Tous"
+                data={(cycles.data ?? []).map((c) => ({ value: String(c.id), label: c.libelle }))}
+                value={cycle}
+                onChange={setCycle}
+                clearable
+                w={160}
+              />
+              <Select
+                label="Statut"
+                placeholder="Tous"
+                data={Object.entries(LIBELLES_STATUT).map(([value, label]) => ({ value, label }))}
+                value={statutFiltre}
+                onChange={setStatutFiltre}
+                clearable
+                w={150}
+              />
+            </Group>
+
+            <Text size="sm" c="dimmed">
+              {visibles.length} établissement{visibles.length > 1 ? 's' : ''} sur {tous.length}
+            </Text>
+
+            {visibles.length === 0 ? (
+              <Text c="dimmed" ta="center" py="lg">
+                Aucun établissement ne correspond à ces critères.
+              </Text>
+            ) : (
+              <Table.ScrollContainer minWidth={820}>
+                <Table highlightOnHover verticalSpacing="sm">
+                  <Table.Thead>
+                    <Table.Tr>
+                      <Table.Th>Établissement</Table.Th>
+                      <Table.Th>Secteur</Table.Th>
+                      <Table.Th>Cycles</Table.Th>
+                      <Table.Th>Zone</Table.Th>
+                      <Table.Th>Statut</Table.Th>
+                      <Table.Th />
+                    </Table.Tr>
+                  </Table.Thead>
+                  <Table.Tbody>
+                    {visibles.map((e) => (
+                      <Table.Tr key={e.id}>
+                        <Table.Td>
+                          <Text fw={600}>{e.nom}</Text>
+                          <Text size="xs" c="dimmed">
+                            {e.codeOfficiel}
+                          </Text>
+                        </Table.Td>
+                        <Table.Td>
+                          <BadgeSecteur secteur={e.secteur} />
+                        </Table.Td>
+                        <Table.Td>
+                          <BadgesCycles cycles={e.cycles} />
+                        </Table.Td>
+                        <Table.Td>{e.zoneId === null ? '—' : (nomsZones.get(e.zoneId) ?? '—')}</Table.Td>
+                        <Table.Td>
+                          <Badge color={COULEURS[e.statut] ?? 'gray'}>{LIBELLES_STATUT[e.statut] ?? e.statut}</Badge>
+                        </Table.Td>
+                        <Table.Td>
+                          <Menu position="bottom-end" withinPortal>
+                            <Menu.Target>
+                              <ActionIcon variant="subtle" color="gray" aria-label={`Actions pour ${e.nom}`}>
+                                ⋯
+                              </ActionIcon>
+                            </Menu.Target>
+                            <Menu.Dropdown>
+                              <Menu.Item onClick={() => setAModifier(e)}>Modifier</Menu.Item>
+                              <Menu.Item disabled={e.statut !== 'ACTIF'} onClick={() => setPourDirection(e)}>
+                                Créer le compte de direction
+                              </Menu.Item>
+                              <Menu.Item onClick={() => setPourComptes(e)}>Comptes de direction</Menu.Item>
+                              <Menu.Divider />
+                              {e.statut !== 'ACTIF' && (
+                                <Menu.Item onClick={() => setChangement({ etablissement: e, statut: 'ACTIF' })}>
+                                  Réactiver
+                                </Menu.Item>
+                              )}
+                              {e.statut === 'ACTIF' && (
+                                <Menu.Item
+                                  color="orange"
+                                  onClick={() => setChangement({ etablissement: e, statut: 'SUSPENDU' })}
+                                >
+                                  Suspendre
+                                </Menu.Item>
+                              )}
+                              {e.statut !== 'FERME' && (
+                                <Menu.Item color="red" onClick={() => setChangement({ etablissement: e, statut: 'FERME' })}>
+                                  Fermer
+                                </Menu.Item>
+                              )}
+                            </Menu.Dropdown>
+                          </Menu>
+                        </Table.Td>
+                      </Table.Tr>
+                    ))}
+                  </Table.Tbody>
+                </Table>
+              </Table.ScrollContainer>
+            )}
+          </Stack>
+        </Card>
       )}
 
-      {creation && <EtablissementModal zones={zones.data ?? []} onFermer={fermerCreation} />}
+      {creation && <EtablissementModal zones={zones.data ?? []} cycles={cycles.data ?? []} onFermer={fermerCreation} />}
       {aModifier && (
-        <EtablissementModal etablissement={aModifier} zones={zones.data ?? []} onFermer={() => setAModifier(null)} />
+        <EtablissementModal
+          etablissement={aModifier}
+          zones={zones.data ?? []}
+          cycles={cycles.data ?? []}
+          onFermer={() => setAModifier(null)}
+        />
       )}
       {pourDirection && (
         <DirectionModal
@@ -132,7 +271,7 @@ export default function ListeEtablissements() {
       {changement && (
         <ConfirmationModal
           titre="Changer le statut"
-          message={`« ${changement.etablissement.nom} » passera au statut ${changement.statut}.`}
+          message={`« ${changement.etablissement.nom} » passera au statut ${LIBELLES_STATUT[changement.statut] ?? changement.statut}.`}
           libelleConfirmer="Confirmer"
           couleur={changement.statut === 'ACTIF' ? 'green' : 'red'}
           enCours={statut.isPending}

@@ -17,6 +17,13 @@ spring:
       hibernate:
         jdbc:
           time_zone: UTC
+  task:
+    execution:
+      # Tâches de fond (e-mails des annonces) : peu de fils, file d'attente bornée.
+      pool:
+        core-size: 2
+        max-size: 4
+        queue-capacity: 200
   flyway:
     enabled: true
     locations: classpath:db/migration
@@ -24,6 +31,9 @@ spring:
 app:
   # Taille maximale d'une requête (en-tête Content-Length). Au-delà : 413.
   taille-requete-max: ${TAILLE_REQUETE_MAX:1MB}
+  annonces:
+    # Prévenir les parents de la classe par e-mail à chaque annonce (seul le titre est envoyé, jamais le texte).
+    email: ${ANNONCES_EMAIL:true}
   reussite:
     # Durée de conservation du taux de réussite national/régional (0 = pas de cache).
     cache-minutes: ${REUSSITE_CACHE_MINUTES:10}

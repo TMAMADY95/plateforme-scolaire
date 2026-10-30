@@ -8,6 +8,7 @@ import com.plateforme.scolaire.domain.Utilisateur;
 import com.plateforme.scolaire.domain.ZoneGeographique;
 import com.plateforme.scolaire.repository.AffectationRoleRepository;
 import com.plateforme.scolaire.repository.ClasseRepository;
+import com.plateforme.scolaire.repository.CycleScolaireRepository;
 import com.plateforme.scolaire.repository.EtablissementRepository;
 import com.plateforme.scolaire.repository.InscriptionRepository;
 import com.plateforme.scolaire.repository.UtilisateurRepository;
@@ -46,6 +47,7 @@ public class AdministrationService {
     private final InscriptionRepository inscriptionRepository;
     private final PasswordEncoder passwordEncoder;
     private final AuditService auditService;
+    private final CycleScolaireRepository cycleRepository;
 
     // ---------- Zones ----------
 
@@ -230,7 +232,13 @@ public class AdministrationService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Zone inconnue"));
         e.setNom(r.nom().trim());
         e.setZone(zone);
-        e.setTypeEtablissement(r.typeEtablissement());
+        e.setSecteur(r.secteur());
+        var ids = new java.util.LinkedHashSet<>(r.cycleIds());
+        var cycles = cycleRepository.findAllById(ids);
+        if (cycles.size() != ids.size()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Cycle inconnu");
+        }
+        e.setCycles(new java.util.LinkedHashSet<>(cycles));
         e.setAdresse(r.adresse());
         e.setCapacite(r.capacite());
     }

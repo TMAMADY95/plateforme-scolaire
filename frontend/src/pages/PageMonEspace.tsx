@@ -1,6 +1,7 @@
 import { Alert, Loader, Stack, Tabs } from '@mantine/core'
 import EnteteEleve from '../components/EnteteEleve'
 import { useMonProfilEleve } from '../hooks/useMonProfilEleve'
+import PanneauAnnonces from '../components/PanneauAnnonces'
 import OngletBulletin from './enfant/OngletBulletin'
 import OngletDevoirs from './enfant/OngletDevoirs'
 import OngletEmploiDuTemps from './enfant/OngletEmploiDuTemps'
@@ -57,6 +58,7 @@ export default function PageMonEspace() {
         <Tabs.List>
           <Tabs.Tab value="bulletin">Bulletin</Tabs.Tab>
           <Tabs.Tab value="devoirs">Devoirs</Tabs.Tab>
+          <Tabs.Tab value="annonces">Annonces</Tabs.Tab>
           <Tabs.Tab value="presences">Présences</Tabs.Tab>
           <Tabs.Tab value="emploi-du-temps">Emploi du temps</Tabs.Tab>
           <Tabs.Tab value="frais">Frais</Tabs.Tab>
@@ -67,7 +69,11 @@ export default function PageMonEspace() {
         </Tabs.Panel>
 
         <Tabs.Panel value="devoirs" pt="md">
-          <OngletDevoirs classeId={p.classeId} />
+          <OngletDevoirs classeId={p.classeId} eleveId={p.eleveId} />
+        </Tabs.Panel>
+
+        <Tabs.Panel value="annonces" pt="md">
+          <PanneauAnnonces classeId={p.classeId} peutPublier={false} />
         </Tabs.Panel>
 
         <Tabs.Panel value="presences" pt="md">

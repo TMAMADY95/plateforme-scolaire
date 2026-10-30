@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Alert, Button, Group, Modal, Stack, TextInput } from '@mantine/core'
+import { Alert, Button, Group, Modal, Select, Stack, TextInput } from '@mantine/core'
 import { useForm } from '@mantine/form'
 import { notifications } from '@mantine/notifications'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
@@ -7,7 +7,9 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 export interface ChampReferentiel {
   nom: string
   label: string
-  type?: 'text' | 'date' | 'number'
+  type?: 'text' | 'date' | 'number' | 'select'
+  /** Choix proposés (type « select ») ; la valeur vide signifie « aucun ». */
+  options?: { value: string; label: string }[]
   /** Le champ peut rester vide. */
   facultatif?: boolean
 }
@@ -60,9 +62,21 @@ export default function ModifierReferentielModal({
         })}
       >
         <Stack>
-          {champs.map((c) => (
-            <TextInput key={c.nom} label={c.label} type={c.type ?? 'text'} {...formulaire.getInputProps(c.nom)} />
-          ))}
+          {champs.map((c) =>
+            c.type === 'select' ? (
+              <Select
+                key={c.nom}
+                label={c.label}
+                data={c.options ?? []}
+                value={formulaire.values[c.nom] === '' ? null : formulaire.values[c.nom]}
+                onChange={(v) => formulaire.setFieldValue(c.nom, v ?? '')}
+                clearable
+                placeholder="Non défini"
+              />
+            ) : (
+              <TextInput key={c.nom} label={c.label} type={c.type ?? 'text'} {...formulaire.getInputProps(c.nom)} />
+            ),
+          )}
           {erreur !== null && (
             <Alert color="red" variant="light">
               {erreur}

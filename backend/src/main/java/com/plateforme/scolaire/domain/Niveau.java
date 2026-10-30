@@ -25,4 +25,9 @@ public class Niveau {
 
     @Column(nullable = false)
     private int ordre;
+
+    /** Cycle auquel appartient le niveau ; null tant qu'il n'est pas renseigné. */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "cycle_id")
+    private CycleScolaire cycle;
 }

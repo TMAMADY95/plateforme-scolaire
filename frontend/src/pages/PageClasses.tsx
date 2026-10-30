@@ -8,6 +8,7 @@ import { creerClasse, listerAnnees, listerClasses, listerNiveaux } from '../api/
 import { etablissementCourant } from '../auth/roles'
 import { useUtilisateur } from '../auth/useAuth'
 import type { Classe } from '../api/types'
+import AnnoncesModal from './classes/AnnoncesModal'
 import CoefficientsModal from './classes/CoefficientsModal'
 import ModifierClasseModal from './classes/ModifierClasseModal'
 
@@ -26,6 +27,7 @@ export default function PageClasses() {
   const [anneeChoisie, setAnneeChoisie] = useState<string | null>(null)
   const [aModifier, setAModifier] = useState<Classe | null>(null)
   const [coefficientsDe, setCoefficientsDe] = useState<Classe | null>(null)
+  const [annoncesDe, setAnnoncesDe] = useState<Classe | null>(null)
 
   const annees = useQuery({ queryKey: ['annees'], queryFn: listerAnnees })
   const niveaux = useQuery({ queryKey: ['niveaux'], queryFn: listerNiveaux })
@@ -136,6 +138,9 @@ export default function PageClasses() {
                     <Button size="compact-xs" variant="light" onClick={() => setCoefficientsDe(classe)}>
                       Coefficients
                     </Button>
+                    <Button size="compact-xs" variant="light" onClick={() => setAnnoncesDe(classe)}>
+                      Annonces
+                    </Button>
                   </Group>
                 </Table.Td>
               </Table.Tr>
@@ -147,6 +152,8 @@ export default function PageClasses() {
       {aModifier && niveaux.data && (
         <ModifierClasseModal classe={aModifier} niveaux={niveaux.data} onFermer={() => setAModifier(null)} />
       )}
+
+      {annoncesDe && <AnnoncesModal classe={annoncesDe} onFermer={() => setAnnoncesDe(null)} />}
 
       {coefficientsDe && <CoefficientsModal classe={coefficientsDe} onFermer={() => setCoefficientsDe(null)} />}
 

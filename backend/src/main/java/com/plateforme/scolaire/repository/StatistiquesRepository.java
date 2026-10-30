@@ -15,10 +15,57 @@ public interface StatistiquesRepository extends Repository<Etablissement, Long> 
             + "where a.role = com.plateforme.scolaire.domain.Role.ENSEIGNANT and a.etablissement.id in :ids")
     long compterEnseignants(@Param("ids") Collection<Long> ids);
 
-    /** [type, nombre d'établissements] ; le type manquant est regroupé sous « Non précisé ». */
-    @Query("select coalesce(e.typeEtablissement, 'Non précisé'), count(e) from Etablissement e "
-            + "where e.id in :ids group by coalesce(e.typeEtablissement, 'Non précisé') order by count(e) desc")
+    /** [cycle, nombre d'établissements] ; un établissement à plusieurs cycles compte dans chacun. */
+    @Query("select c.libelle, count(distinct e.id) from Etablissement e join e.cycles c "
+            + "where e.id in :ids group by c.id, c.libelle, c.ordre order by c.ordre")
     List<Object[]> repartitionParType(@Param("ids") Collection<Long> ids);
+
+    /** [secteur, nombre d'établissements] : PUBLIC puis PRIVE. */
+    @Query("select e.secteur, count(e) from Etablissement e where e.id in :ids group by e.secteur order by e.secteur")
+    List<Object[]> repartitionParSecteur(@Param("ids") Collection<Long> ids);
+
+    /** Direction d'établissement et personnel administratif (comptes distincts). */
+    @Query("select count(distinct a.utilisateur.id) from AffectationRole a "
+            + "where a.role in (com.plateforme.scolaire.domain.Role.DIRECTION_ETABLISSEMENT, "
+            + "com.plateforme.scolaire.domain.Role.PERSONNEL_ADMIN) and a.etablissement.id in :ids")
+    long compterPersonnelDirection(@Param("ids") Collection<Long> ids);
+
+    /** [cycle, effectif] ; les niveaux sans cycle sont regroupés sous « Cycle non défini », en dernier. */
+    @Query("select coalesce(cy.libelle, 'Cycle non défini'), count(i) from Inscription i join i.classe c "
+            + "join c.niveau n left join n.cycle cy "
+            + "where i.etablissement.id in :ids and i.anneeScolaire.id = :annee and i.statut = 'ACCEPTEE' "
+            + "group by cy.id, cy.libelle, cy.ordre order by cy.ordre")
+    List<Object[]> effectifsParCycle(@Param("ids") Collection<Long> ids, @Param("annee") Long annee);
+
+    /** [sexe (M, F ou null), effectif]. */
+    @Query("select e.sexe, count(i) from Inscription i join i.eleve e "
+            + "where i.etablissement.id in :ids and i.anneeScolaire.id = :annee and i.statut = 'ACCEPTEE' "
+            + "group by e.sexe")
+    List<Object[]> effectifsParSexe(@Param("ids") Collection<Long> ids, @Param("annee") Long annee);
+
+    /** [établissement, élèves] (inscriptions acceptées de l'année). */
+    @Query("select i.etablissement.id, count(i) from Inscription i "
+            + "where i.etablissement.id in :ids and i.anneeScolaire.id = :annee and i.statut = 'ACCEPTEE' "
+            + "group by i.etablissement.id")
+    List<Object[]> elevesParEtablissement(@Param("ids") Collection<Long> ids, @Param("annee") Long annee);
+
+    /** [établissement, classes] de l'année. */
+    @Query("select c.etablissement.id, count(c) from Classe c "
+            + "where c.etablissement.id in :ids and c.anneeScolaire.id = :annee group by c.etablissement.id")
+    List<Object[]> classesParEtablissement(@Param("ids") Collection<Long> ids, @Param("annee") Long annee);
+
+    /** [établissement, comptes distincts] pour le rôle donné. */
+    @Query("select a.etablissement.id, count(distinct a.utilisateur.id) from AffectationRole a "
+            + "where a.role = :role and a.etablissement.id in :ids group by a.etablissement.id")
+    List<Object[]> personnelParEtablissement(@Param("ids") Collection<Long> ids,
+                                             @Param("role") com.plateforme.scolaire.domain.Role role);
+
+    /** [établissement, comptes distincts] de la direction et du personnel administratif. */
+    @Query("select a.etablissement.id, count(distinct a.utilisateur.id) from AffectationRole a "
+            + "where a.role in (com.plateforme.scolaire.domain.Role.DIRECTION_ETABLISSEMENT, "
+            + "com.plateforme.scolaire.domain.Role.PERSONNEL_ADMIN) and a.etablissement.id in :ids "
+            + "group by a.etablissement.id")
+    List<Object[]> directionParEtablissement(@Param("ids") Collection<Long> ids);
 
     /** [niveau, effectif] dans l'ordre des niveaux ; seules les inscriptions acceptées et placées en classe comptent. */
     @Query("select n.libelle, count(i) from Inscription i join i.classe c join c.niveau n "

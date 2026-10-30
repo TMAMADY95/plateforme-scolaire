@@ -7,6 +7,7 @@ import com.plateforme.scolaire.domain.Role;
 import com.plateforme.scolaire.domain.Utilisateur;
 import com.plateforme.scolaire.domain.ZoneGeographique;
 import com.plateforme.scolaire.repository.AffectationRoleRepository;
+import com.plateforme.scolaire.repository.CycleScolaireRepository;
 import com.plateforme.scolaire.repository.EtablissementRepository;
 import com.plateforme.scolaire.repository.UtilisateurRepository;
 import com.plateforme.scolaire.repository.ZoneGeographiqueRepository;
@@ -35,6 +36,7 @@ public class DevDataInitializer implements CommandLineRunner {
     private final AffectationRoleRepository affectationRoleRepository;
     private final EtablissementRepository etablissementRepository;
     private final ZoneGeographiqueRepository zoneRepository;
+    private final CycleScolaireRepository cycleRepository;
     private final PasswordEncoder passwordEncoder;
 
     @Value("${app.dev.mot-de-passe}")
@@ -52,8 +54,8 @@ public class DevDataInitializer implements CommandLineRunner {
         pays.setTypeZone("PAYS");
         zoneRepository.save(pays);
 
-        Etablissement ecole1 = etablissement("ECOLE-DEMO-1", "École démo 1", pays);
-        etablissement("ECOLE-DEMO-2", "École démo 2", pays);
+        Etablissement ecole1 = etablissement("ECOLE-DEMO-1", "École démo 1", pays, "PUBLIC");
+        etablissement("ECOLE-DEMO-2", "École démo 2", pays, "PRIVE");
 
         Utilisateur ministere = utilisateur(EMAIL_MINISTERE, "Ministère", "Démo");
         affecter(ministere, Role.MINISTERE, Perimetre.NATIONAL, null);
@@ -65,12 +67,13 @@ public class DevDataInitializer implements CommandLineRunner {
                 EMAIL_MINISTERE, EMAIL_DIRECTION);
     }
 
-    private Etablissement etablissement(String code, String nom, ZoneGeographique zone) {
+    private Etablissement etablissement(String code, String nom, ZoneGeographique zone, String secteur) {
         Etablissement e = new Etablissement();
         e.setCodeOfficiel(code);
         e.setNom(nom);
         e.setZone(zone);
-        e.setTypeEtablissement("PRIMAIRE");
+        e.setSecteur(secteur);
+        cycleRepository.findByCode("PRIMAIRE").ifPresent(c -> e.getCycles().add(c));
         return etablissementRepository.save(e);
     }
 

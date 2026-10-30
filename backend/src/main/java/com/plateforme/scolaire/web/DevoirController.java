@@ -1,8 +1,10 @@
 package com.plateforme.scolaire.web;
 
+import com.plateforme.scolaire.service.DevoirFaitService;
 import com.plateforme.scolaire.service.DevoirService;
 import com.plateforme.scolaire.web.dto.DevoirDto;
 import com.plateforme.scolaire.web.dto.DevoirRequest;
+import com.plateforme.scolaire.web.dto.FaitRequest;
 import jakarta.validation.Valid;
 import java.time.LocalDate;
 import java.util.List;
@@ -25,6 +27,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class DevoirController {
 
     private final DevoirService devoirService;
+    private final DevoirFaitService devoirFaitService;
 
     /** Devoirs d'une classe, par date limite croissante. Par défaut : échus depuis moins de 14 jours ou à venir. */
     @GetMapping("/api/classes/{classeId}/devoirs")
@@ -32,7 +35,22 @@ public class DevoirController {
     public List<DevoirDto> lister(@PathVariable Long classeId,
                                   @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
                                   LocalDate depuis) {
-        return devoirService.lister(classeId, depuis);
+        // L'équipe pédagogique voit en plus combien d'élèves ont terminé chaque devoir.
+        return devoirFaitService.avecProgres(classeId, devoirService.lister(classeId, depuis));
+    }
+
+    /** Les devoirs de la classe de l'élève, avec son état « fait » (élève lui-même, ses parents, l'établissement). */
+    @GetMapping("/api/eleves/{id}/devoirs")
+    @PreAuthorize("@perimetre.peutAccederEleve(#id)")
+    public List<DevoirDto> deLEleve(@PathVariable Long id) {
+        return devoirFaitService.deLEleve(id);
+    }
+
+    /** Coche ou décoche un devoir : l'élève pour lui-même, un parent pour son enfant (contrôlé par le service). */
+    @PutMapping("/api/devoirs/{id}/fait")
+    @PreAuthorize("isAuthenticated()")
+    public DevoirDto marquerFait(@PathVariable Long id, @Valid @RequestBody FaitRequest requete) {
+        return devoirFaitService.marquer(id, requete.eleveId(), requete.fait());
     }
 
     @PostMapping("/api/classes/{classeId}/devoirs")

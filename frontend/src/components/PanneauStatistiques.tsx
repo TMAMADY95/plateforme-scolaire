@@ -17,7 +17,7 @@ function Cadre({ titre, children }: { titre: string; children: ReactNode }) {
 
 interface Props {
   statistiques: Statistiques
-  /** Afficher la répartition par type d'établissement et par zone (ministère, région). */
+  /** Afficher le secteur, les cycles, et la répartition par zone (ministère, région). */
   avecReseau?: boolean
 }
 
@@ -25,10 +25,17 @@ interface Props {
 export default function PanneauStatistiques({ statistiques: s, avecReseau = false }: Props) {
   return (
     <>
-      <SimpleGrid cols={{ base: 1, sm: 2, lg: avecReseau ? 5 : 4 }}>
+      <SimpleGrid cols={{ base: 1, sm: 2, lg: avecReseau ? 3 : 5 }}>
         {avecReseau && <CarteChiffre libelle="Établissements" valeur={s.etablissements} icone="ecole" />}
         <CarteChiffre libelle="Élèves inscrits" valeur={new Intl.NumberFormat('fr-FR').format(s.elevesInscrits)} icone="eleves" couleur="cyan" />
         <CarteChiffre libelle="Enseignants" valeur={new Intl.NumberFormat('fr-FR').format(s.enseignants)} icone="enseignants" couleur="violet" />
+        <CarteChiffre
+          libelle="Personnel de direction"
+          valeur={new Intl.NumberFormat('fr-FR').format(s.personnelDirection)}
+          detail="direction et administration"
+          icone="comptes"
+          couleur="orange"
+        />
         <CarteChiffre libelle="Classes" valeur={new Intl.NumberFormat('fr-FR').format(s.classes)} icone="classes" />
         <CarteChiffre
           libelle="Taux de présence"
@@ -47,8 +54,8 @@ export default function PanneauStatistiques({ statistiques: s, avecReseau = fals
           />
         </Cadre>
         {avecReseau ? (
-          <Cadre titre="Répartition par type d'établissement">
-            <Anneau points={s.repartitionParType} libelleTotal="établissements" />
+          <Cadre titre="Établissements publics et privés">
+            <Anneau points={s.repartitionParSecteur} libelleTotal="établissements" />
           </Cadre>
         ) : (
           <Cadre titre="Effectifs par niveau">
@@ -57,15 +64,29 @@ export default function PanneauStatistiques({ statistiques: s, avecReseau = fals
         )}
       </SimpleGrid>
 
+      <SimpleGrid cols={{ base: 1, md: 2 }}>
+        <Cadre titre="Élèves par cycle">
+          <Anneau points={s.effectifsParCycle} libelleTotal="élèves" vide="Aucun élève placé en classe." />
+        </Cadre>
+        <Cadre titre="Filles et garçons">
+          <Anneau points={s.effectifsParSexe} libelleTotal="élèves" vide="Aucun élève placé en classe." />
+        </Cadre>
+      </SimpleGrid>
+
       {avecReseau && (
-        <SimpleGrid cols={{ base: 1, md: 2 }}>
-          <Cadre titre="Effectifs par niveau">
-            <Barres points={s.effectifsParNiveau} vide="Aucun élève placé en classe." />
-          </Cadre>
+        <>
+          <SimpleGrid cols={{ base: 1, md: 2 }}>
+            <Cadre titre="Établissements par cycle">
+              <Anneau points={s.repartitionParType} libelleTotal="établissements" vide="Aucun cycle renseigné." />
+            </Cadre>
+            <Cadre titre="Élèves par niveau">
+              <Barres points={s.effectifsParNiveau} vide="Aucun élève placé en classe." />
+            </Cadre>
+          </SimpleGrid>
           <Cadre titre="Élèves par zone">
             <Barres points={s.effectifsParZone} vide="Aucun établissement rattaché à une zone." />
           </Cadre>
-        </SimpleGrid>
+        </>
       )}
     </>
   )

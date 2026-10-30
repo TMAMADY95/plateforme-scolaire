@@ -1,8 +1,12 @@
 package com.plateforme.scolaire.web.dto;
 
+import com.plateforme.scolaire.domain.CycleScolaire;
 import com.plateforme.scolaire.domain.Etablissement;
+import java.util.Comparator;
+import java.util.List;
 
-public record EtablissementDto(Long id, String codeOfficiel, String nom, String typeEtablissement,
+/** [secteur] : PUBLIC ou PRIVE. [cycles] : un ou plusieurs, dans l'ordre (primaire, collège, lycée…). */
+public record EtablissementDto(Long id, String codeOfficiel, String nom, String secteur, List<CycleDto> cycles,
                                String statut, Long zoneId, String adresse, Integer capacite) {
 
     public static EtablissementDto de(Etablissement e) {
@@ -10,7 +14,8 @@ public record EtablissementDto(Long id, String codeOfficiel, String nom, String 
                 e.getId(),
                 e.getCodeOfficiel(),
                 e.getNom(),
-                e.getTypeEtablissement(),
+                e.getSecteur(),
+                e.getCycles().stream().sorted(Comparator.comparingInt(CycleScolaire::getOrdre)).map(CycleDto::de).toList(),
                 e.getStatut(),
                 e.getZone() != null ? e.getZone().getId() : null,
                 e.getAdresse(),

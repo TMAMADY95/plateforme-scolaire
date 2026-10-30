@@ -35,6 +35,32 @@ class ServiceEnseignant {
   Future<List<Devoir>> devoirs(int classeId) async =>
       Devoir.listeDepuisJson(await _api.get('/api/classes/$classeId/devoirs'));
 
+  Future<List<Annonce>> annonces(int classeId) async =>
+      Annonce.listeDepuisJson(await _api.get('/api/classes/$classeId/annonces'));
+
+  /// [dateLimite] au format AAAA-MM-JJ.
+  Future<void> publierDevoir(int classeId,
+      {required int matiereId, required String titre, String? consigne, required String dateLimite}) async {
+    await _api.post('/api/classes/$classeId/devoirs', corps: {
+      'matiereId': matiereId,
+      'titre': titre,
+      if (consigne != null && consigne.isNotEmpty) 'consigne': consigne,
+      'dateLimite': dateLimite,
+    });
+  }
+
+  Future<void> supprimerDevoir(int devoirId) async {
+    await _api.delete('/api/devoirs/$devoirId');
+  }
+
+  Future<void> publierAnnonce(int classeId, {required String titre, required String contenu}) async {
+    await _api.post('/api/classes/$classeId/annonces', corps: {'titre': titre, 'contenu': contenu});
+  }
+
+  Future<void> supprimerAnnonce(int annonceId) async {
+    await _api.delete('/api/annonces/$annonceId');
+  }
+
   Future<GrilleNotes> grille(int evaluationId) async =>
       GrilleNotes.depuisJson(await _api.get('/api/evaluations/$evaluationId') as Map<String, dynamic>);
 

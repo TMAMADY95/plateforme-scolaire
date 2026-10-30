@@ -1,6 +1,13 @@
 import { Alert, Badge, Loader, Stack, Table, Tabs, Text, Title } from '@mantine/core'
 import { useQuery } from '@tanstack/react-query'
-import { listerEtablissements, reussiteRegionale, statistiquesRegionales, syntheseRegionale } from '../api/endpoints'
+import {
+  listerEtablissements,
+  reussiteRegionale,
+  statistiquesRegionales,
+  statistiquesRegionalesParEtablissement,
+  syntheseRegionale,
+} from '../api/endpoints'
+import { BadgeSecteur, BadgesCycles } from '../components/BadgesEtablissement'
 import SyntheseNationale from './ministere/SyntheseNationale'
 
 const COULEURS: Record<string, string> = { ACTIF: 'green', SUSPENDU: 'orange', FERME: 'gray' }
@@ -22,6 +29,7 @@ export default function PageRegion() {
             cle="synthese-regionale"
             charger={syntheseRegionale}
             chargerStatistiques={statistiquesRegionales}
+            chargerParEtablissement={statistiquesRegionalesParEtablissement}
             chargerReussite={reussiteRegionale}
           />
         </Tabs.Panel>
@@ -43,7 +51,8 @@ export default function PageRegion() {
                     <Table.Tr>
                       <Table.Th>Code</Table.Th>
                       <Table.Th>Nom</Table.Th>
-                      <Table.Th>Type</Table.Th>
+                      <Table.Th>Secteur</Table.Th>
+                      <Table.Th>Cycles</Table.Th>
                       <Table.Th>Statut</Table.Th>
                     </Table.Tr>
                   </Table.Thead>
@@ -52,7 +61,12 @@ export default function PageRegion() {
                       <Table.Tr key={e.id}>
                         <Table.Td>{e.codeOfficiel}</Table.Td>
                         <Table.Td>{e.nom}</Table.Td>
-                        <Table.Td>{e.typeEtablissement ?? '—'}</Table.Td>
+                        <Table.Td>
+                          <BadgeSecteur secteur={e.secteur} />
+                        </Table.Td>
+                        <Table.Td>
+                          <BadgesCycles cycles={e.cycles} />
+                        </Table.Td>
                         <Table.Td>
                           <Badge color={COULEURS[e.statut] ?? 'gray'}>{e.statut}</Badge>
                         </Table.Td>

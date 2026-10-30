@@ -1,6 +1,7 @@
 import { Alert, Anchor, Badge, Group, Loader, Stack, Tabs, Text, Title } from '@mantine/core'
 import { Link, useParams } from 'react-router'
 import { useMesAffectations } from '../hooks/useMesAffectations'
+import PanneauAnnonces from '../components/PanneauAnnonces'
 import ResultatsClasse from '../components/ResultatsClasse'
 import OngletAppel from './classe/OngletAppel'
 import OngletDevoirs from './classe/OngletDevoirs'
@@ -64,6 +65,7 @@ export default function PageClasseEnseignant() {
           <Tabs.Tab value="appel">Appel</Tabs.Tab>
           <Tabs.Tab value="evaluations">Évaluations et notes</Tabs.Tab>
           <Tabs.Tab value="devoirs">Devoirs</Tabs.Tab>
+          <Tabs.Tab value="annonces">Annonces</Tabs.Tab>
           <Tabs.Tab value="resultats">Résultats</Tabs.Tab>
           <Tabs.Tab value="eleves">Élèves</Tabs.Tab>
         </Tabs.List>
@@ -75,6 +77,9 @@ export default function PageClasseEnseignant() {
         </Tabs.Panel>
         <Tabs.Panel value="devoirs" pt="md">
           <OngletDevoirs classeId={id} mesMatieres={mesMatieres} />
+        </Tabs.Panel>
+        <Tabs.Panel value="annonces" pt="md">
+          <PanneauAnnonces classeId={id} peutPublier />
         </Tabs.Panel>
         <Tabs.Panel value="resultats" pt="md">
           <ResultatsClasse classeId={id} anneeScolaireId={anneeScolaireId} />

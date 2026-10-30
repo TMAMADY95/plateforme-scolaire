@@ -2,6 +2,7 @@ import { Alert, Anchor, Loader, Stack, Tabs } from '@mantine/core'
 import { Link, useParams } from 'react-router'
 import EnteteEleve from '../components/EnteteEleve'
 import { useMesEnfants } from '../hooks/useMesEnfants'
+import PanneauAnnonces from '../components/PanneauAnnonces'
 import OngletBulletin from './enfant/OngletBulletin'
 import OngletDevoirs from './enfant/OngletDevoirs'
 import OngletEmploiDuTemps from './enfant/OngletEmploiDuTemps'
@@ -57,6 +58,7 @@ export default function PageEnfant() {
         <Tabs.List>
           <Tabs.Tab value="bulletin">Bulletin</Tabs.Tab>
           <Tabs.Tab value="devoirs">Devoirs</Tabs.Tab>
+          <Tabs.Tab value="annonces">Annonces</Tabs.Tab>
           <Tabs.Tab value="presences">Présences</Tabs.Tab>
           <Tabs.Tab value="emploi-du-temps">Emploi du temps</Tabs.Tab>
           <Tabs.Tab value="frais">Frais</Tabs.Tab>
@@ -67,7 +69,11 @@ export default function PageEnfant() {
         </Tabs.Panel>
 
         <Tabs.Panel value="devoirs" pt="md">
-          <OngletDevoirs classeId={enfant.classeId} />
+          <OngletDevoirs classeId={enfant.classeId} eleveId={enfant.eleveId} />
+        </Tabs.Panel>
+
+        <Tabs.Panel value="annonces" pt="md">
+          <PanneauAnnonces classeId={enfant.classeId} peutPublier={false} />
         </Tabs.Panel>
 
         <Tabs.Panel value="presences" pt="md">

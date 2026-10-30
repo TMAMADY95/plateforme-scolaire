@@ -38,14 +38,16 @@ class AdministrationServiceTest {
     private final ClasseRepository classeRepository = mock(ClasseRepository.class);
     private final InscriptionRepository inscriptionRepository = mock(InscriptionRepository.class);
     private final PasswordEncoder passwordEncoder = mock(PasswordEncoder.class);
+    private final com.plateforme.scolaire.repository.CycleScolaireRepository cycleRepository =
+            mock(com.plateforme.scolaire.repository.CycleScolaireRepository.class);
 
     private final AdministrationService service = new AdministrationService(
             mock(ZoneGeographiqueRepository.class), etablissementRepository, utilisateurRepository,
             affectationRoleRepository, classeRepository, inscriptionRepository, passwordEncoder,
-            mock(AuditService.class));
+            mock(AuditService.class), cycleRepository);
 
     private static EtablissementRequest requete(String code) {
-        return new EtablissementRequest(code, "École test", null, "PRIMAIRE", null, 300);
+        return new EtablissementRequest(code, "École test", null, "PRIVE", java.util.List.of(1L, 2L), null, 300);
     }
 
     @Test
@@ -57,14 +59,35 @@ class AdministrationServiceTest {
         verify(etablissementRepository, never()).save(any(Etablissement.class));
     }
 
+    private static com.plateforme.scolaire.domain.CycleScolaire cycle(long id, String code, int ordre) {
+        var c = new com.plateforme.scolaire.domain.CycleScolaire();
+        c.setId(id);
+        c.setCode(code);
+        c.setLibelle(code);
+        c.setOrdre(ordre);
+        return c;
+    }
+
     @Test
-    void unNouvelEtablissementEstActif() {
+    void unNouvelEtablissementEstActifAvecSonSecteurEtSesCycles() {
         when(etablissementRepository.save(any(Etablissement.class))).thenAnswer(i -> i.getArgument(0));
+        when(cycleRepository.findAllById(any())).thenReturn(java.util.List.of(cycle(2, "COLLEGE", 2), cycle(1, "PRIMAIRE", 1)));
 
         EtablissementDto dto = service.creerEtablissement(requete("eco-2"));
 
         assertThat(dto.codeOfficiel()).isEqualTo("ECO-2");
         assertThat(dto.statut()).isEqualTo("ACTIF");
+        assertThat(dto.secteur()).isEqualTo("PRIVE");
+        assertThat(dto.cycles()).extracting("code").containsExactly("PRIMAIRE", "COLLEGE"); // dans l'ordre des cycles
+    }
+
+    @Test
+    void unCycleInconnuEstRefuse() {
+        when(cycleRepository.findAllById(any())).thenReturn(java.util.List.of(cycle(1, "PRIMAIRE", 1)));
+
+        assertThatThrownBy(() -> service.creerEtablissement(requete("eco-3")))
+                .isInstanceOf(ResponseStatusException.class).hasMessageContaining("Cycle inconnu");
+        verify(etablissementRepository, never()).save(any(Etablissement.class));
     }
 
     @Test

@@ -164,6 +164,40 @@ class PresenceEleve {
   static List<PresenceEleve> listeDepuisJson(Object? json) => _liste(json, PresenceEleve.depuisJson);
 }
 
+/// Une annonce à toute une classe.
+class Annonce {
+  const Annonce({
+    required this.id,
+    required this.auteur,
+    required this.titre,
+    required this.contenu,
+    required this.publieLe,
+    this.modifiable = false,
+  });
+
+  final int id;
+  final String auteur;
+  final String titre;
+  final String contenu;
+
+  /// Horodatage ISO 8601 (UTC).
+  final String publieLe;
+
+  /// L'utilisateur peut supprimer cette annonce (auteur ou direction).
+  final bool modifiable;
+
+  factory Annonce.depuisJson(Map<String, dynamic> json) => Annonce(
+        id: (json['id'] as num).toInt(),
+        auteur: json['auteur'] as String? ?? '',
+        titre: json['titre'] as String? ?? '',
+        contenu: json['contenu'] as String? ?? '',
+        publieLe: json['publieLe'] as String? ?? '',
+        modifiable: json['modifiable'] as bool? ?? false,
+      );
+
+  static List<Annonce> listeDepuisJson(Object? json) => _liste(json, Annonce.depuisJson);
+}
+
 /// Un devoir à faire pour une classe.
 class Devoir {
   const Devoir({
@@ -173,9 +207,14 @@ class Devoir {
     required this.titre,
     required this.dateLimite,
     this.consigne,
+    this.fait,
+    this.faits,
+    this.effectif,
+    this.matiereId,
   });
 
   final int id;
+  final int? matiereId;
   final String matiere;
   final String enseignant;
   final String titre;
@@ -184,13 +223,24 @@ class Devoir {
   /// Au format AAAA-MM-JJ.
   final String dateLimite;
 
+  /// Renseigné dans la liste d'un élève.
+  final bool? fait;
+
+  /// Renseignés dans la liste de l'équipe : élèves ayant terminé / élèves de la classe.
+  final int? faits;
+  final int? effectif;
+
   factory Devoir.depuisJson(Map<String, dynamic> json) => Devoir(
         id: (json['id'] as num).toInt(),
+        matiereId: (json['matiereId'] as num?)?.toInt(),
         matiere: json['matiere'] as String? ?? '',
         enseignant: json['enseignant'] as String? ?? '',
         titre: json['titre'] as String,
         consigne: json['consigne'] as String?,
         dateLimite: json['dateLimite'] as String,
+        fait: json['fait'] as bool?,
+        faits: (json['faits'] as num?)?.toInt(),
+        effectif: (json['effectif'] as num?)?.toInt(),
       );
 
   static List<Devoir> listeDepuisJson(Object? json) => _liste(json, Devoir.depuisJson);
