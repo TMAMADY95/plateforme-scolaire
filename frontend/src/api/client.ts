@@ -128,8 +128,28 @@ export async function telecharger(chemin: string, nomFichier: string): Promise<v
   URL.revokeObjectURL(url)
 }
 
+/** Envoie un fichier (multipart) ; le navigateur fixe lui-même l'en-tête Content-Type avec sa limite. */
+export async function envoyerFichier<T>(chemin: string, fichier: File): Promise<T> {
+  const entetes: Record<string, string> = { Accept: 'application/json' }
+  if (jetonCourant !== null) entetes.Authorization = `Bearer ${jetonCourant}`
+  const formulaire = new FormData()
+  formulaire.append('fichier', fichier)
+  let reponse: Response
+  try {
+    reponse = await fetch(`${BASE}${chemin}`, { method: 'POST', headers: entetes, body: formulaire })
+  } catch {
+    throw new ApiError(0, 'Le serveur est injoignable. Vérifiez votre connexion.')
+  }
+  const texte = await reponse.text()
+  if (reponse.ok) return (texte ? lireJson(texte) : undefined) as T
+  if (reponse.status === 413) throw new ApiError(413, 'Fichier trop volumineux (5 Mo au plus).')
+  const erreur = enCorpsErreur(lireJson(texte))
+  if (reponse.status === 401) rappels.nonAutorise?.()
+  throw new ApiError(reponse.status, erreur.detail ?? erreur.message ?? messageParDefaut(reponse.status))
+}
+
 export const api = {
-  get: <T>(chemin: string) => requete<T>('GET', chemin),
+  get: <T>(chemin: string, options?: Options) => requete<T>('GET', chemin, undefined, options),
   post: <T>(chemin: string, corps?: unknown, options?: Options) => requete<T>('POST', chemin, corps, options),
   put: <T>(chemin: string, corps?: unknown) => requete<T>('PUT', chemin, corps),
   delete: <T>(chemin: string) => requete<T>('DELETE', chemin),

@@ -85,8 +85,8 @@ public class ResumeParentService {
         if (enfant.classeId() == null || enfant.anneeScolaireId() == null) {
             return null;
         }
-        Periode periode = periodeCourante(periodeRepository.findByAnneeScolaireIdOrderByOrdre(
-                enfant.anneeScolaireId()), aujourdhui);
+        Periode periode = periodeCourante(PeriodesApplicables.pour(periodeRepository.findByAnneeScolaireIdOrderByOrdre(
+                enfant.anneeScolaireId()), enfant.etablissementId()), aujourdhui);
         if (periode == null) {
             return null;
         }

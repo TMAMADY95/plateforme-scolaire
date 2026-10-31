@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Alert, Badge, Card, Group, Loader, Select, Stack, Table, Text, Title } from '@mantine/core'
 import { useQuery } from '@tanstack/react-query'
-import { listerPeriodes, obtenirBulletin, telechargerBulletin } from '../../api/endpoints'
+import { listerPeriodes, obtenirBulletin, periodesDeLaClasse, telechargerBulletin } from '../../api/endpoints'
 import BoutonTelechargement from '../../components/BoutonTelechargement'
 import type { Enfant, Periode } from '../../api/types'
 import { aujourdhui } from '../../utils/dates'
@@ -19,8 +19,9 @@ export default function OngletBulletin({ enfant }: { enfant: Enfant }) {
   const [choix, setChoix] = useState<string | null>(null)
 
   const periodes = useQuery({
-    queryKey: ['periodes', anneeId],
-    queryFn: () => listerPeriodes(anneeId as number),
+    queryKey: ['periodes', 'bulletin', enfant.classeId, anneeId],
+    // Les périodes de l'établissement de l'élève (trimestres ou semestres), sinon celles du ministère.
+    queryFn: () => (enfant.classeId !== null ? periodesDeLaClasse(enfant.classeId) : listerPeriodes(anneeId as number)),
     enabled: anneeId !== null,
   })
 

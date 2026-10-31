@@ -15,10 +15,16 @@ public interface ReussiteReseauRepository extends Repository<Etablissement, Long
             + "where c.etablissement.id in :ids and c.anneeScolaire.id = :annee")
     List<Object[]> classes(@Param("ids") Collection<Long> ids, @Param("annee") Long annee);
 
-    /** [classeId, inscriptionId, matiereId, valeur, barème, coefficient] des notes chiffrées de la période. */
+    /**
+     * [classeId, inscriptionId, matiereId, valeur, barème, coefficient] des notes chiffrées de la période.
+     * [periode] est une période nationale de référence : chaque établissement est lu selon son propre découpage
+     * (trimestres, semestres…), en prenant la période de même rang que la référence.
+     */
     @Query("select e.classe.id, n.inscription.id, e.matiere.id, n.valeur, e.bareme, e.coefficient "
             + "from Note n join n.evaluation e "
-            + "where e.classe.etablissement.id in :ids and e.periode.id = :periode "
+            + "where e.classe.etablissement.id in :ids "
+            + "and e.periode.ordre = (select p.ordre from Periode p where p.id = :periode) "
+            + "and (e.periode.etablissement is null or e.periode.etablissement.id = e.classe.etablissement.id) "
             + "and n.absent = false and n.valeur is not null")
     List<Object[]> notes(@Param("ids") Collection<Long> ids, @Param("periode") Long periode);
 

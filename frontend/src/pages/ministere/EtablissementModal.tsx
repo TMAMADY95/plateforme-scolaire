@@ -16,8 +16,8 @@ import {
 } from '@mantine/core'
 import { useForm } from '@mantine/form'
 import { notifications } from '@mantine/notifications'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { creerEtablissement, modifierEtablissement } from '../../api/endpoints'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { creerEtablissement, listerTypesEtablissement, modifierEtablissement } from '../../api/endpoints'
 import type { Cycle, Etablissement, Secteur, Zone } from '../../api/types'
 
 interface Props {
@@ -33,6 +33,7 @@ interface Valeurs {
   codeOfficiel: string
   nom: string
   secteur: Secteur
+  typeId: string | null
   cycleIds: string[]
   zoneId: string | null
   adresse: string
@@ -42,12 +43,14 @@ interface Valeurs {
 export default function EtablissementModal({ etablissement, zones, cycles, onFermer }: Props) {
   const queryClient = useQueryClient()
   const [erreur, setErreur] = useState<string | null>(null)
+  const types = useQuery({ queryKey: ['types-etablissement'], queryFn: listerTypesEtablissement })
 
   const formulaire = useForm<Valeurs>({
     initialValues: {
       codeOfficiel: etablissement?.codeOfficiel ?? '',
       nom: etablissement?.nom ?? '',
       secteur: etablissement?.secteur ?? 'PUBLIC',
+      typeId: etablissement?.typeEtablissementId != null ? String(etablissement.typeEtablissementId) : null,
       cycleIds: etablissement?.cycles.map((c) => String(c.id)) ?? [],
       zoneId: etablissement?.zoneId != null ? String(etablissement.zoneId) : null,
       adresse: etablissement?.adresse ?? '',
@@ -68,6 +71,7 @@ export default function EtablissementModal({ etablissement, zones, cycles, onFer
         nom: v.nom.trim(),
         zoneId: v.zoneId === null ? null : Number(v.zoneId),
         secteur: v.secteur,
+        typeEtablissementId: v.typeId === null ? null : Number(v.typeId),
         cycleIds: v.cycleIds.map(Number),
         adresse: v.adresse.trim() || undefined,
         capacite: v.capacite === '' ? undefined : Number(v.capacite),
@@ -120,6 +124,13 @@ export default function EtablissementModal({ etablissement, zones, cycles, onFer
               onChange={(v) => formulaire.setFieldValue('secteur', v as Secteur)}
             />
           </Input.Wrapper>
+          <Select
+            label="Type d'établissement (facultatif)"
+            description="Les types se gèrent dans l'onglet « Référentiels »."
+            data={(types.data ?? []).map((t) => ({ value: String(t.id), label: t.libelle }))}
+            clearable
+            {...formulaire.getInputProps('typeId')}
+          />
           <Input.Wrapper
             label="Cycles proposés"
             description="Un seul, ou plusieurs si l'établissement regroupe plusieurs cycles."

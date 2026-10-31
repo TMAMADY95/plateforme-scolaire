@@ -15,6 +15,18 @@ public class AuditController {
 
     private final ConsultationAuditService consultationAuditService;
 
+    @GetMapping(value = "/api/audit/export.csv", produces = "text/csv;charset=UTF-8")
+    @PreAuthorize("hasRole('MINISTERE')")
+    public org.springframework.http.ResponseEntity<byte[]> exporter(@RequestParam(defaultValue = "") String action,
+                                                                    @RequestParam(defaultValue = "") String entite,
+                                                                    @RequestParam(defaultValue = "") String eleve) {
+        byte[] corps = consultationAuditService.exporterCsv(action, entite, eleve).getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        return org.springframework.http.ResponseEntity.ok()
+                .header("Content-Disposition", "attachment; filename=\"journal-audit.csv\"")
+                .contentType(org.springframework.http.MediaType.parseMediaType("text/csv;charset=UTF-8"))
+                .body(corps);
+    }
+
     @GetMapping("/api/audit")
     @PreAuthorize("hasRole('MINISTERE')")
     public PageAuditDto rechercher(@RequestParam(defaultValue = "") String action,

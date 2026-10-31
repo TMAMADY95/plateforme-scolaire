@@ -48,6 +48,7 @@ public class AdministrationService {
     private final PasswordEncoder passwordEncoder;
     private final AuditService auditService;
     private final CycleScolaireRepository cycleRepository;
+    private final com.plateforme.scolaire.repository.TypeEtablissementRepository typeEtablissementRepository;
 
     // ---------- Zones ----------
 
@@ -241,5 +242,7 @@ public class AdministrationService {
         e.setCycles(new java.util.LinkedHashSet<>(cycles));
         e.setAdresse(r.adresse());
         e.setCapacite(r.capacite());
+        e.setTypeEtablissement(r.typeEtablissementId() == null ? null : typeEtablissementRepository.findById(r.typeEtablissementId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Type d'établissement inconnu")));
     }
 }

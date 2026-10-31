@@ -53,6 +53,7 @@ public class SecurityConfig {
     SecurityFilterChain filterChain(HttpSecurity http, JwtService jwtService,
                                     CustomUserDetailsService userDetailsService, Clock clock,
                                     @Value("${app.taille-requete-max:1MB}") org.springframework.util.unit.DataSize tailleMax,
+                                    @Value("${app.taille-envoi-max:6MB}") org.springframework.util.unit.DataSize tailleEnvoi,
                                     @Value("${app.limite-debit.actif:true}") boolean limiteActive,
                                     @Value("${app.limite-debit.connexion:60}") int limiteConnexion,
                                     @Value("${app.limite-debit.mot-de-passe:10}") int limiteMotDePasse)
@@ -66,12 +67,14 @@ public class SecurityConfig {
                         .requestMatchers("/error", "/api/sante").permitAll()
                         // Appelé par le prestataire de paiement : protégé par la signature du message, pas par un jeton
                         .requestMatchers("/api/paiements/notification").permitAll()
+                        // Contrôle public d'authenticité d'un diplôme : le code aléatoire imprimé sur le diplôme sert de preuve
+                        .requestMatchers("/api/verification-diplome/**").permitAll()
                         .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
                         .anyRequest().authenticated())
                 .exceptionHandling(e -> e.authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))
                 .addFilterBefore(new JwtAuthFilter(jwtService, userDetailsService),
                         UsernamePasswordAuthenticationFilter.class);
-        http.addFilterBefore(new TailleRequeteFilter(tailleMax.toBytes()), JwtAuthFilter.class);
+        http.addFilterBefore(new TailleRequeteFilter(tailleMax.toBytes(), tailleEnvoi.toBytes()), JwtAuthFilter.class);
         if (limiteActive) {
             http.addFilterBefore(new LimiteDebitFilter(Map.of(
                     "/api/auth/login", new LimiteDebitFilter.Regle(limiteConnexion, Duration.ofMinutes(1)),

@@ -515,4 +515,157 @@ class ParcoursScolaireIntegrationTest {
         jdbc.update("update utilisateur set verrouille_jusqu_a = null where email = ?", EMAIL_PARENT);
         connecter(EMAIL_PARENT, MDP_NOUVEAU).attendre(200);
     }
+
+    // ---------- Ministère, régions : comptes, conformité, examens, postes ----------
+
+    private static final String EMAIL_REGION = "region-it@example.org";
+    private static final String EMAIL_MINISTERE_2 = "ministere2-it@example.org";
+    private String jetonRegion;
+    private long zoneRegionId;
+    private long ecoleRegionId;
+    private long examenId;
+
+    @Test
+    @Order(18)
+    void leMinistereGereLesComptesInstitutionnels() throws Exception {
+        Reponse cree = post("/api/ministere/comptes", jetonMinistere, """
+                {"email":"%s","nom":"Second","prenom":"Ministère","motDePasseInitial":"%s"}"""
+                .formatted(EMAIL_MINISTERE_2, MDP_INITIAL)).attendre(201);
+        long compteId = cree.id("$.id");
+        post("/api/ministere/comptes", jetonMinistere, """
+                {"email":"%s","nom":"Second","prenom":"Ministère","motDePasseInitial":"%s"}"""
+                .formatted(EMAIL_MINISTERE_2, MDP_INITIAL)).attendre(409);   // adresse déjà utilisée
+
+        assertThat((List<?>) get("/api/ministere/comptes", jetonMinistere).attendre(200)
+                .lire("$[?(@.email=='" + EMAIL_MINISTERE_2 + "')]")).hasSize(1);
+
+        String jetonSecond = premiereConnexion(EMAIL_MINISTERE_2);
+        get("/api/ministere/comptes", jetonSecond).attendre(200);
+
+        post("/api/ministere/comptes/" + compteId + "/activation", jetonMinistere, "{\"actif\":false}").attendre(204);
+        connecter(EMAIL_MINISTERE_2, MDP_NOUVEAU).attendre(401);                 // désactivé : plus de connexion
+        post("/api/ministere/comptes/" + compteId + "/activation", jetonMinistere, "{\"actif\":true}").attendre(204);
+        connecter(EMAIL_MINISTERE_2, MDP_NOUVEAU).attendre(200);
+
+        // un compte d'établissement n'est pas un compte institutionnel ; la direction n'a pas accès à cette gestion
+        get("/api/ministere/comptes", jetonDirection).attendre(403);
+    }
+
+    @Test
+    @Order(19)
+    void laDirectionRegionaleInspecteSeulementSaZone() throws Exception {
+        long pays = ((Number) ((List<?>) get("/api/zones", jetonMinistere).attendre(200)
+                .lire("$[?(@.nom=='Pays démo')].id")).get(0)).longValue();
+        long cycle = ((Number) ((List<?>) get("/api/cycles", jetonMinistere).attendre(200)
+                .lire("$[?(@.code=='PRIMAIRE')].id")).get(0)).longValue();
+        zoneRegionId = post("/api/zones", jetonMinistere, """
+                {"parentId":%d,"nom":"Région IT %s","typeZone":"REGION"}""".formatted(pays, suffixe)).attendre(201).id("$.id");
+        ecoleRegionId = post("/api/etablissements", jetonMinistere, """
+                {"codeOfficiel":"IT-REG-%s","nom":"École région IT","zoneId":%d,"secteur":"PRIVE","cycleIds":[%d]}"""
+                .formatted(suffixe, zoneRegionId, cycle)).attendre(201).id("$.id");
+        post("/api/zones/" + zoneRegionId + "/direction-regionale", jetonMinistere, """
+                {"email":"%s","nom":"Région","prenom":"IT","telephone":"620000000","motDePasseInitial":"%s"}"""
+                .formatted(EMAIL_REGION, MDP_INITIAL)).attendre(201);
+        jetonRegion = premiereConnexion(EMAIL_REGION);
+
+        // elle ne voit que sa zone
+        Reponse avant = get("/api/region/conformite", jetonRegion).attendre(200);
+        assertThat(avant.lire("$.lignes.length()")).isEqualTo(1);
+        assertThat(avant.id("$.lignes[0].id")).isEqualTo(ecoleRegionId);
+        assertThat(avant.lire("$.lignes[0].urgent")).isEqualTo(false);
+        get("/api/etablissements/" + ecole1 + "/inspections", jetonRegion).attendre(403);
+        get("/api/ministere/conformite", jetonRegion).attendre(403);
+
+        // inspection : la date ne peut pas être dans le futur, le résultat doit être connu
+        post("/api/etablissements/" + ecoleRegionId + "/inspections", jetonRegion, """
+                {"dateInspection":"%s","resultat":"CONFORME"}""".formatted(aujourdhui.plusDays(2))).attendre(400);
+        post("/api/etablissements/" + ecoleRegionId + "/inspections", jetonRegion, """
+                {"dateInspection":"%s","resultat":"PEUT-ETRE"}""".formatted(aujourdhui)).attendre(400);
+        post("/api/etablissements/" + ecoleRegionId + "/inspections", jetonRegion, """
+                {"dateInspection":"%s","resultat":"NON_CONFORME","observations":"Toit abîmé"}""".formatted(aujourdhui))
+                .attendre(201);
+        post("/api/etablissements/" + ecole1 + "/inspections", jetonRegion, """
+                {"dateInspection":"%s","resultat":"CONFORME"}""".formatted(aujourdhui)).attendre(403);
+
+        long signalementId = post("/api/etablissements/" + ecoleRegionId + "/signalements-securite", jetonRegion, """
+                {"categorie":"INCENDIE","gravite":"ELEVEE","description":"Pas d'extincteur"}""").attendre(201).id("$.id");
+
+        Reponse apres = get("/api/region/conformite", jetonRegion).attendre(200);
+        assertThat(apres.lire("$.lignes[0].urgent")).isEqualTo(true);
+        assertThat(apres.lire("$.indicateurs.urgents")).isEqualTo(1);
+        assertThat(apres.lire("$.indicateurs.nonConformes")).isEqualTo(1);
+        assertThat(apres.lire("$.indicateurs.inspectes")).isEqualTo(1);
+        assertThat(apres.lire("$.indicateurs.avecProblemeSecurite")).isEqualTo(1);
+
+        // l'autorisation est une décision du ministère
+        String autorisation = """
+                {"statut":"AUTORISE","reference":"Arrêté IT","dateAutorisation":"%s"}""".formatted(aujourdhui.minusDays(5));
+        put("/api/etablissements/" + ecoleRegionId + "/autorisation", jetonRegion, autorisation).attendre(403);
+        put("/api/etablissements/" + ecoleRegionId + "/autorisation", jetonMinistere, """
+                {"statut":"RETIRE"}""").attendre(400);                                  // un retrait demande un motif
+        put("/api/etablissements/" + ecoleRegionId + "/autorisation", jetonMinistere, autorisation).attendre(200);
+        assertThat(get("/api/region/conformite", jetonRegion).attendre(200).lire("$.indicateurs.autorises")).isEqualTo(1);
+
+        post("/api/signalements-securite/" + signalementId + "/resolution", jetonRegion, null).attendre(200);
+        post("/api/signalements-securite/" + signalementId + "/resolution", jetonRegion, null).attendre(409);
+        assertThat(get("/api/region/conformite", jetonRegion).attendre(200).lire("$.indicateurs.avecProblemeSecurite"))
+                .isEqualTo(0);
+
+        // le ministère retrouve la zone avec son filtre
+        assertThat(get("/api/ministere/conformite?zoneId=" + zoneRegionId, jetonMinistere).attendre(200)
+                .lire("$.indicateurs.total")).isEqualTo(1);
+    }
+
+    @Test
+    @Order(20)
+    void lesExamensNationauxSontSaisisEtCalcules() throws Exception {
+        examenId = post("/api/examens", jetonMinistere, """
+                {"libelle":"BEPC IT %s","anneeScolaireId":%d}""".formatted(suffixe, anneeId)).attendre(201).id("$.id");
+        post("/api/examens", jetonRegion, """
+                {"libelle":"Autre IT","anneeScolaireId":%d}""".formatted(anneeId)).attendre(403);
+        post("/api/examens", jetonMinistere, """
+                {"libelle":"BEPC IT %s","anneeScolaireId":%d}""".formatted(suffixe, anneeId)).attendre(409);
+
+        String chemin = "/api/examens/" + examenId + "/resultats/";
+        put(chemin + ecoleRegionId, jetonRegion, "{\"presentes\":10,\"admis\":11}").attendre(400);   // plus d'admis que de présentés
+        put(chemin + ecoleRegionId, jetonRegion, "{\"presentes\":100,\"admis\":80}").attendre(200);
+        put(chemin + ecole1, jetonRegion, "{\"presentes\":100,\"admis\":80}").attendre(403);          // hors de sa zone
+
+        Reponse region = get("/api/region/examens/" + examenId, jetonRegion).attendre(200);
+        assertThat(region.nombre("$.synthese.taux")).isEqualTo(80.0);
+        assertThat(region.lire("$.synthese.transmis")).isEqualTo(1);
+        Reponse national = get("/api/ministere/examens/" + examenId + "?zoneId=" + zoneRegionId, jetonMinistere).attendre(200);
+        assertThat(national.nombre("$.synthese.taux")).isEqualTo(80.0);
+
+        put(chemin + ecoleRegionId, jetonRegion, "{\"presentes\":100,\"admis\":90}").attendre(200);   // correction
+        assertThat(get("/api/region/examens/" + examenId, jetonRegion).attendre(200).nombre("$.synthese.taux"))
+                .isEqualTo(90.0);
+
+        get("/api/ministere/evolution", jetonMinistere).attendre(200);
+        get("/api/region/evolution", jetonRegion).attendre(200);
+    }
+
+    @Test
+    @Order(21)
+    void lesPostesEtLesRapportsSontDansLePerimetre() throws Exception {
+        put("/api/etablissements/" + ecoleRegionId + "/postes", jetonRegion, "{\"postes\":5}").attendre(200);
+        put("/api/etablissements/" + ecole1 + "/postes", jetonRegion, "{\"postes\":5}").attendre(403);
+        Reponse postes = get("/api/region/postes?anneeScolaireId=" + anneeId, jetonRegion).attendre(200);
+        assertThat(postes.lire("$.lignes.length()")).isEqualTo(1);
+        assertThat(postes.lire("$.lignes[0].postes")).isEqualTo(5);
+        assertThat(postes.lire("$.lignes[0].vacants")).isEqualTo(5);
+
+        // mutation : l'établissement d'origine doit être celui de l'enseignant
+        post("/api/enseignants/" + enseignantId + "/mutation", jetonRegion, """
+                {"depuisEtablissementId":%d,"versEtablissementId":%d}""".formatted(ecole1, ecoleRegionId)).attendre(403);
+
+        for (String chemin : List.of("/api/region/rapport.pdf?anneeScolaireId=" + anneeId)) {
+            assertThat(get(chemin, jetonRegion).attendre(200).corps()).startsWith("%PDF");
+        }
+        assertThat(get("/api/ministere/rapport.pdf?anneeScolaireId=" + anneeId, jetonMinistere).attendre(200).corps())
+                .startsWith("%PDF");
+        get("/api/ministere/rapport.pdf?anneeScolaireId=" + anneeId, jetonRegion).attendre(403);
+        assertThat(get("/api/etablissements/" + ecoleRegionId + "/rapport.pdf?anneeScolaireId=" + anneeId, jetonRegion)
+                .attendre(200).corps()).startsWith("%PDF");
+    }
 }

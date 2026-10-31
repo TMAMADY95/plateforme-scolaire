@@ -4,6 +4,7 @@ import { useMesAffectations } from '../hooks/useMesAffectations'
 import PanneauAnnonces from '../components/PanneauAnnonces'
 import ResultatsClasse from '../components/ResultatsClasse'
 import OngletAppel from './classe/OngletAppel'
+import OngletCahierTexte from './classe/OngletCahierTexte'
 import OngletDevoirs from './classe/OngletDevoirs'
 import OngletEleves from './classe/OngletEleves'
 import OngletEvaluations from './classe/OngletEvaluations'
@@ -64,6 +65,7 @@ export default function PageClasseEnseignant() {
         <Tabs.List>
           <Tabs.Tab value="appel">Appel</Tabs.Tab>
           <Tabs.Tab value="evaluations">Évaluations et notes</Tabs.Tab>
+          <Tabs.Tab value="cahier">Cahier de texte</Tabs.Tab>
           <Tabs.Tab value="devoirs">Devoirs</Tabs.Tab>
           <Tabs.Tab value="annonces">Annonces</Tabs.Tab>
           <Tabs.Tab value="resultats">Résultats</Tabs.Tab>
@@ -74,6 +76,9 @@ export default function PageClasseEnseignant() {
         </Tabs.Panel>
         <Tabs.Panel value="evaluations" pt="md">
           <OngletEvaluations classeId={id} anneeScolaireId={anneeScolaireId} mesMatieres={mesMatieres} />
+        </Tabs.Panel>
+        <Tabs.Panel value="cahier" pt="md">
+          <OngletCahierTexte classeId={id} mesMatieres={mesMatieres} />
         </Tabs.Panel>
         <Tabs.Panel value="devoirs" pt="md">
           <OngletDevoirs classeId={id} mesMatieres={mesMatieres} />

@@ -1,6 +1,7 @@
-import { Alert, Group, Loader, Modal, Stack, Text } from '@mantine/core'
+import { useState } from 'react'
+import { Alert, Button, Group, Loader, Modal, Stack, Text } from '@mantine/core'
 import { useQuery } from '@tanstack/react-query'
-import { statistiquesEtablissement } from '../api/endpoints'
+import { rapportEtablissementPdf, statistiquesEtablissement } from '../api/endpoints'
 import type { LigneEtablissementStat } from '../api/types'
 import { BadgeSecteur, BadgesCycles } from './BadgesEtablissement'
 import PanneauStatistiques from './PanneauStatistiques'
@@ -15,6 +16,7 @@ export default function DetailEtablissementModal({
   anneeScolaireId: number
   onFermer: () => void
 }) {
+  const [erreurRapport, setErreurRapport] = useState<string | null>(null)
   const statistiques = useQuery({
     queryKey: ['statistiques-etablissement', etablissement.id, anneeScolaireId],
     queryFn: () => statistiquesEtablissement(etablissement.id, anneeScolaireId),
@@ -30,7 +32,23 @@ export default function DetailEtablissementModal({
           </Text>
           <BadgeSecteur secteur={etablissement.secteur} />
           <BadgesCycles cycles={etablissement.cycles} />
+          <Button
+            size="compact-sm"
+            variant="light"
+            ml="auto"
+            onClick={() => {
+              setErreurRapport(null)
+              rapportEtablissementPdf(etablissement.id, anneeScolaireId).catch((e: Error) => setErreurRapport(e.message))
+            }}
+          >
+            Rapport PDF
+          </Button>
         </Group>
+        {erreurRapport && (
+          <Alert color="red" variant="light">
+            {erreurRapport}
+          </Alert>
+        )}
         {statistiques.isPending && <Loader />}
         {statistiques.isError && (
           <Alert color="red" variant="light">

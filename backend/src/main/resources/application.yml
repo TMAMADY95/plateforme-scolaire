@@ -24,6 +24,10 @@ spring:
         core-size: 2
         max-size: 4
         queue-capacity: 200
+  servlet:
+    multipart:
+      max-file-size: 6MB
+      max-request-size: 7MB
   flyway:
     enabled: true
     locations: classpath:db/migration
@@ -31,9 +35,34 @@ spring:
 app:
   # Taille maximale d'une requête (en-tête Content-Length). Au-delà : 413.
   taille-requete-max: ${TAILLE_REQUETE_MAX:1MB}
+  # Envoi d'une pièce jointe d'inspection (PDF, photo) : limite de la requête, puis du fichier.
+  taille-envoi-max: ${TAILLE_ENVOI_MAX:6MB}
+  piece-jointe-max: ${PIECE_JOINTE_MAX:5MB}
+  securite:
+    # Code envoyé par e-mail à chaque connexion du ministère et des directions régionales.
+    double-authentification: ${DOUBLE_AUTHENTIFICATION:false}
   annonces:
     # Prévenir les parents de la classe par e-mail à chaque annonce (seul le titre est envoyé, jamais le texte).
     email: ${ANNONCES_EMAIL:true}
+  sms:
+    # Annonces par SMS aux parents (désactivé par défaut : un SMS coûte de l'argent).
+    annonces: ${SMS_ANNONCES:false}
+    # Alertes d'inspection urgente aux directions régionales et au ministère.
+    alertes: ${SMS_ALERTES:true}
+    # SMS aux parents quand leur enfant est noté absent (non justifié) à l'appel (désactivé par défaut : coût).
+    absences: ${SMS_ABSENCES:false}
+    # Écrit les SMS dans les journaux quand aucune passerelle n'est configurée (développement).
+    journaliser: ${SMS_JOURNALISER:false}
+  rapports:
+    entete: ${RAPPORTS_ENTETE:Ministère de l'Éducation}
+    sous-entete: ${RAPPORTS_SOUS_ENTETE:République de Guinée}
+  postes:
+    # Norme utilisée pour estimer les besoins en enseignants.
+    eleves-par-enseignant: ${ELEVES_PAR_ENSEIGNANT:40}
+  alertes:
+    actif: ${ALERTES_ACTIF:true}
+    # Tous les jours à 7 h.
+    cron: ${ALERTES_CRON:0 0 7 * * *}
   reussite:
     # Durée de conservation du taux de réussite national/régional (0 = pas de cache).
     cache-minutes: ${REUSSITE_CACHE_MINUTES:10}

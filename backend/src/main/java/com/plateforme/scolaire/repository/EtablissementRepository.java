@@ -8,6 +8,8 @@ import org.springframework.data.repository.query.Param;
 
 public interface EtablissementRepository extends JpaRepository<Etablissement, Long> {
 
+    boolean existsByTypeEtablissementId(Long typeEtablissementId);
+
     boolean existsByCodeOfficiel(String codeOfficiel);
 
     boolean existsByZoneId(Long zoneId);

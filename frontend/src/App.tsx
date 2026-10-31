@@ -4,6 +4,7 @@ import RequiertSession from './auth/RequiertSession'
 import { estDirectionEtablissement, estDirectionRegionale, estEleve, estEnseignant, estGestionnaire, estMinistere, estParent } from './auth/roles'
 import MiseEnPage from './layout/MiseEnPage'
 import PageAccueil from './pages/PageAccueil'
+import PageAlertesParents from './pages/PageAlertesParents'
 import PageChangementMotDePasse from './pages/PageChangementMotDePasse'
 import PageClasseEnseignant from './pages/PageClasseEnseignant'
 import PageClasses from './pages/PageClasses'
@@ -27,6 +28,7 @@ import PagePaiementSimule from './pages/PagePaiementSimule'
 import PagePresences from './pages/PagePresences'
 import PageRegion from './pages/PageRegion'
 import PageResultats from './pages/PageResultats'
+import PageVerificationDiplome from './pages/PageVerificationDiplome'
 
 /** Route paramétrée : l'emploi du temps d'une classe choisie dans la liste. */
 function EmploiDuTempsClasse() {
@@ -40,6 +42,7 @@ export default function App() {
       <Route path="/connexion" element={<PageConnexion />} />
       <Route path="/mot-de-passe-oublie" element={<PageMotDePasseOublie />} />
       <Route path="/reinitialisation" element={<PageReinitialisation />} />
+      <Route path="/verification-diplome" element={<PageVerificationDiplome />} />
       <Route
         path="/changer-mot-de-passe"
         element={
@@ -71,6 +74,7 @@ export default function App() {
         />
         <Route path="finances" element={<RequiertRole autorise={estGestionnaire}><PageFinances /></RequiertRole>} />
         <Route path="comptes" element={<RequiertRole autorise={estDirectionEtablissement}><PageComptes /></RequiertRole>} />
+        <Route path="alertes-parents" element={<RequiertRole autorise={estDirectionEtablissement}><PageAlertesParents /></RequiertRole>} />
 
         {/* Retour du prestataire de paiement simulé (dev) */}
         <Route path="paiement-simule/:reference" element={<PagePaiementSimule />} />

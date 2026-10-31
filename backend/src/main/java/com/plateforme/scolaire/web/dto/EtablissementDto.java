@@ -7,7 +7,8 @@ import java.util.List;
 
 /** [secteur] : PUBLIC ou PRIVE. [cycles] : un ou plusieurs, dans l'ordre (primaire, collège, lycée…). */
 public record EtablissementDto(Long id, String codeOfficiel, String nom, String secteur, List<CycleDto> cycles,
-                               String statut, Long zoneId, String adresse, Integer capacite) {
+                               String statut, Long zoneId, String adresse, Integer capacite,
+                               Long typeEtablissementId, String typeEtablissement) {
 
     public static EtablissementDto de(Etablissement e) {
         return new EtablissementDto(
@@ -19,6 +20,8 @@ public record EtablissementDto(Long id, String codeOfficiel, String nom, String 
                 e.getStatut(),
                 e.getZone() != null ? e.getZone().getId() : null,
                 e.getAdresse(),
-                e.getCapacite());
+                e.getCapacite(),
+                e.getTypeEtablissement() == null ? null : e.getTypeEtablissement().getId(),
+                e.getTypeEtablissement() == null ? null : e.getTypeEtablissement().getLibelle());
     }
 }

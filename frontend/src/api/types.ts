@@ -27,6 +27,18 @@ export interface Moi {
   affectations: Affectation[]
 }
 
+export interface PieceJointe {
+  id: number
+  nom: string
+  typeMime: string
+  taille: number
+  ajouteeLe: string
+}
+
+export interface VerificationRequise {
+  verificationRequise: true
+}
+
 export interface LoginResponse {
   token: string
   type: string
@@ -61,6 +73,19 @@ export interface Etablissement {
   zoneId: number | null
   adresse: string | null
   capacite: number | null
+  typeEtablissementId: number | null
+  typeEtablissement: string | null
+}
+
+export interface TypeEtablissement {
+  id: number
+  code: string
+  libelle: string
+}
+
+export interface TypeEtablissementRequete {
+  code: string
+  libelle: string
 }
 
 export interface AnneeScolaire {
@@ -226,6 +251,9 @@ export interface Periode {
   ordre: number
   dateDebut: string
   dateFin: string
+  /** Null : période nationale ; sinon propre à un établissement. */
+  etablissementId: number | null
+  typePeriode: 'TRIMESTRE' | 'SEMESTRE' | 'AUTRE'
 }
 
 export interface Evaluation {
@@ -546,6 +574,7 @@ export interface EtablissementRequete {
   cycleIds: number[]
   adresse?: string
   capacite?: number
+  typeEtablissementId?: number | null
 }
 
 export interface DirectionRequete {
@@ -711,6 +740,8 @@ export interface Statistiques {
   effectifsParSexe: Repartition[]
   effectifsParZone: Repartition[]
   inscriptionsParMois: PointMois[]
+  repartitionParTypeEtablissement: Repartition[]
+  effectifsParTypeEtablissement: Repartition[]
 }
 
 export interface ReussiteClasse {
@@ -879,4 +910,745 @@ export interface LigneZoneStat {
   enseignants: number
   personnelDirection: number
   classes: number
+}
+
+// ---------- Conformité, inspections et sécurité ----------
+
+export type StatutAutorisation = 'EN_ATTENTE' | 'AUTORISE' | 'NON_AUTORISE' | 'RETIRE'
+
+export interface LigneConformite {
+  id: number
+  codeOfficiel: string
+  nom: string
+  secteur: Secteur
+  cycles: Cycle[]
+  statut: string
+  zoneId: number | null
+  zone: string | null
+  autorisation: StatutAutorisation
+  reference: string | null
+  motifStatut: string | null
+  derniereInspection: string | null
+  resultatInspection: 'CONFORME' | 'NON_CONFORME' | null
+  inspecte: boolean
+  nonConforme: boolean
+  signalementsOuverts: number
+  signalementsGraves: number
+  derniereDonnee: string | null
+  sansDonnees: boolean
+  urgent: boolean
+  score: number
+  motifsUrgence: string[]
+}
+
+export interface IndicateursConformite {
+  total: number
+  publics: number
+  prives: number
+  autorises: number
+  nonAutorises: number
+  autorisationEnAttente: number
+  nonConformes: number
+  inspectes: number
+  avecProblemeSecurite: number
+  sansDonnees: number
+  fermes: number
+  urgents: number
+}
+
+export interface Conformite {
+  indicateurs: IndicateursConformite
+  lignes: LigneConformite[]
+}
+
+/** Filtres du rapport ; les valeurs vides signifient « tous ». */
+export interface FiltresConformite {
+  zoneId: string
+  statut: string
+  secteur: string
+  cycleId: string
+}
+
+export interface Inspection {
+  id: number
+  dateInspection: string
+  resultat: 'CONFORME' | 'NON_CONFORME'
+  observations: string | null
+  inspecteur: string
+}
+
+export interface InspectionRequete {
+  dateInspection: string
+  resultat: 'CONFORME' | 'NON_CONFORME'
+  observations: string | null
+}
+
+export type CategorieSecurite = 'INCENDIE' | 'BATIMENT' | 'EAU_HYGIENE' | 'CLOTURE' | 'AUTRE'
+export type GraviteSecurite = 'FAIBLE' | 'MOYENNE' | 'ELEVEE'
+
+export interface Signalement {
+  id: number
+  categorie: CategorieSecurite
+  gravite: GraviteSecurite
+  description: string
+  statut: 'OUVERT' | 'RESOLU'
+  signalePar: string
+  createdAt: string
+  resoluAt: string | null
+}
+
+export interface SignalementRequete {
+  categorie: CategorieSecurite
+  gravite: GraviteSecurite
+  description: string
+}
+
+export interface AutorisationRequete {
+  statut: StatutAutorisation
+  reference: string | null
+  dateAutorisation: string | null
+  motif: string | null
+}
+
+// ---------- Examens nationaux ----------
+
+export interface Examen {
+  id: number
+  libelle: string
+  anneeScolaireId: number
+  cycleId: number | null
+  cycle: string | null
+  niveauId: number | null
+  niveau: string | null
+  /** NATIONAL ou un type de zone (COMMUNE, PREFECTURE, REGION…) : qui organise l'examen. */
+  niveauOrganisation: string
+  /** Période officielle des épreuves ; null tant qu'elle n'est pas publiée. */
+  dateDebut: string | null
+  dateFin: string | null
+  /** Types d'établissement participants ; vide : tous les types. */
+  typesEtablissementIds: number[]
+  typesEtablissement: string[]
+  statutResultats: 'EN_COURS' | 'DELIBERE' | 'PROCLAME'
+  dateDeliberation: string | null
+  dateProclamation: string | null
+}
+
+export interface MembreJury {
+  id: number
+  ordre: number
+  fonction: string
+  nom: string | null
+  present: boolean
+}
+
+export interface Jury {
+  examenId: number
+  statut: 'EN_COURS' | 'DELIBERE' | 'PROCLAME'
+  dateDeliberation: string | null
+  dateProclamation: string | null
+  membres: MembreJury[]
+  presents: number
+  quorumRequis: number
+  quorumAtteint: boolean
+  peutProclamer: boolean
+}
+
+export interface ExamenRequete {
+  libelle: string
+  anneeScolaireId: number
+  cycleId: number | null
+  niveauId?: number | null
+  niveauOrganisation?: string | null
+  dateDebut?: string | null
+  dateFin?: string | null
+  typesEtablissementIds?: number[]
+}
+
+export interface TypeExamen {
+  id: number
+  code: string
+  libelle: string
+  niveauOrganisation: string
+  niveauId: number | null
+  niveau: string | null
+  cycleId: number | null
+  cycle: string | null
+}
+
+export interface TypeExamenRequete {
+  code: string
+  libelle: string
+  niveauOrganisation: string
+  niveauId: number | null
+  cycleId: number | null
+}
+
+export type SerieBac = 'SCIENCES_MATHEMATIQUES' | 'SCIENCES_SOCIALES' | 'SCIENCES_EXPERIMENTALES'
+
+export interface ResultatSerie {
+  serie: SerieBac
+  presentes: number
+  admis: number
+}
+
+export interface ResultatExamenRequete {
+  presentes: number
+  admis: number
+  absents?: number | null
+  elimines?: number | null
+  presentesFilles?: number | null
+  admisFilles?: number | null
+  series?: ResultatSerie[] | null
+}
+
+export interface SyntheseExamen {
+  libelle: string
+  etablissements: number
+  transmis: number
+  presentes: number
+  admis: number
+  taux: number | null
+}
+
+export interface LigneExamen {
+  id: number
+  codeOfficiel: string
+  nom: string
+  secteur: Secteur
+  zoneId: number | null
+  zone: string | null
+  presentes: number | null
+  admis: number | null
+  taux: number | null
+  /** Zone qui organise l'examen pour cet établissement (null si examen national). */
+  organisateur: string | null
+  absents: number | null
+  elimines: number | null
+  presentesFilles: number | null
+  admisFilles: number | null
+  series: ResultatSerie[]
+}
+
+export interface RepartitionExamen {
+  libelle: string
+  presentes: number
+  admis: number
+  taux: number | null
+}
+
+export interface StatistiquesExamen {
+  absents: number
+  elimines: number
+  parSexe: RepartitionExamen[]
+  parRegion: SyntheseExamen[]
+  parPrefecture: SyntheseExamen[]
+  parSerie: RepartitionExamen[]
+}
+
+export interface RapportExamen {
+  examen: Examen
+  synthese: SyntheseExamen
+  parSecteur: SyntheseExamen[]
+  lignes: LigneExamen[]
+  statistiques: StatistiquesExamen | null
+}
+
+export interface PointAnnee {
+  anneeScolaireId: number
+  libelle: string
+  eleves: number
+  classes: number
+  presentesExamens: number
+  admisExamens: number
+  tauxExamens: number | null
+}
+
+export interface Evolution {
+  annees: PointAnnee[]
+}
+
+// ---------- Postes d'enseignants et mutations ----------
+
+export interface LignePostes {
+  id: number
+  codeOfficiel: string
+  nom: string
+  secteur: Secteur
+  zoneId: number | null
+  zone: string | null
+  eleves: number
+  enseignants: number
+  postes: number | null
+  vacants: number | null
+  enSurnombre: number
+  besoinEstime: number
+  elevesParEnseignant: number | null
+}
+
+export interface RapportPostes {
+  normeElevesParEnseignant: number
+  totaux: {
+    etablissements: number
+    eleves: number
+    enseignants: number
+    postes: number
+    vacants: number
+    besoinEstime: number
+    enSurnombre: number
+  }
+  lignes: LignePostes[]
+}
+
+export interface MutationRequete {
+  depuisEtablissementId: number
+  versEtablissementId: number
+}
+
+export interface CompteInstitutionnel {
+  id: number
+  email: string
+  nom: string
+  prenom: string
+  telephone: string | null
+  role: 'MINISTERE' | 'DIRECTION_REGIONALE'
+  zoneId: number | null
+  zone: string | null
+  actif: boolean
+}
+
+export type StatutPlanAction = 'A_FAIRE' | 'EN_COURS' | 'TERMINE' | 'ANNULE'
+
+export interface PlanAction {
+  id: number
+  etablissementId: number
+  etablissement: string
+  zone: string | null
+  description: string
+  echeance: string
+  statut: StatutPlanAction
+  enRetard: boolean
+  note: string | null
+  creePar: string
+  createdAt: string
+  termineLe: string | null
+}
+
+export interface PlanActionRequete {
+  description: string
+  echeance: string
+  inspectionId?: number | null
+}
+
+export interface AlerteEnvoyee {
+  id: number
+  envoyeeLe: string
+  type: 'URGENCE' | 'PLAN_ACTION' | 'RESULTATS_EXAMEN' | 'ABSENCE'
+  canal: 'EMAIL' | 'SMS'
+  destinataire: string
+  resume: string
+  reussie: boolean
+}
+
+export interface EntreeCahierTexte {
+  id: number
+  classeId: number
+  matiereId: number
+  matiere: string
+  enseignant: string
+  dateSeance: string
+  contenu: string
+}
+
+export type StatutJustification = 'EN_ATTENTE' | 'ACCEPTEE' | 'REFUSEE'
+
+export interface Justification {
+  id: number
+  presenceId: number
+  eleveId: number
+  eleve: string
+  classe: string | null
+  dateAbsence: string
+  typePresence: string
+  motif: string
+  statut: StatutJustification
+  reponse: string | null
+  soumiseLe: string
+}
+
+export interface EnseignantDeLEleve {
+  enseignantId: number
+  nom: string
+  matieres: string[]
+}
+
+export type StatutRendezVous = 'DEMANDE' | 'CONFIRME' | 'REFUSE' | 'ANNULE'
+
+export interface RendezVous {
+  id: number
+  eleveId: number
+  eleve: string
+  enseignantId: number
+  enseignant: string
+  dateHeure: string
+  motif: string
+  statut: StatutRendezVous
+  reponse: string | null
+}
+
+export type StatutSortie = 'DEMANDEE' | 'ACCEPTEE' | 'REFUSEE'
+
+export interface Sortie {
+  id: number
+  eleveId: number
+  eleve: string
+  dateSortie: string
+  heureSortie: string
+  motif: string
+  accompagnateur: string | null
+  statut: StatutSortie
+  reponse: string | null
+}
+
+export interface ExamenEtablissement {
+  examen: Examen
+  candidats: number
+}
+
+export interface Candidat {
+  id: number
+  eleveId: number
+  nom: string
+  matricule: string
+  classe: string | null
+  numero: string | null
+  centreId: number | null
+  centre: string | null
+  numeroPv: string | null
+  salle: number | null
+  table: number | null
+  libre: boolean
+}
+
+export interface RepartitionCentre {
+  centreId: number
+  centre: string
+  candidats: number
+  salles: number
+  surveillants: number
+  capacite: number | null
+  repartie: boolean
+  plan: { numero: number; places: { table: number; numeroPv: string; nom: string; matricule: string; etablissement: string }[] }[]
+}
+
+export interface ElevePossible {
+  eleveId: number
+  nom: string
+  matricule: string
+  classe: string
+  tauxAbsences: number | null
+  eligible: boolean
+  motif: string | null
+}
+
+export interface PreparationExamen {
+  examen: Examen
+  candidats: Candidat[]
+  possibles: ElevePossible[]
+}
+
+export interface CentreExamen {
+  id: number
+  nom: string
+  adresse: string | null
+  zoneId: number | null
+  zone: string | null
+  dateDebut: string | null
+  etablissementId: number | null
+}
+
+export interface Epreuve {
+  id: number
+  examenId: number
+  matiereId: number | null
+  matiere: string
+  date: string
+  heureDebut: string
+  heureFin: string
+  coefficient: number
+}
+
+export interface EpreuveRequete {
+  matiereId: number | null
+  libelle: string | null
+  date: string
+  heureDebut: string
+  heureFin: string
+  coefficient?: number
+}
+
+export type StatutCandidat = 'INSCRIT' | 'PRESENT' | 'ABSENT' | 'ELIMINE'
+
+export type TypeIncident = 'FRAUDE' | 'RETARD' | 'MALAISE' | 'PERTURBATION' | 'FUITE_SUJET' | 'AUTRE'
+
+export interface IncidentsCentre {
+  centreId: number
+  centre: string
+  candidats: { id: number; nom: string; numeroPv: string | null }[]
+  epreuves: { id: number; nom: string }[]
+  incidents: {
+    id: number
+    type: TypeIncident
+    description: string
+    survenuLe: string
+    signalePar: string | null
+    statut: 'OUVERT' | 'TRAITE'
+    decision: string | null
+    elimine: boolean
+    candidatId: number | null
+    candidat: string | null
+    numeroPv: string | null
+    epreuveId: number | null
+    epreuve: string | null
+  }[]
+  parType: Record<string, number>
+}
+
+export interface CorrectionExamen {
+  examenId: number
+  statutResultats: string
+  niveau: string
+  epreuves: { id: number; nom: string; sousCommission: boolean }[]
+  commissions: {
+    id: number
+    epreuveId: number | null
+    nom: string
+    lieu: string | null
+    nbCopies: number
+    nbCopiesCorrigees: number
+    cloturee: boolean
+    complete: boolean
+    manques: string[]
+    membres: { id: number; role: 'PRESIDENT' | 'SECRETAIRE' | 'CORRECTEUR'; nom: string; telephone: string | null }[]
+  }[]
+  nbCopies: number
+  nbCopiesCorrigees: number
+}
+
+export interface DossiersCandidatures {
+  examenId: number
+  examen: string
+  pieces: { type: string; libelle: string; requise: boolean }[]
+  candidats: {
+    id: number
+    nom: string
+    numero: string | null
+    classe: string | null
+    pieces: Record<string, { reference: string | null; fournieLe: string }>
+    complet: boolean
+    manques: string[]
+    evaluationsManquees: number
+    libre: boolean
+  }[]
+  complets: number
+}
+
+export interface ListeCandidats {
+  statut: 'BROUILLON' | 'TRANSMISE' | 'VALIDEE_REGION' | 'VALIDEE'
+  candidats: number
+  dossiersComplets: number
+  transmiseLe: string | null
+  valideeRegionLe: string | null
+  valideeLe: string | null
+  motifRejet: string | null
+}
+
+export interface BanqueSujets {
+  examenId: number
+  epreuves: {
+    id: number
+    nom: string
+    date: string
+    variantes: {
+      id: number
+      variante: 'A' | 'B' | 'C'
+      intitule: string
+      auteurs: string | null
+      statut: 'ELABORATION' | 'VALIDE' | 'TIRE' | 'COMPROMIS'
+      valideLe: string | null
+      tireLe: string | null
+    }[]
+    validees: number
+    tirable: boolean
+    varianteTiree: string | null
+  }[]
+}
+
+export interface DiplomesExamen {
+  examenId: number
+  statutResultats: string
+  admis: number
+  delivres: number
+  revoques: number
+  diplomes: {
+    id: number
+    numero: string
+    titulaire: string
+    etablissement: string
+    mention: 'PASSABLE' | 'ASSEZ_BIEN' | 'BIEN' | 'TRES_BIEN'
+    delivreLe: string
+    revoque: boolean
+    motifRevocation: string | null
+  }[]
+}
+
+export interface VerificationDiplome {
+  statut: 'AUTHENTIQUE' | 'REVOQUE' | 'INCONNU'
+  titulaire: string | null
+  examen: string | null
+  anneeScolaire: string | null
+  mention: string | null
+  numero: string | null
+  delivreLe: string | null
+  motifRevocation: string | null
+}
+
+export type EtatPli = 'A_CONDITIONNER' | 'CONDITIONNE' | 'EXPEDIE_IRE' | 'RECU_DPE' | 'RECU_PRESIDENT' | 'OUVERT'
+
+export interface DeroulementCentre {
+  centreId: number
+  centre: string
+  candidats: number
+  epreuves: {
+    epreuveId: number
+    nom: string
+    date: string
+    heureDebut: string
+    heureFin: string
+    nbExemplaires: number
+    statutPli: EtatPli
+    etapeSuivante: EtatPli | null
+    conditionneLe: string | null
+    expedieLe: string | null
+    recuDpeLe: string | null
+    recuPresidentLe: string | null
+    ouvertLe: string | null
+    ouvertPar: string | null
+    temoin1: string | null
+    temoin2: string | null
+    compositionDebut: string | null
+    compositionFin: string | null
+    presents: number | null
+    absents: number | null
+    elimines: number | null
+    copiesRamassees: number | null
+    observations: string | null
+    rapportClos: boolean
+    ecartCopies: number | null
+  }[]
+}
+
+export type FonctionCentre = 'PRESIDENT' | 'CHEF_CENTRE' | 'SECRETAIRE' | 'SURVEILLANT' | 'CHEF_SALLE' | 'SECURITE' | 'SANTE'
+
+export interface PersonnelCentre {
+  centreId: number
+  centre: string
+  salles: number
+  personnel: { id: number; role: FonctionCentre; nom: string; telephone: string | null; salle: number | null }[]
+  besoins: { libelle: string; requis: number; affectes: number }[]
+  complet: boolean
+}
+
+export interface NotesCandidat {
+  id: number
+  nom: string
+  sexe: string | null
+  numeroPv: string | null
+  statut: StatutCandidat
+  notes: Record<string, number>
+  moyenne: number | null
+  decision: 'ADMIS' | 'NON_ADMIS' | null
+}
+
+export interface NotesCandidats {
+  examenId: number
+  statutResultats: 'EN_COURS' | 'DELIBERE' | 'PROCLAME'
+  epreuves: { id: number; nom: string; coefficient: number }[]
+  candidats: NotesCandidat[]
+}
+
+export interface AffectationAutomatique {
+  candidatsAffectes: number
+  etablissementsAffectes: number
+  sansCentre: string[]
+}
+
+export interface CentreExamenRequete {
+  /** Facultatif quand [etablissementId] est donné : le centre prend le nom de l'établissement. */
+  nom: string | null
+  adresse: string | null
+  zoneId: number | null
+  dateDebut: string | null
+  etablissementId?: number | null
+}
+
+export interface EleveListe {
+  inscriptionId: number
+  eleveId: number
+  matricule: string
+  nom: string
+  prenom: string
+  sexe: string | null
+  dateNaissance: string | null
+  statut: string
+  etablissementId: number
+  etablissement: string
+  secteur: string
+  typeEtablissement: string | null
+  zone: string | null
+  classe: string | null
+  niveau: string | null
+  cycle: string | null
+}
+
+export interface ElevesPage {
+  elements: EleveListe[]
+  total: number
+  page: number
+  taille: number
+  totalPages: number
+}
+
+export interface FiltresEleves {
+  anneeScolaireId: number
+  q?: string
+  zoneId?: string | null
+  etablissementId?: string | null
+  secteur?: string | null
+  typeEtablissementId?: string | null
+  cycleId?: string | null
+  niveauId?: string | null
+  sexe?: string | null
+  statut?: string | null
+}
+
+export interface CriteresCentre {
+  /** TOUS ou PUBLIC. */
+  secteurAdmis: string
+  autorisationRequise: boolean
+  sallesMinimum: number
+  capaciteMinimum: number
+}
+
+export interface EtablissementCentre {
+  id: number
+  codeOfficiel: string
+  nom: string
+  zoneId: number | null
+  zone: string | null
+  secteur: string
+  typeEtablissement: string | null
+  salles: number
+  capacite: number
+  eligible: boolean
+  motifs: string[]
 }

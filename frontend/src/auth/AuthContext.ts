@@ -6,7 +6,8 @@ export interface AuthContextValeur {
   utilisateur: Moi | null
   /** Vrai pendant la restauration de la session au chargement de la page. */
   chargement: boolean
-  connexion: (email: string, motDePasse: string) => Promise<Moi>
+  /** Renvoie null quand un code reçu par e-mail doit encore être saisi (rappeler avec [code]). */
+  connexion: (email: string, motDePasse: string, code?: string) => Promise<Moi | null>
   deconnexion: () => void
 }
 

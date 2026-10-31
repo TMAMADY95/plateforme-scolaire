@@ -137,7 +137,7 @@ public class StatistiquesService {
     private StatistiquesDto calculer(Long annee, Collection<Long> ids) {
         if (ids.isEmpty()) {
             return new StatistiquesDto(annee, 0, 0, 0, 0, 0, null, JOURS_PRESENCE, List.of(), List.of(), List.of(),
-                    List.of(), List.of(), List.of(), List.of());
+                    List.of(), List.of(), List.of(), List.of(), List.of(), List.of());
         }
         return new StatistiquesDto(annee, ids.size(),
                 statistiquesRepository.compterEnseignants(ids),
@@ -158,7 +158,9 @@ public class StatistiquesService {
                 statistiquesRepository.inscriptionsParMois(ids, annee).stream()
                         .map(l -> new PointMois(mois(((Number) l[0]).intValue(), ((Number) l[1]).intValue()),
                                 ((Number) l[2]).longValue()))
-                        .toList());
+                        .toList(),
+                repartitions(statistiquesRepository.repartitionParTypeEtablissement(ids)),
+                repartitions(statistiquesRepository.effectifsParTypeEtablissement(ids, annee)));
     }
 
     static String libelleSexe(String sexe) {

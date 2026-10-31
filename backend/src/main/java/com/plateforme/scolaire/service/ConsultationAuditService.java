@@ -55,6 +55,44 @@ public class ConsultationAuditService {
                 resultat.getTotalElements(), p, t);
     }
 
+    static final int EXPORT_MAX = 5000;
+
+    /** Export CSV (séparateur « ; », BOM UTF-8 pour Excel) des événements filtrés, 5 000 lignes au plus. */
+    public String exporterCsv(String action, String entite, String eleve) {
+        StringBuilder sb = new StringBuilder("\uFEFFDate;Utilisateur;Email;Action;Résumé;Entité;Identifiant;Contexte;Adresse IP\n");
+        int page = 0;
+        int ecrites = 0;
+        while (ecrites < EXPORT_MAX) {
+            PageAuditDto p = rechercher(action, entite, eleve, page++, TAILLE_MAX);
+            for (JournalAuditDto j : p.contenu()) {
+                sb.append(String.join(";", cellule(String.valueOf(j.date())), cellule(j.utilisateurNom()),
+                        cellule(j.utilisateurEmail()), cellule(j.action()), cellule(j.resume()), cellule(j.entite()),
+                        cellule(j.entiteId() == null ? "" : j.entiteId().toString()), cellule(j.contexte() == null ? "" : j.contexte().stream()
+                        .map(c -> c.libelle() + " : " + c.valeur()).collect(java.util.stream.Collectors.joining(" | "))),
+                        cellule(j.adresseIp()))).append('\n');
+                if (++ecrites >= EXPORT_MAX) {
+                    break;
+                }
+            }
+            if (p.contenu().size() < TAILLE_MAX) {
+                break;
+            }
+        }
+        return sb.toString();
+    }
+
+    private static String cellule(String v) {
+        if (v == null) {
+            return "";
+        }
+        String s = v.replace("\r", " ").replace("\n", " ");
+        // Neutralise l'injection de formules dans Excel.
+        if (!s.isEmpty() && "=+-@".indexOf(s.charAt(0)) >= 0) {
+            s = "'" + s;
+        }
+        return '"' + s.replace("\"", "\"\"") + '"';
+    }
+
     private JournalAuditDto versDto(JournalAudit j) {
         ResolveurContexteAudit.Description description = resolveur.decrire(j);
         return JournalAuditDto.de(j, description.resume(), description.contexte());

@@ -232,6 +232,10 @@ public class EvaluationService {
         if (!periode.getAnneeScolaire().getId().equals(classe.getAnneeScolaire().getId())) {
             throw invalide("La période n'appartient pas à l'année scolaire de la classe");
         }
+        if (periode.getEtablissement() != null && classe.getEtablissement() != null
+                && !periode.getEtablissement().getId().equals(classe.getEtablissement().getId())) {
+            throw invalide("Cette période appartient à un autre établissement");
+        }
         if (date.isBefore(periode.getDateDebut()) || date.isAfter(periode.getDateFin())) {
             throw invalide("La date de l'évaluation est en dehors de la période");
         }

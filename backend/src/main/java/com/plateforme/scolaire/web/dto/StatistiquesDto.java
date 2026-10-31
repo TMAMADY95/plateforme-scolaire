@@ -14,7 +14,9 @@ public record StatistiquesDto(Long anneeScolaireId, long etablissements, long en
                               List<Repartition> repartitionParType, List<Repartition> repartitionParSecteur,
                               List<Repartition> effectifsParCycle, List<Repartition> effectifsParNiveau,
                               List<Repartition> effectifsParSexe, List<Repartition> effectifsParZone,
-                              List<PointMois> inscriptionsParMois) {
+                              List<PointMois> inscriptionsParMois,
+                              List<Repartition> repartitionParTypeEtablissement,
+                              List<Repartition> effectifsParTypeEtablissement) {
 
     /** Un libellé et sa valeur (nombre d'établissements, d'élèves…). */
     public record Repartition(String libelle, long valeur) {

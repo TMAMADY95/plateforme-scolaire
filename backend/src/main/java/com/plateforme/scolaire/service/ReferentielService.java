@@ -77,7 +77,8 @@ public class ReferentielService {
         if (!anneeRepository.existsById(anneeId)) {
             throw introuvable("Année scolaire introuvable");
         }
-        return periodeRepository.findByAnneeScolaireIdOrderByOrdre(anneeId).stream().map(PeriodeDto::de).toList();
+        return PeriodesApplicables.nationales(periodeRepository.findByAnneeScolaireIdOrderByOrdre(anneeId)).stream()
+                .map(PeriodeDto::de).toList();
     }
 
     public PeriodeDto creerPeriode(Long anneeId, PeriodeRequest r) {
@@ -87,7 +88,8 @@ public class ReferentielService {
         if (r.dateDebut().isBefore(annee.getDateDebut()) || r.dateFin().isAfter(annee.getDateFin())) {
             throw invalide("La période doit être comprise dans l'année scolaire");
         }
-        if (periodeRepository.existsByAnneeScolaireIdAndOrdre(anneeId, r.ordre())) {
+        if (PeriodesApplicables.nationales(periodeRepository.findByAnneeScolaireIdOrderByOrdre(anneeId)).stream()
+                .anyMatch(autre -> autre.getOrdre() == r.ordre())) {
             throw conflit("Une période de cette année a déjà ce numéro d'ordre");
         }
         Periode p = new Periode();
@@ -101,12 +103,15 @@ public class ReferentielService {
 
     public PeriodeDto modifierPeriode(Long id, PeriodeRequest r) {
         Periode p = periodeRepository.findById(id).orElseThrow(() -> introuvable("Période introuvable"));
+        if (p.getEtablissement() != null) {
+            throw invalide("Cette période appartient à un établissement : il la gère lui-même");
+        }
         AnneeScolaire annee = p.getAnneeScolaire();
         verifierDates(r.dateDebut(), r.dateFin());
         if (r.dateDebut().isBefore(annee.getDateDebut()) || r.dateFin().isAfter(annee.getDateFin())) {
             throw invalide("La période doit être comprise dans l'année scolaire");
         }
-        boolean ordrePris = periodeRepository.findByAnneeScolaireIdOrderByOrdre(annee.getId()).stream()
+        boolean ordrePris = PeriodesApplicables.nationales(periodeRepository.findByAnneeScolaireIdOrderByOrdre(annee.getId())).stream()
                 .anyMatch(autre -> !autre.getId().equals(id) && autre.getOrdre() == r.ordre());
         if (ordrePris) {
             throw conflit("Une période de cette année a déjà ce numéro d'ordre");

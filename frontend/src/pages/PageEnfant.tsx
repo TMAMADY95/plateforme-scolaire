@@ -3,6 +3,8 @@ import { Link, useParams } from 'react-router'
 import EnteteEleve from '../components/EnteteEleve'
 import { useMesEnfants } from '../hooks/useMesEnfants'
 import PanneauAnnonces from '../components/PanneauAnnonces'
+import OngletLiaison from './enfant/OngletLiaison'
+import OngletCahierTexte from './enfant/OngletCahierTexte'
 import OngletBulletin from './enfant/OngletBulletin'
 import OngletDevoirs from './enfant/OngletDevoirs'
 import OngletEmploiDuTemps from './enfant/OngletEmploiDuTemps'
@@ -58,6 +60,8 @@ export default function PageEnfant() {
         <Tabs.List>
           <Tabs.Tab value="bulletin">Bulletin</Tabs.Tab>
           <Tabs.Tab value="devoirs">Devoirs</Tabs.Tab>
+          <Tabs.Tab value="cahier">Cahier de texte</Tabs.Tab>
+          <Tabs.Tab value="liaison">École-famille</Tabs.Tab>
           <Tabs.Tab value="annonces">Annonces</Tabs.Tab>
           <Tabs.Tab value="presences">Présences</Tabs.Tab>
           <Tabs.Tab value="emploi-du-temps">Emploi du temps</Tabs.Tab>
@@ -70,6 +74,14 @@ export default function PageEnfant() {
 
         <Tabs.Panel value="devoirs" pt="md">
           <OngletDevoirs classeId={enfant.classeId} eleveId={enfant.eleveId} />
+        </Tabs.Panel>
+
+        <Tabs.Panel value="cahier" pt="md">
+          <OngletCahierTexte eleveId={enfant.eleveId} />
+        </Tabs.Panel>
+
+        <Tabs.Panel value="liaison" pt="md">
+          <OngletLiaison eleveId={enfant.eleveId} />
         </Tabs.Panel>
 
         <Tabs.Panel value="annonces" pt="md">

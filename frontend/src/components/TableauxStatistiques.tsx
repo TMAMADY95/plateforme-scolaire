@@ -3,6 +3,7 @@ import { Button, Card, Group, Select, Table, Text } from '@mantine/core'
 import type { LigneEtablissementStat, LigneZoneStat } from '../api/types'
 import { BadgeSecteur, BadgesCycles } from './BadgesEtablissement'
 import EnteteSection from './EnteteSection'
+import { exporterCsv } from '../utils/exportCsv'
 
 const nombre = (n: number) => new Intl.NumberFormat('fr-FR').format(n)
 const ratio = (eleves: number, enseignants: number) =>
@@ -39,6 +40,31 @@ export function TableauEtablissements({
         titre="Par établissement"
         description="Les effectifs de chaque établissement ; cliquez sur « Détail » pour ses graphiques."
         action={
+          <Group gap="xs">
+          <Button
+            size="xs"
+            variant="light"
+            disabled={lignes.length === 0}
+            onClick={() =>
+              exporterCsv(
+                'effectifs-par-etablissement',
+                [
+                  { titre: 'Code', valeur: (l: LigneEtablissementStat) => l.codeOfficiel },
+                  { titre: 'Établissement', valeur: (l) => l.nom },
+                  { titre: 'Zone', valeur: (l) => l.zone },
+                  { titre: 'Secteur', valeur: (l) => (l.secteur === 'PUBLIC' ? 'Public' : 'Privé') },
+                  { titre: 'Cycles', valeur: (l) => l.cycles.map((c) => c.libelle).join(', ') },
+                  { titre: 'Élèves', valeur: (l) => l.eleves },
+                  { titre: 'Enseignants', valeur: (l) => l.enseignants },
+                  { titre: 'Personnel de direction', valeur: (l) => l.personnelDirection },
+                  { titre: 'Classes', valeur: (l) => l.classes },
+                ],
+                tries,
+              )
+            }
+          >
+            Exporter (Excel)
+          </Button>
           <Select
             aria-label="Trier par"
             data={TRIS}
@@ -49,6 +75,7 @@ export function TableauEtablissements({
             leftSectionWidth={40}
             w={230}
           />
+          </Group>
         }
       />
       {lignes.length === 0 ? (
@@ -134,11 +161,35 @@ export function TableauZones({
         titre="Par région et zone"
         description="Chaque zone compte ses sous-zones. Choisissez-en une pour filtrer toute la page."
         action={
-          zoneChoisie !== null ? (
-            <Button variant="default" size="xs" onClick={() => onChoisir(null)}>
-              Revenir au pays entier
+          <Group gap="xs">
+            {zoneChoisie !== null && (
+              <Button variant="default" size="xs" onClick={() => onChoisir(null)}>
+                Revenir au pays entier
+              </Button>
+            )}
+            <Button
+              size="xs"
+              variant="light"
+              disabled={lignes.length === 0}
+              onClick={() =>
+                exporterCsv(
+                  'effectifs-par-zone',
+                  [
+                    { titre: 'Zone', valeur: (l: LigneZoneStat) => l.nom },
+                    { titre: 'Type', valeur: (l) => l.typeZone },
+                    { titre: 'Établissements', valeur: (l) => l.etablissements },
+                    { titre: 'Élèves', valeur: (l) => l.eleves },
+                    { titre: 'Enseignants', valeur: (l) => l.enseignants },
+                    { titre: 'Personnel de direction', valeur: (l) => l.personnelDirection },
+                    { titre: 'Classes', valeur: (l) => l.classes },
+                  ],
+                  lignes,
+                )
+              }
+            >
+              Exporter (Excel)
             </Button>
-          ) : undefined
+          </Group>
         }
       />
       {lignes.length === 0 ? (

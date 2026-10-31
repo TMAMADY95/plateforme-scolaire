@@ -31,7 +31,8 @@ class AdministrationZonesTest {
     private final AdministrationService service = new AdministrationService(zoneRepository,
             etablissementRepository, mock(UtilisateurRepository.class), affectationRoleRepository,
             mock(ClasseRepository.class), mock(InscriptionRepository.class), mock(PasswordEncoder.class),
-            mock(AuditService.class), mock(com.plateforme.scolaire.repository.CycleScolaireRepository.class));
+            mock(AuditService.class), mock(com.plateforme.scolaire.repository.CycleScolaireRepository.class),
+            mock(com.plateforme.scolaire.repository.TypeEtablissementRepository.class));
 
     private ZoneGeographique zone(Long id, String nom, ZoneGeographique parent) {
         ZoneGeographique z = new ZoneGeographique();

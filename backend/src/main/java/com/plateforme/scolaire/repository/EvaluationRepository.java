@@ -11,6 +11,8 @@ public interface EvaluationRepository extends JpaRepository<Evaluation, Long> {
 
     List<Evaluation> findByClasseIdOrderByDateEvaluationDescIdDesc(Long classeId);
 
+    boolean existsByPeriodeId(Long periodeId);
+
     @Query("select e.classe.id from Evaluation e where e.id = :id")
     Optional<Long> findClasseIdById(@Param("id") Long id);
 }

@@ -11,6 +11,11 @@ public interface NoteRepository extends JpaRepository<Note, Long> {
 
     List<Note> findByEvaluationId(Long evaluationId);
 
+    /** Nombre d'évaluations de l'année où chaque élève a été noté absent : {élève, absences}. */
+    @Query("select n.inscription.eleve.id, count(n) from Note n where n.absent = true "
+            + "and n.inscription.anneeScolaire.id = :anneeId and n.inscription.eleve.id in :eleveIds group by n.inscription.eleve.id")
+    List<Object[]> evaluationsManqueesParEleve(@Param("anneeId") Long anneeId, @Param("eleveIds") java.util.Collection<Long> eleveIds);
+
     @Query("select max(n.valeur) from Note n where n.evaluation.id = :evaluationId")
     BigDecimal maxValeur(@Param("evaluationId") Long evaluationId);
 

@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import { Alert, Button, Group, Loader, Pagination, Popover, Stack, Table, Text, TextInput } from '@mantine/core'
 import { useDebouncedValue } from '@mantine/hooks'
-import { keepPreviousData, useQuery } from '@tanstack/react-query'
-import { rechercherAudit } from '../../api/endpoints'
+import { keepPreviousData, useMutation, useQuery } from '@tanstack/react-query'
+import { exporterAuditCsv, rechercherAudit } from '../../api/endpoints'
 import { formaterAdresse } from '../../utils/adresses'
 import { lignesDetails } from '../../utils/detailsAudit'
 
@@ -28,6 +28,10 @@ export default function JournalAuditNational() {
         taille: TAILLE,
       }),
     placeholderData: keepPreviousData,
+  })
+
+  const export_ = useMutation({
+    mutationFn: () => exporterAuditCsv({ action: action.trim(), entite: entite.trim(), eleve: eleve.trim() }),
   })
 
   const nombrePages = journal.data ? Math.max(1, Math.ceil(journal.data.total / journal.data.taille)) : 1
@@ -63,7 +67,15 @@ export default function JournalAuditNational() {
             setPage(0)
           }}
         />
+        <Button
+          variant="light"
+          loading={export_.isPending}
+          onClick={() => export_.mutate()}
+        >
+          Exporter en CSV
+        </Button>
       </Group>
+      {export_.isError && <Alert color="red" variant="light">{export_.error.message}</Alert>}
 
       {journal.isPending && <Loader />}
       {journal.isError && (

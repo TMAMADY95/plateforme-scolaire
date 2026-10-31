@@ -1,5 +1,6 @@
 import { Alert, Badge, Button, Card, Group, Loader, Select, SimpleGrid, Stack, Text, ThemeIcon, Title } from '@mantine/core'
 import { Link } from 'react-router'
+import RendezVousEnseignant from '../components/RendezVousEnseignant'
 import CarteChiffre from '../components/CarteChiffre'
 import Icone from '../components/Icone'
 import { useAnneeScolaire } from '../hooks/useAnneeScolaire'
@@ -43,6 +44,7 @@ export default function PageMesClasses() {
           couleur="cyan"
         />
       </SimpleGrid>
+      <RendezVousEnseignant />
       <Select
         label="Année scolaire"
         data={options}

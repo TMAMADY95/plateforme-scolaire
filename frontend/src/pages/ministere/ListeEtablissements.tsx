@@ -33,6 +33,7 @@ import EnteteSection from '../../components/EnteteSection'
 import ComptesDirectionModal from './ComptesDirectionModal'
 import DirectionModal from './DirectionModal'
 import EtablissementModal from './EtablissementModal'
+import ImportEtablissementsModal from './ImportEtablissementsModal'
 
 const COULEURS: Record<string, string> = { ACTIF: 'green', SUSPENDU: 'orange', FERME: 'gray' }
 const LIBELLES_STATUT: Record<string, string> = { ACTIF: 'Actif', SUSPENDU: 'Suspendu', FERME: 'Fermé' }
@@ -53,6 +54,7 @@ function Compteur({ libelle, valeur, couleur }: { libelle: string; valeur: numbe
 export default function ListeEtablissements() {
   const queryClient = useQueryClient()
   const [creation, { open: ouvrirCreation, close: fermerCreation }] = useDisclosure()
+  const [import_, { open: ouvrirImport, close: fermerImport }] = useDisclosure()
   const [aModifier, setAModifier] = useState<Etablissement | null>(null)
   const [pourDirection, setPourDirection] = useState<Etablissement | null>(null)
   const [pourComptes, setPourComptes] = useState<Etablissement | null>(null)
@@ -95,10 +97,18 @@ export default function ListeEtablissements() {
 
   return (
     <Stack mt="md" gap="lg">
+      {import_ && <ImportEtablissementsModal onFermer={fermerImport} />}
       <EnteteSection
         titre="Établissements"
         description="Écoles, collèges et lycées du réseau, publics ou privés."
-        action={<Button onClick={ouvrirCreation}>Nouvel établissement</Button>}
+        action={
+          <Group gap="xs">
+            <Button variant="default" onClick={ouvrirImport}>
+              Importer (CSV)
+            </Button>
+            <Button onClick={ouvrirCreation}>Nouvel établissement</Button>
+          </Group>
+        }
       />
 
       {etablissements.isPending && <Loader />}
@@ -198,6 +208,11 @@ export default function ListeEtablissements() {
                         </Table.Td>
                         <Table.Td>
                           <BadgeSecteur secteur={e.secteur} />
+                          {e.typeEtablissement && (
+                            <Text size="xs" c="dimmed">
+                              {e.typeEtablissement}
+                            </Text>
+                          )}
                         </Table.Td>
                         <Table.Td>
                           <BadgesCycles cycles={e.cycles} />

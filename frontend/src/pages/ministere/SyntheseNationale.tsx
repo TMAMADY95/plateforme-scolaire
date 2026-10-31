@@ -1,7 +1,8 @@
 import { useState } from 'react'
-import { Alert, Loader, Select, SimpleGrid, Stack, Text } from '@mantine/core'
+import { Alert, Button, Group, Loader, Select, SimpleGrid, Stack, Text } from '@mantine/core'
 import { useQuery } from '@tanstack/react-query'
 import type {
+  Evolution,
   LigneEtablissementStat,
   LigneZoneStat,
   ReussiteReseau,
@@ -9,6 +10,7 @@ import type {
   SyntheseNationale as Synthese,
 } from '../../api/types'
 import DetailEtablissementModal from '../../components/DetailEtablissementModal'
+import PanneauEvolution from '../../components/PanneauEvolution'
 import { TableauEtablissements, TableauZones } from '../../components/TableauxStatistiques'
 import CarteChiffre from '../../components/CarteChiffre'
 import CarteReussiteReseau from '../../components/CarteReussiteReseau'
@@ -33,6 +35,10 @@ interface Props {
   chargerParZone?: (anneeScolaireId: number) => Promise<LigneZoneStat[]>
   /** Taux de réussite du même périmètre, pour une période. */
   chargerReussite: (anneeScolaireId: number, periodeId: number) => Promise<ReussiteReseau>
+  /** Évolution d'une année à l'autre. */
+  chargerEvolution: (zoneId?: number) => Promise<Evolution>
+  /** Télécharge le rapport officiel PDF du périmètre affiché. */
+  telechargerRapport: (anneeScolaireId: number, zoneId?: number) => Promise<void>
 }
 
 export default function SyntheseNationale({
@@ -42,11 +48,14 @@ export default function SyntheseNationale({
   chargerParEtablissement,
   chargerParZone,
   chargerReussite,
+  chargerEvolution,
+  telechargerRapport,
 }: Props) {
   const annee = useAnneeScolaire()
   const anneeId = annee.anneeId === null ? null : Number(annee.anneeId)
 
   const [zoneId, setZoneId] = useState<number | null>(null)
+  const [erreurRapport, setErreurRapport] = useState<string | null>(null)
   const [detail, setDetail] = useState<LigneEtablissementStat | null>(null)
   const filtreZone = chargerParZone !== undefined && zoneId !== null ? zoneId : undefined
 
@@ -82,19 +91,36 @@ export default function SyntheseNationale({
         titre="Chiffres clés"
         description="L'état du réseau pour l'année choisie : établissements, élèves, inscriptions et réussite."
         action={
-          <Select
-            aria-label="Année scolaire"
-            data={annee.options}
-            value={annee.anneeId}
-            onChange={annee.setAnneeChoisie}
-            allowDeselect={false}
-            w={200}
-          />
+          <Group gap="xs">
+            <Button
+              variant="light"
+              disabled={anneeId === null}
+              onClick={() => {
+                setErreurRapport(null)
+                telechargerRapport(anneeId as number, filtreZone).catch((e: Error) => setErreurRapport(e.message))
+              }}
+            >
+              Rapport PDF
+            </Button>
+            <Select
+              aria-label="Année scolaire"
+              data={annee.options}
+              value={annee.anneeId}
+              onChange={annee.setAnneeChoisie}
+              allowDeselect={false}
+              w={200}
+            />
+          </Group>
         }
       />
       {annee.annees.isSuccess && annee.options.length === 0 && (
         <Alert color="blue" variant="light">
           Aucune année scolaire n'existe : créez-en une dans l'onglet « Référentiels ».
+        </Alert>
+      )}
+      {erreurRapport && (
+        <Alert color="red" variant="light">
+          {erreurRapport}
         </Alert>
       )}
       {zoneChoisie && (
@@ -134,6 +160,10 @@ export default function SyntheseNationale({
         </Text>
       )}
       {statistiques.data && <PanneauStatistiques statistiques={statistiques.data} avecReseau />}
+      <Text size="xs" c="dimmed" tt="uppercase" fw={600} mb={-8}>
+        Évolution d'une année à l'autre
+      </Text>
+      <PanneauEvolution cle={cle} charger={chargerEvolution} zoneId={filtreZone} />
       {chargerParZone !== undefined && parZone.data && (
         <TableauZones lignes={parZone.data} zoneChoisie={filtreZone ?? null} onChoisir={setZoneId} />
       )}

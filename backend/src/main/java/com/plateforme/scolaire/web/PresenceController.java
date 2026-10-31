@@ -22,6 +22,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class PresenceController {
 
     private final PresenceService presenceService;
+    private final com.plateforme.scolaire.service.AbsencesParentsService absencesParents;
 
     /** Feuille d'appel d'une classe (aujourd'hui si la date est omise), format de date : 2026-10-26. */
     @GetMapping("/api/classes/{classeId}/presences")
@@ -37,7 +38,9 @@ public class PresenceController {
     public FeuilleAppelDto enregistrer(@PathVariable Long classeId,
                                        @PathVariable @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
                                        @Valid @RequestBody AppelRequest requete) {
-        return presenceService.enregistrer(classeId, date, requete);
+        FeuilleAppelDto feuille = presenceService.enregistrer(classeId, date, requete);
+        absencesParents.prevenir(classeId, date);
+        return feuille;
     }
 
     /** Historique d'un élève : visible par son établissement, ses parents et l'élève lui-même. */

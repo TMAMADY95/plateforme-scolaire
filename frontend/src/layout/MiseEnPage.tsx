@@ -1,6 +1,6 @@
 import { AppShell, Avatar, Badge, Burger, Group, Menu, NavLink, Stack, Text, UnstyledButton } from '@mantine/core'
 import { useDisclosure } from '@mantine/hooks'
-import { Link, Outlet, useLocation } from 'react-router'
+import { Link, Outlet, useLocation, useSearchParams } from 'react-router'
 import {
   estDirectionRegionale,
   estEleve,
@@ -16,6 +16,8 @@ import Icone from '../components/Icone'
 import type { NomIcone } from '../components/Icone'
 import Logo from '../components/Logo'
 import { useMessagesNonLus } from '../hooks/useMessagesNonLus'
+import { SECTIONS_MINISTERE, SECTIONS_REGION } from '../pages/sections'
+import type { Section } from '../pages/sections'
 
 interface Lien {
   chemin: string
@@ -23,6 +25,8 @@ interface Lien {
   icone: NomIcone
   /** Nombre affiché à droite du libellé (0 = rien). */
   pastille?: number
+  /** Sections affichées sous le lien (menu déroulant) : adresse « chemin?onglet=valeur ». */
+  sections?: Section[]
 }
 
 function initiales(email: string): string {
@@ -33,6 +37,8 @@ export default function MiseEnPage() {
   const utilisateur = useUtilisateur()
   const { deconnexion } = useAuth()
   const { pathname } = useLocation()
+  const [parametres] = useSearchParams()
+  const ongletCourant = parametres.get('onglet')
   const [menuOuvert, { toggle, close }] = useDisclosure()
 
   const peutMessagerie = estParent(utilisateur) || estEnseignant(utilisateur) || estGestionnaire(utilisateur)
@@ -53,14 +59,15 @@ export default function MiseEnPage() {
 
   if (estDirectionEtablissement(utilisateur)) {
     liens.push({ chemin: '/comptes', libelle: 'Comptes', icone: 'comptes' })
+    liens.push({ chemin: '/alertes-parents', libelle: 'Alertes parents', icone: 'alerte' })
   }
 
   if (estMinistere(utilisateur)) {
-    liens.push({ chemin: '/ministere', libelle: 'Administration nationale', icone: 'national' })
+    liens.push({ chemin: '/ministere', libelle: 'Administration nationale', icone: 'national', sections: SECTIONS_MINISTERE })
   }
 
   if (estDirectionRegionale(utilisateur)) {
-    liens.push({ chemin: '/region', libelle: 'Ma région', icone: 'region' })
+    liens.push({ chemin: '/region', libelle: 'Ma région', icone: 'region', sections: SECTIONS_REGION })
   }
 
   if (estEnseignant(utilisateur)) {
@@ -137,18 +144,36 @@ export default function MiseEnPage() {
         <Stack gap="lg" h="100%">
           <Logo />
           <div>
-            {liens.map((lien) => (
-              <NavLink
-                key={lien.chemin}
-                component={Link}
-                to={lien.chemin}
-                label={lien.libelle}
-                rightSection={lien.pastille ? <Badge size="sm" circle color="red">{lien.pastille}</Badge> : undefined}
-                leftSection={<Icone nom={lien.icone} />}
-                active={lien.chemin === '/' ? pathname === '/' : pathname.startsWith(lien.chemin)}
-                onClick={close}
-              />
-            ))}
+            {liens.map((lien) => {
+              const actif = lien.chemin === '/' ? pathname === '/' : pathname.startsWith(lien.chemin)
+              const rendu = (
+                <NavLink
+                  key={lien.chemin}
+                  component={Link}
+                  to={lien.chemin}
+                  label={lien.libelle}
+                  rightSection={lien.pastille ? <Badge size="sm" circle color="red">{lien.pastille}</Badge> : undefined}
+                  leftSection={<Icone nom={lien.icone} />}
+                  active={actif && !(lien.sections?.some((s) => s.valeur === ongletCourant) ?? false)}
+                  defaultOpened={actif}
+                  childrenOffset={28}
+                  onClick={close}
+                >
+                  {lien.sections?.map((s) => (
+                    <NavLink
+                      key={s.valeur}
+                      component={Link}
+                      to={`${lien.chemin}?onglet=${s.valeur}`}
+                      label={s.libelle}
+                      leftSection={<Icone nom={s.icone} taille={16} />}
+                      active={actif && ongletCourant === s.valeur}
+                      onClick={close}
+                    />
+                  ))}
+                </NavLink>
+              )
+              return rendu
+            })}
           </div>
         </Stack>
       </AppShell.Navbar>

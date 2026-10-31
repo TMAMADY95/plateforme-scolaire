@@ -21,6 +21,15 @@ public class Periode {
     @JoinColumn(name = "annee_scolaire_id")
     private AnneeScolaire anneeScolaire;
 
+    /** Null : période nationale. Sinon, période propre à cet établissement. */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "etablissement_id")
+    private Etablissement etablissement;
+
+    /** TRIMESTRE, SEMESTRE ou AUTRE */
+    @Column(name = "type_periode", nullable = false, length = 10)
+    private String typePeriode = "AUTRE";
+
     @Column(nullable = false, length = 50)
     private String libelle;
 

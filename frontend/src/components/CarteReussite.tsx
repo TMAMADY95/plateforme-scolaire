@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Alert, Card, Group, Loader, Select, Stack, Table, Text } from '@mantine/core'
 import { useQuery } from '@tanstack/react-query'
-import { listerPeriodes, reussiteEtablissement } from '../api/endpoints'
+import { periodesEtablissement, reussiteEtablissement } from '../api/endpoints'
 import { Barres } from './graphiques/Graphiques'
 
 interface Props {
@@ -12,7 +12,7 @@ interface Props {
 /** Taux de réussite par classe pour une période : moyenne générale d'au moins 10 sur 20. */
 export default function CarteReussite({ etablissementId, anneeScolaireId }: Props) {
   const [periodeChoisie, setPeriodeChoisie] = useState<string | null>(null)
-  const periodes = useQuery({ queryKey: ['periodes', anneeScolaireId], queryFn: () => listerPeriodes(anneeScolaireId) })
+  const periodes = useQuery({ queryKey: ['periodes', 'etablissement', etablissementId, anneeScolaireId], queryFn: () => periodesEtablissement(etablissementId, anneeScolaireId) })
   const periodeId = periodeChoisie ?? (periodes.data && periodes.data.length > 0 ? String(periodes.data[0].id) : null)
 
   const reussite = useQuery({

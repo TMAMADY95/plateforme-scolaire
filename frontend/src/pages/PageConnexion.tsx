@@ -26,6 +26,7 @@ export default function PageConnexion() {
   const lieu = useLocation()
   const [erreur, setErreur] = useState<string | null>(null)
   const [enCours, setEnCours] = useState(false)
+  const [code, setCode] = useState<string | null>(null) // non nul : un code a été envoyé par e-mail
 
   const formulaire = useForm({
     initialValues: { email: '', motDePasse: '' },
@@ -45,7 +46,11 @@ export default function PageConnexion() {
     setErreur(null)
     setEnCours(true)
     try {
-      const moi = await connexion(valeurs.email.trim(), valeurs.motDePasse)
+      const moi = await connexion(valeurs.email.trim(), valeurs.motDePasse, code ?? undefined)
+      if (moi === null) {
+        setCode('')
+        return
+      }
       navigate(moi.changementMotDePasseRequis ? '/changer-mot-de-passe' : destination, { replace: true })
     } catch (e) {
       setErreur(e instanceof ApiError ? e.message : 'Connexion impossible.')
@@ -119,6 +124,19 @@ export default function PageConnexion() {
                 size="md"
                 {...formulaire.getInputProps('motDePasse')}
               />
+              {code !== null && (
+                <TextInput
+                  label="Code de vérification"
+                  description="Un code à 6 chiffres vient de vous être envoyé par e-mail (valable 10 minutes)."
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  maxLength={6}
+                  size="md"
+                  data-autofocus
+                  value={code}
+                  onChange={(e) => setCode(e.currentTarget.value.replace(/\D/g, ''))}
+                />
+              )}
               <Button type="submit" loading={enCours} fullWidth size="md">
                 Se connecter
               </Button>

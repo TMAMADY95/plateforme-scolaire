@@ -83,6 +83,14 @@ export default function PanneauStatistiques({ statistiques: s, avecReseau = fals
               <Barres points={s.effectifsParNiveau} vide="Aucun élève placé en classe." />
             </Cadre>
           </SimpleGrid>
+          <SimpleGrid cols={{ base: 1, md: 2 }}>
+            <Cadre titre="Établissements par type">
+              <Anneau points={s.repartitionParTypeEtablissement} libelleTotal="établissements" vide="Aucun établissement." />
+            </Cadre>
+            <Cadre titre="Élèves par type d'établissement">
+              <Barres points={s.effectifsParTypeEtablissement} vide="Aucun élève placé en classe." />
+            </Cadre>
+          </SimpleGrid>
           <Cadre titre="Élèves par zone">
             <Barres points={s.effectifsParZone} vide="Aucun établissement rattaché à une zone." />
           </Cadre>

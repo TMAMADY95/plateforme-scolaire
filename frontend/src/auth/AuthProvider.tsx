@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react
 import { notifications } from '@mantine/notifications'
 import { useQueryClient } from '@tanstack/react-query'
 import { api, definirJeton, enregistrerRappels } from '../api/client'
-import type { LoginResponse, Moi } from '../api/types'
+import type { LoginResponse, Moi, VerificationRequise } from '../api/types'
 import { AuthContext } from './AuthContext'
 
 // sessionStorage : le jeton disparaît à la fermeture de l'onglet.
@@ -44,8 +44,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     })
   }, [deconnexion])
 
-  const connexion = useCallback(async (email: string, motDePasse: string) => {
-    const reponse = await api.post<LoginResponse>('/api/auth/login', { email, motDePasse }, { sansJeton: true })
+  const connexion = useCallback(async (email: string, motDePasse: string, code?: string) => {
+    const reponse = await api.post<LoginResponse | VerificationRequise>(
+      '/api/auth/login',
+      { email, motDePasse, code: code || undefined },
+      { sansJeton: true },
+    )
+    if ('verificationRequise' in reponse) return null
     definirJeton(reponse.token)
     sessionStorage.setItem(CLE_JETON, reponse.token)
     const moi = await api.get<Moi>('/api/me')

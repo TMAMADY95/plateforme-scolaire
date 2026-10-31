@@ -1,12 +1,14 @@
 import { Alert, Badge, Button, Card, Group, Loader, Progress, SimpleGrid, Stack, Text, Title } from '@mantine/core'
 import { useQuery } from '@tanstack/react-query'
 import { Link, Navigate } from 'react-router'
-import { bilanFinancier, obtenirEtablissement, statistiquesEtablissement } from '../api/endpoints'
-import { estDirectionRegionale, estEleve, estEnseignant, estMinistere, estParent, etablissementCourant, LIBELLES_ROLES } from '../auth/roles'
+import { bilanFinancier, obtenirEtablissement, plansActionEtablissement, statistiquesEtablissement } from '../api/endpoints'
+import { estDirectionEtablissement, estDirectionRegionale, estEleve, estEnseignant, estMinistere, estParent, etablissementCourant, LIBELLES_ROLES } from '../auth/roles'
 import { useUtilisateur } from '../auth/useAuth'
 import { BadgeSecteur, BadgesCycles } from '../components/BadgesEtablissement'
 import CarteChiffre from '../components/CarteChiffre'
 import CarteReussite from '../components/CarteReussite'
+import ExamensEtablissement from '../components/ExamensEtablissement'
+import PlansActionEtablissement from '../components/PlansActionEtablissement'
 import { Barres, Courbe, libelleMois } from '../components/graphiques/Graphiques'
 import Icone from '../components/Icone'
 import { useAnneeScolaire } from '../hooks/useAnneeScolaire'
@@ -33,6 +35,12 @@ export default function PageAccueil() {
     queryKey: ['bilan-financier', etablissementId, anneeId],
     queryFn: () => bilanFinancier(etablissementId as number, anneeId as number),
     enabled: etablissementId !== undefined && anneeId !== undefined,
+  })
+
+  const plans = useQuery({
+    queryKey: ['plans-action', etablissementId],
+    queryFn: () => plansActionEtablissement(etablissementId as number),
+    enabled: etablissementId !== undefined && estDirectionEtablissement(utilisateur),
   })
 
   if (etablissementId === undefined && estMinistere(utilisateur)) {
@@ -108,6 +116,20 @@ export default function PageAccueil() {
           couleur="red"
         />
       </SimpleGrid>
+
+      {estDirectionEtablissement(utilisateur) && plans.data && plans.data.length > 0 && (
+        <Card withBorder padding="lg">
+          <Text fw={600} mb="sm">Plan d'action après inspection</Text>
+          <PlansActionEtablissement etablissementId={etablissementId} supervision={false} />
+        </Card>
+      )}
+
+      {estDirectionEtablissement(utilisateur) && anneeId !== undefined && (
+        <Card withBorder padding="lg">
+          <Text fw={600} mb="sm">Examens : candidats et convocations</Text>
+          <ExamensEtablissement etablissementId={etablissementId} anneeScolaireId={anneeId} supervision={false} />
+        </Card>
+      )}
 
       {statistiques.isError && (
         <Alert color="red" variant="light">

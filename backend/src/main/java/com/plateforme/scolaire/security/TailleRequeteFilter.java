@@ -16,15 +16,27 @@ import org.springframework.web.filter.OncePerRequestFilter;
 public class TailleRequeteFilter extends OncePerRequestFilter {
 
     private final long maximumOctets;
+    private final long maximumEnvoi;
 
     public TailleRequeteFilter(long maximumOctets) {
+        this(maximumOctets, maximumOctets);
+    }
+
+    /** [maximumEnvoi] s'applique seulement à l'envoi de pièces jointes (POST /api/inspections/{id}/pieces). */
+    public TailleRequeteFilter(long maximumOctets, long maximumEnvoi) {
         this.maximumOctets = maximumOctets;
+        this.maximumEnvoi = Math.max(maximumOctets, maximumEnvoi);
+    }
+
+    private static boolean estEnvoiDePiece(HttpServletRequest r) {
+        String chemin = r.getRequestURI();
+        return "POST".equals(r.getMethod()) && chemin.startsWith("/api/inspections/") && chemin.endsWith("/pieces");
     }
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
             throws ServletException, IOException {
-        if (request.getContentLengthLong() > maximumOctets) {
+        if (request.getContentLengthLong() > (estEnvoiDePiece(request) ? maximumEnvoi : maximumOctets)) {
             response.setStatus(413);
             return;
         }

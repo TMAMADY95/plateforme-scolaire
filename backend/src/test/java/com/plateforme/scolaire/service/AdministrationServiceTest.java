@@ -44,7 +44,8 @@ class AdministrationServiceTest {
     private final AdministrationService service = new AdministrationService(
             mock(ZoneGeographiqueRepository.class), etablissementRepository, utilisateurRepository,
             affectationRoleRepository, classeRepository, inscriptionRepository, passwordEncoder,
-            mock(AuditService.class), cycleRepository);
+            mock(AuditService.class), cycleRepository,
+            mock(com.plateforme.scolaire.repository.TypeEtablissementRepository.class));
 
     private static EtablissementRequest requete(String code) {
         return new EtablissementRequest(code, "École test", null, "PRIVE", java.util.List.of(1L, 2L), null, 300);

@@ -1,0 +1,66 @@
+# Lancement : docker compose -f deploiement/docker-compose.prod.yml --env-file deploiement/.env up -d --build
+# Le HTTPS est à terminer devant "web" (répartiteur de charge de l'hébergeur, Caddy, Traefik...).
+services:
+  db:
+    image: postgres:17
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: scolaire
+      POSTGRES_USER: scolaire
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?à définir}
+    volumes:
+      - donnees:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U scolaire -d scolaire"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+    # Aucun port publié : la base n'est joignable que par le serveur.
+
+  api:
+    build:
+      context: ..
+      dockerfile: deploiement/Dockerfile.backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DB_URL: jdbc:postgresql://db:5432/scolaire
+      DB_USER: scolaire
+      DB_PASSWORD: ${DB_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET:?à définir (32 caractères minimum)}
+      CORS_ORIGINS: ${SITE_URL:?à définir}
+      FRONT_URL: ${SITE_URL}
+      MAIL_DE: ${MAIL_DE:-no-reply@example.org}
+      SPRING_MAIL_HOST: ${SPRING_MAIL_HOST:-}
+      SPRING_MAIL_PORT: ${SPRING_MAIL_PORT:-587}
+      SPRING_MAIL_USERNAME: ${SPRING_MAIL_USERNAME:-}
+      SPRING_MAIL_PASSWORD: ${SPRING_MAIL_PASSWORD:-}
+      ANNONCES_EMAIL: ${ANNONCES_EMAIL:-true}
+      SMS_ANNONCES: ${SMS_ANNONCES:-false}
+      SMS_ALERTES: ${SMS_ALERTES:-true}
+      SMS_ABSENCES: ${SMS_ABSENCES:-false}
+      ALERTES_ACTIF: ${ALERTES_ACTIF:-true}
+      DOUBLE_AUTHENTIFICATION: ${DOUBLE_AUTHENTIFICATION:-false}
+      PAIEMENT_FOURNISSEUR: ${PAIEMENT_FOURNISSEUR:-}
+      PAIEMENT_WEBHOOK_SECRET: ${PAIEMENT_WEBHOOK_SECRET:-}
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c 'exec 3<>/dev/tcp/localhost/8080 && printf \"GET /api/sante HTTP/1.0\\r\\n\\r\\n\" >&3 && head -1 <&3 | grep -q 200'"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+
+  web:
+    build:
+      context: ..
+      dockerfile: deploiement/Dockerfile.frontend
+    restart: unless-stopped
+    depends_on:
+      - api
+    ports:
+      - "8081:80"
+
+volumes:
+  donnees:

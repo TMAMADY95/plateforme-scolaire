@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Alert, Loader, Select, Stack, Table, Text } from '@mantine/core'
 import { useQuery } from '@tanstack/react-query'
-import { listerPeriodes, obtenirResultats } from '../api/endpoints'
+import { obtenirResultats, periodesDeLaClasse } from '../api/endpoints'
 import type { Periode } from '../api/types'
 import { aujourdhui } from '../utils/dates'
 import { formaterNote } from '../utils/notes'
@@ -18,10 +18,10 @@ interface Props {
 }
 
 /** Moyennes par matière, moyenne générale et rang de chaque élève d'une classe, pour une période. */
-export default function ResultatsClasse({ classeId, anneeScolaireId }: Props) {
+export default function ResultatsClasse({ classeId }: Props) {
   const [choix, setChoix] = useState<string | null>(null)
 
-  const periodes = useQuery({ queryKey: ['periodes', anneeScolaireId], queryFn: () => listerPeriodes(anneeScolaireId) })
+  const periodes = useQuery({ queryKey: ['periodes', 'classe', classeId], queryFn: () => periodesDeLaClasse(classeId) })
   const periodeId = choix ?? (periodes.data ? periodeParDefaut(periodes.data) : null)
 
   const resultats = useQuery({

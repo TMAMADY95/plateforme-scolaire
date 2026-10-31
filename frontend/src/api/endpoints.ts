@@ -1,12 +1,69 @@
-import { api, telecharger } from './client'
+import { api, envoyerFichier, telecharger } from './client'
 import type {
+  AffectationAutomatique,
+  CriteresCentre,
+  EtablissementCentre,
+  Epreuve,
+  EpreuveRequete,
+  ElevesPage,
+  FiltresEleves,
+  TypeEtablissement,
+  TypeEtablissementRequete,
+  ExamenEtablissement,
+  PreparationExamen,
+  CentreExamen,
+  Jury,
+  NotesCandidat,
+  PersonnelCentre,
+  DeroulementCentre,
+  DiplomesExamen,
+  VerificationDiplome,
+  BanqueSujets,
+  Candidat,
+  ListeCandidats,
+  DossiersCandidatures,
+  CorrectionExamen,
+  IncidentsCentre,
+  TypeIncident,
+  FonctionCentre,
+  NotesCandidats,
+  StatutCandidat,
+  RepartitionCentre,
+  CentreExamenRequete,
+  TypeExamen,
+  TypeExamenRequete,
+  EnseignantDeLEleve,
+  RendezVous,
+  Sortie,
+  EntreeCahierTexte,
+  Justification,
+  PieceJointe,
+  AlerteEnvoyee,
+  PlanAction,
+  PlanActionRequete,
+  StatutPlanAction,
   AffectationEnseignant,
   AffectationRequete,
   AnneeScolaire,
   AnneeScolaireRequete,
   Cycle,
   CycleRequete,
+  AutorisationRequete,
+  CompteInstitutionnel,
+  MutationRequete,
+  RapportPostes,
+  Evolution,
+  Examen,
+  ExamenRequete,
+  RapportExamen,
+  ResultatExamenRequete,
+  Conformite,
+  FiltresConformite,
+  Inspection,
+  InspectionRequete,
   LigneEtablissementStat,
+  Signalement,
+  SignalementRequete,
   LigneZoneStat,
   PeriodeRequete,
   Compte,
@@ -130,6 +187,32 @@ export const mesAffectations = () => api.get<MonAffectation[]>('/api/me/affectat
 
 export const listerPeriodes = (anneeScolaireId: number) =>
   api.get<Periode[]>(`/api/annees-scolaires/${anneeScolaireId}/periodes`)
+
+/** Les périodes qui s'appliquent à une classe : celles de son établissement, sinon celles du ministère. */
+export const periodesDeLaClasse = (classeId: number) => api.get<Periode[]>(`/api/classes/${classeId}/periodes`)
+
+export const periodesEtablissement = (etablissementId: number, anneeScolaireId: number) =>
+  api.get<Periode[]>(`/api/etablissements/${etablissementId}/annees-scolaires/${anneeScolaireId}/periodes`)
+
+export const genererPeriodes = (etablissementId: number, anneeScolaireId: number, type: 'TRIMESTRE' | 'SEMESTRE') =>
+  api.post<Periode[]>(`/api/etablissements/${etablissementId}/annees-scolaires/${anneeScolaireId}/periodes/generation`, { type })
+
+export interface PeriodeEtablissementRequete {
+  libelle: string
+  ordre: number
+  dateDebut: string
+  dateFin: string
+  typePeriode: string
+}
+
+export const modifierPeriodeEtablissement = (periodeId: number, requete: PeriodeEtablissementRequete) =>
+  api.put<Periode>(`/api/etablissements/periodes/${periodeId}`, requete)
+
+export const supprimerPeriodeEtablissement = (periodeId: number) =>
+  api.delete<void>(`/api/etablissements/periodes/${periodeId}`)
+
+export const retablirPeriodes = (etablissementId: number, anneeScolaireId: number) =>
+  api.delete<void>(`/api/etablissements/${etablissementId}/annees-scolaires/${anneeScolaireId}/periodes`)
 
 export const obtenirFeuille = (classeId: number, date: string) =>
   api.get<FeuilleAppel>(`/api/classes/${classeId}/presences?date=${date}`)
@@ -442,3 +525,401 @@ export const publierAnnonce = (classeId: number, requete: { titre: string; conte
   api.post<Annonce>(`/api/classes/${classeId}/annonces`, requete)
 
 export const supprimerAnnonce = (annonceId: number) => api.delete<void>(`/api/annonces/${annonceId}`)
+
+// ---------- Conformité, inspections et sécurité ----------
+
+const requeteFiltres = (f: FiltresConformite, avecZone: boolean) => {
+  const p = new URLSearchParams()
+  if (avecZone && f.zoneId) p.set('zoneId', f.zoneId)
+  if (f.statut) p.set('statut', f.statut)
+  if (f.secteur) p.set('secteur', f.secteur)
+  if (f.cycleId) p.set('cycleId', f.cycleId)
+  const texte = p.toString()
+  return texte === '' ? '' : `?${texte}`
+}
+
+export const conformiteNationale = (f: FiltresConformite) =>
+  api.get<Conformite>(`/api/ministere/conformite${requeteFiltres(f, true)}`)
+
+export const conformiteRegionale = (f: FiltresConformite) =>
+  api.get<Conformite>(`/api/region/conformite${requeteFiltres(f, false)}`)
+
+export const listerInspections = (etablissementId: number) =>
+  api.get<Inspection[]>(`/api/etablissements/${etablissementId}/inspections`)
+
+export const creerInspection = (etablissementId: number, requete: InspectionRequete) =>
+  api.post<Inspection>(`/api/etablissements/${etablissementId}/inspections`, requete)
+
+export const listerSignalements = (etablissementId: number) =>
+  api.get<Signalement[]>(`/api/etablissements/${etablissementId}/signalements-securite`)
+
+export const creerSignalement = (etablissementId: number, requete: SignalementRequete) =>
+  api.post<Signalement>(`/api/etablissements/${etablissementId}/signalements-securite`, requete)
+
+export const resoudreSignalement = (id: number) =>
+  api.post<Signalement>(`/api/signalements-securite/${id}/resolution`)
+
+export const modifierAutorisation = (etablissementId: number, requete: AutorisationRequete) =>
+  api.put<void>(`/api/etablissements/${etablissementId}/autorisation`, requete)
+
+// ---------- Examens nationaux ----------
+
+export const listerExamens = (anneeScolaireId: number) =>
+  api.get<Examen[]>(`/api/examens?anneeScolaireId=${anneeScolaireId}`)
+
+export const creerExamen = (requete: ExamenRequete) => api.post<Examen>('/api/examens', requete)
+
+export const rapportExamenNational = (examenId: number, zoneId?: number) =>
+  api.get<RapportExamen>(`/api/ministere/examens/${examenId}${zoneId === undefined ? '' : `?zoneId=${zoneId}`}`)
+
+export const rapportExamenRegional = (examenId: number) => api.get<RapportExamen>(`/api/region/examens/${examenId}`)
+
+export const saisirResultatExamen = (examenId: number, etablissementId: number, requete: ResultatExamenRequete) =>
+  api.put<void>(`/api/examens/${examenId}/resultats/${etablissementId}`, requete)
+
+// ---------- Évolution et rapports PDF ----------
+
+export const evolutionNationale = (zoneId?: number) =>
+  api.get<Evolution>(`/api/ministere/evolution${zoneId === undefined ? '' : `?zoneId=${zoneId}`}`)
+
+export const evolutionRegionale = () => api.get<Evolution>('/api/region/evolution')
+
+export const rapportNationalPdf = (anneeScolaireId: number, zoneId?: number) =>
+  telecharger(
+    `/api/ministere/rapport.pdf?anneeScolaireId=${anneeScolaireId}${zoneId === undefined ? '' : `&zoneId=${zoneId}`}`,
+    'rapport-national.pdf',
+  )
+
+export const rapportRegionalPdf = (anneeScolaireId: number) =>
+  telecharger(`/api/region/rapport.pdf?anneeScolaireId=${anneeScolaireId}`, 'rapport-regional.pdf')
+
+export const rapportEtablissementPdf = (etablissementId: number, anneeScolaireId: number) =>
+  telecharger(
+    `/api/etablissements/${etablissementId}/rapport.pdf?anneeScolaireId=${anneeScolaireId}`,
+    `rapport-etablissement-${etablissementId}.pdf`,
+  )
+
+// ---------- Postes d'enseignants et mutations ----------
+
+export const postesNationaux = (anneeScolaireId: number, zoneId?: number) =>
+  api.get<RapportPostes>(
+    `/api/ministere/postes?anneeScolaireId=${anneeScolaireId}${zoneId === undefined ? '' : `&zoneId=${zoneId}`}`,
+  )
+
+export const postesRegionaux = (anneeScolaireId: number) =>
+  api.get<RapportPostes>(`/api/region/postes?anneeScolaireId=${anneeScolaireId}`)
+
+export const definirPostes = (etablissementId: number, postes: number | null) =>
+  api.put<void>(`/api/etablissements/${etablissementId}/postes`, { postes })
+
+export const muterEnseignant = (enseignantId: number, requete: MutationRequete) =>
+  api.post<void>(`/api/enseignants/${enseignantId}/mutation`, requete)
+
+// ---------- Comptes du ministère et des directions régionales ----------
+
+export const listerComptesInstitutionnels = () => api.get<CompteInstitutionnel[]>('/api/ministere/comptes')
+
+export const creerCompteMinistere = (requete: DirectionRequete) =>
+  api.post<CompteInstitutionnel>('/api/ministere/comptes', requete)
+
+export const activerCompte = (id: number, actif: boolean) =>
+  api.post<void>(`/api/ministere/comptes/${id}/activation`, { actif })
+
+export const reinitialiserCompteInstitutionnel = (id: number, motDePasseTemporaire: string) =>
+  api.post<void>(`/api/ministere/comptes/${id}/reinitialisation`, { motDePasseTemporaire })
+
+// ---------- Plans d'action et journal des alertes ----------
+
+export const plansActionEtablissement = (etablissementId: number) =>
+  api.get<PlanAction[]>(`/api/etablissements/${etablissementId}/plans-action`)
+
+export const creerPlanAction = (etablissementId: number, requete: PlanActionRequete) =>
+  api.post<PlanAction>(`/api/etablissements/${etablissementId}/plans-action`, requete)
+
+export const changerStatutPlanAction = (planId: number, statut: StatutPlanAction, note: string | null) =>
+  api.post<PlanAction>(`/api/plans-action/${planId}/statut`, { statut, note })
+
+export const plansActionNationaux = () => api.get<PlanAction[]>('/api/ministere/plans-action')
+export const plansActionRegionaux = () => api.get<PlanAction[]>('/api/region/plans-action')
+export const alertesParentsEtablissement = (etablissementId: number) =>
+  api.get<AlerteEnvoyee[]>(`/api/etablissements/${etablissementId}/alertes-parents`)
+export const journalAlertes = () => api.get<AlerteEnvoyee[]>('/api/ministere/alertes')
+
+export const exporterAuditCsv = (filtres: { action: string; entite: string; eleve: string }) =>
+  telecharger(
+    `/api/audit/export.csv?${new URLSearchParams({ action: filtres.action, entite: filtres.entite, eleve: filtres.eleve }).toString()}`,
+    'journal-audit.csv',
+  )
+
+// ---------- Pièces jointes des inspections ----------
+
+export const listerPiecesJointes = (inspectionId: number) =>
+  api.get<PieceJointe[]>(`/api/inspections/${inspectionId}/pieces`)
+
+export const ajouterPieceJointe = (inspectionId: number, fichier: File) =>
+  envoyerFichier<PieceJointe>(`/api/inspections/${inspectionId}/pieces`, fichier)
+
+export const telechargerPieceJointe = (piece: PieceJointe) => telecharger(`/api/pieces/${piece.id}`, piece.nom)
+
+export const supprimerPieceJointe = (pieceId: number) => api.delete<void>(`/api/pieces/${pieceId}`)
+
+// ---------- Cahier de texte et justifications d'absence ----------
+
+export const cahierTexteClasse = (classeId: number) => api.get<EntreeCahierTexte[]>(`/api/classes/${classeId}/cahier-texte`)
+export const cahierTexteEleve = (eleveId: number) => api.get<EntreeCahierTexte[]>(`/api/eleves/${eleveId}/cahier-texte`)
+export const ajouterCahierTexte = (classeId: number, requete: { matiereId: number; dateSeance: string; contenu: string }) =>
+  api.post<EntreeCahierTexte>(`/api/classes/${classeId}/cahier-texte`, requete)
+export const supprimerCahierTexte = (id: number) => api.delete<void>(`/api/cahier-texte/${id}`)
+
+export const justificationsEleve = (eleveId: number) => api.get<Justification[]>(`/api/eleves/${eleveId}/justifications`)
+export const demanderJustification = (presenceId: number, motif: string) =>
+  api.post<Justification>(`/api/presences/${presenceId}/justification`, { motif })
+export const justificationsEnAttente = (etablissementId: number) =>
+  api.get<Justification[]>(`/api/etablissements/${etablissementId}/justifications`)
+export const deciderJustification = (id: number, accepter: boolean, reponse: string | null) =>
+  api.post<Justification>(`/api/justifications/${id}/decision`, { accepter, reponse })
+
+// ---------- Liaison école-famille ----------
+
+export const enseignantsDeLEleve = (eleveId: number) => api.get<EnseignantDeLEleve[]>(`/api/eleves/${eleveId}/enseignants`)
+export const rendezVousEleve = (eleveId: number) => api.get<RendezVous[]>(`/api/eleves/${eleveId}/rendez-vous`)
+export const demanderRendezVous = (eleveId: number, requete: { enseignantId: number; dateHeure: string; motif: string }) =>
+  api.post<RendezVous>(`/api/eleves/${eleveId}/rendez-vous`, requete)
+export const annulerRendezVous = (id: number) => api.post<RendezVous>(`/api/rendez-vous/${id}/annulation`)
+export const mesRendezVous = () => api.get<RendezVous[]>('/api/me/rendez-vous')
+export const repondreRendezVous = (id: number, accepter: boolean, reponse: string | null) =>
+  api.post<RendezVous>(`/api/rendez-vous/${id}/reponse`, { accepter, reponse })
+
+export const sortiesEleve = (eleveId: number) => api.get<Sortie[]>(`/api/eleves/${eleveId}/sorties`)
+export const demanderSortie = (
+  eleveId: number,
+  requete: { dateSortie: string; heureSortie: string; motif: string; accompagnateur: string | null },
+) => api.post<Sortie>(`/api/eleves/${eleveId}/sorties`, requete)
+export const sortiesEtablissement = (etablissementId: number) =>
+  api.get<Sortie[]>(`/api/etablissements/${etablissementId}/sorties`)
+export const deciderSortie = (id: number, accepter: boolean, reponse: string | null) =>
+  api.post<Sortie>(`/api/sorties/${id}/decision`, { accepter, reponse })
+
+export const listerTypesExamen = () => api.get<TypeExamen[]>('/api/types-examen')
+export const creerTypeExamen = (requete: TypeExamenRequete) => api.post<TypeExamen>('/api/types-examen', requete)
+export const supprimerTypeExamen = (id: number) => api.delete<void>(`/api/types-examen/${id}`)
+export const niveauxOrganisationExamen = () => api.get<string[]>('/api/examens/niveaux-organisation')
+
+// ---------- Examens de l'établissement : candidats, centres, convocations ----------
+
+export const examensEtablissement = (etablissementId: number, anneeScolaireId: number) =>
+  api.get<ExamenEtablissement[]>(`/api/etablissements/${etablissementId}/examens?anneeScolaireId=${anneeScolaireId}`)
+
+export const preparationExamen = (etablissementId: number, examenId: number) =>
+  api.get<PreparationExamen>(`/api/etablissements/${etablissementId}/examens/${examenId}/candidats`)
+
+export const inscrireCandidats = (etablissementId: number, examenId: number, eleveIds: number[]) =>
+  api.post<PreparationExamen>(`/api/etablissements/${etablissementId}/examens/${examenId}/candidats`, { eleveIds })
+
+export const retirerCandidat = (candidatId: number) => api.delete<void>(`/api/candidats-examen/${candidatId}`)
+
+export const telechargerConvocations = (etablissementId: number, examenId: number) =>
+  telecharger(`/api/etablissements/${etablissementId}/examens/${examenId}/convocations.pdf`, `convocations-${examenId}.pdf`)
+
+export const telechargerListeAppel = (examenId: number, centreId: number) =>
+  telecharger(`/api/examens/${examenId}/centres/${centreId}/liste-appel.pdf`, `liste-appel-${centreId}.pdf`)
+
+export const incidentsCentre = (examenId: number, centreId: number) =>
+  api.get<IncidentsCentre>(`/api/examens/${examenId}/centres/${centreId}/incidents`)
+export const signalerIncident = (
+  examenId: number,
+  centreId: number,
+  requete: { type: TypeIncident; candidatId: number | null; epreuveId: number | null; description: string; signalePar: string | null; eliminer: boolean },
+) => api.post<IncidentsCentre>(`/api/examens/${examenId}/centres/${centreId}/incidents`, requete)
+export const traiterIncident = (examenId: number, centreId: number, incidentId: number, decision: string) =>
+  api.post<IncidentsCentre>(`/api/examens/${examenId}/centres/${centreId}/incidents/${incidentId}/traitement`, { decision })
+
+export const correctionExamen = (examenId: number) => api.get<CorrectionExamen>(`/api/examens/${examenId}/correction`)
+export const genererSousCommissions = (examenId: number) => api.post<CorrectionExamen>(`/api/examens/${examenId}/correction/sous-commissions`, {})
+export const modifierCommission = (
+  examenId: number,
+  commissionId: number,
+  requete: { epreuveId: number | null; lieu: string | null; nbCopies: number; nbCopiesCorrigees: number },
+) => api.put<CorrectionExamen>(`/api/examens/${examenId}/correction/commissions/${commissionId}`, requete)
+export const supprimerCommission = (examenId: number, commissionId: number) =>
+  api.delete<CorrectionExamen>(`/api/examens/${examenId}/correction/commissions/${commissionId}`)
+export const ajouterMembreCommission = (
+  examenId: number,
+  commissionId: number,
+  requete: { role: string; nom: string; telephone: string | null },
+) => api.post<CorrectionExamen>(`/api/examens/${examenId}/correction/commissions/${commissionId}/membres`, requete)
+export const retirerMembreCommission = (examenId: number, commissionId: number, membreId: number) =>
+  api.delete<CorrectionExamen>(`/api/examens/${examenId}/correction/commissions/${commissionId}/membres/${membreId}`)
+export const cloturerCommission = (examenId: number, commissionId: number) =>
+  api.post<CorrectionExamen>(`/api/examens/${examenId}/correction/commissions/${commissionId}/cloture`, {})
+
+export const dossiersCandidatures = (etablissementId: number, examenId: number) =>
+  api.get<DossiersCandidatures>(`/api/etablissements/${etablissementId}/examens/${examenId}/dossiers`)
+export const marquerPiece = (etablissementId: number, examenId: number, candidatId: number, type: string, requete: { fournie: boolean; reference: string | null }) =>
+  api.put<DossiersCandidatures>(`/api/etablissements/${etablissementId}/examens/${examenId}/candidats/${candidatId}/pieces/${type}`, requete)
+
+const baseListe = (etablissementId: number, examenId: number) => `/api/etablissements/${etablissementId}/examens/${examenId}/liste`
+export const listeCandidats = (etablissementId: number, examenId: number) => api.get<ListeCandidats>(baseListe(etablissementId, examenId))
+export const transmettreListe = (etablissementId: number, examenId: number) => api.post<ListeCandidats>(`${baseListe(etablissementId, examenId)}/transmission`, {})
+export const verifierListe = (etablissementId: number, examenId: number) => api.post<ListeCandidats>(`${baseListe(etablissementId, examenId)}/verification`, {})
+export const validerListe = (etablissementId: number, examenId: number) => api.post<ListeCandidats>(`${baseListe(etablissementId, examenId)}/validation`, {})
+export const rejeterListe = (etablissementId: number, examenId: number, motif: string) =>
+  api.post<ListeCandidats>(`${baseListe(etablissementId, examenId)}/rejet`, { motif })
+
+export const banqueSujets = (examenId: number) => api.get<BanqueSujets>(`/api/examens/${examenId}/sujets`)
+export const ajouterSujet = (examenId: number, epreuveId: number, requete: { variante: string; intitule: string; auteurs: string | null }) =>
+  api.post<BanqueSujets>(`/api/examens/${examenId}/epreuves/${epreuveId}/sujets`, requete)
+export const supprimerSujet = (examenId: number, sujetId: number) => api.delete<BanqueSujets>(`/api/examens/${examenId}/sujets/${sujetId}`)
+export const validerSujet = (examenId: number, sujetId: number) => api.post<BanqueSujets>(`/api/examens/${examenId}/sujets/${sujetId}/validation`, {})
+export const tirerSujet = (examenId: number, epreuveId: number) => api.post<BanqueSujets>(`/api/examens/${examenId}/epreuves/${epreuveId}/tirage`, {})
+export const compromettreSujet = (examenId: number, sujetId: number) => api.post<BanqueSujets>(`/api/examens/${examenId}/sujets/${sujetId}/compromission`, {})
+
+export const diplomesExamen = (examenId: number) => api.get<DiplomesExamen>(`/api/examens/${examenId}/diplomes`)
+export const delivrerDiplomes = (examenId: number) => api.post<DiplomesExamen>(`/api/examens/${examenId}/diplomes`, {})
+export const revoquerDiplome = (examenId: number, diplomeId: number, motif: string) =>
+  api.post<DiplomesExamen>(`/api/examens/${examenId}/diplomes/${diplomeId}/revocation`, { motif })
+export const telechargerDiplomes = (etablissementId: number, examenId: number) =>
+  telecharger(`/api/etablissements/${etablissementId}/examens/${examenId}/diplomes.pdf`, `diplomes-${examenId}.pdf`)
+export const verifierDiplome = (code: string) =>
+  api.get<VerificationDiplome>(`/api/verification-diplome/${encodeURIComponent(code)}`, { sansJeton: true })
+
+export const inscrireCandidatLibre = (
+  etablissementId: number,
+  examenId: number,
+  requete: { nom: string; prenom: string; dateNaissance: string; sexe: string | null },
+) => api.post<Candidat>(`/api/etablissements/${etablissementId}/examens/${examenId}/candidats-libres`, requete)
+
+const baseDeroulement = (examenId: number, centreId: number) => `/api/examens/${examenId}/centres/${centreId}`
+export const deroulementCentre = (examenId: number, centreId: number) => api.get<DeroulementCentre>(`${baseDeroulement(examenId, centreId)}/deroulement`)
+export const avancerPli = (examenId: number, centreId: number, epreuveId: number) =>
+  api.post<DeroulementCentre>(`${baseDeroulement(examenId, centreId)}/epreuves/${epreuveId}/pli/avancement`, {})
+export const ouvrirPli = (examenId: number, centreId: number, epreuveId: number, requete: { ouvertPar: string; temoin1: string; temoin2: string }) =>
+  api.post<DeroulementCentre>(`${baseDeroulement(examenId, centreId)}/epreuves/${epreuveId}/pli/ouverture`, requete)
+export const enregistrerRapportEpreuve = (
+  examenId: number,
+  centreId: number,
+  epreuveId: number,
+  requete: {
+    compositionDebut: string | null
+    compositionFin: string | null
+    presents: number
+    absents: number
+    elimines: number
+    copiesRamassees: number
+    observations: string | null
+    cloturer: boolean
+  },
+) => api.put<DeroulementCentre>(`${baseDeroulement(examenId, centreId)}/epreuves/${epreuveId}/rapport`, requete)
+
+export const personnelCentre = (examenId: number, centreId: number) =>
+  api.get<PersonnelCentre>(`/api/examens/${examenId}/centres/${centreId}/personnel`)
+export const ajouterPersonnelCentre = (
+  examenId: number,
+  centreId: number,
+  requete: { role: FonctionCentre; nom: string; telephone: string | null; salle: number | null },
+) => api.post<PersonnelCentre>(`/api/examens/${examenId}/centres/${centreId}/personnel`, requete)
+export const retirerPersonnelCentre = (examenId: number, centreId: number, personneId: number) =>
+  api.delete<PersonnelCentre>(`/api/examens/${examenId}/centres/${centreId}/personnel/${personneId}`)
+
+export const notesCandidats = (examenId: number, etablissementId: number) =>
+  api.get<NotesCandidats>(`/api/examens/${examenId}/etablissements/${etablissementId}/notes`)
+export const saisirNotesCandidat = (
+  examenId: number,
+  etablissementId: number,
+  candidatId: number,
+  requete: { statut: StatutCandidat; notes: Record<string, number> },
+) => api.put<NotesCandidat>(`/api/examens/${examenId}/etablissements/${etablissementId}/candidats/${candidatId}/notes`, requete)
+export const consoliderResultats = (examenId: number, etablissementId: number) =>
+  api.post<void>(`/api/examens/${examenId}/etablissements/${etablissementId}/consolidation`, {})
+export const telechargerReleves = (etablissementId: number, examenId: number) =>
+  telecharger(`/api/etablissements/${etablissementId}/examens/${examenId}/releves.pdf`, `releves-${examenId}.pdf`)
+
+export const juryExamen = (examenId: number) => api.get<Jury>(`/api/examens/${examenId}/jury`)
+export const initialiserJury = (examenId: number) => api.post<Jury>(`/api/examens/${examenId}/jury`, {})
+export const modifierMembreJury = (examenId: number, membreId: number, requete: { nom: string | null; present: boolean }) =>
+  api.put<Jury>(`/api/examens/${examenId}/jury/membres/${membreId}`, requete)
+export const delibererExamen = (examenId: number) => api.post<Jury>(`/api/examens/${examenId}/deliberation`, {})
+export const rouvrirDeliberation = (examenId: number) => api.delete<Jury>(`/api/examens/${examenId}/deliberation`)
+export const proclamerExamen = (examenId: number) => api.post<Jury>(`/api/examens/${examenId}/proclamation`, {})
+
+export const centresExamen = (examenId: number) => api.get<CentreExamen[]>(`/api/examens/${examenId}/centres`)
+
+export const creerCentreExamen = (examenId: number, requete: CentreExamenRequete) =>
+  api.post<CentreExamen>(`/api/examens/${examenId}/centres`, requete)
+
+export const repartitionCentre = (examenId: number, centreId: number) =>
+  api.get<RepartitionCentre>(`/api/examens/${examenId}/centres/${centreId}/repartition`)
+export const repartirCentre = (examenId: number, centreId: number) =>
+  api.post<RepartitionCentre>(`/api/examens/${examenId}/centres/${centreId}/repartition`, {})
+export const supprimerCentreExamen = (centreId: number) => api.delete<void>(`/api/centres-examen/${centreId}`)
+
+export const affecterCentreExamen = (examenId: number, etablissementId: number, centreId: number) =>
+  api.put<number>(`/api/examens/${examenId}/etablissements/${etablissementId}/centre`, { centreId })
+
+// ---------- Types d'établissement ----------
+
+export const listerTypesEtablissement = () => api.get<TypeEtablissement[]>('/api/types-etablissement')
+
+export const creerTypeEtablissement = (requete: TypeEtablissementRequete) =>
+  api.post<TypeEtablissement>('/api/types-etablissement', requete)
+
+export const modifierTypeEtablissement = (id: number, requete: TypeEtablissementRequete) =>
+  api.put<TypeEtablissement>(`/api/types-etablissement/${id}`, requete)
+
+export const supprimerTypeEtablissement = (id: number) => api.delete<void>(`/api/types-etablissement/${id}`)
+
+// ---------- Liste nationale des élèves (ministère) ----------
+
+function requeteEleves(f: FiltresEleves): URLSearchParams {
+  const p = new URLSearchParams({ anneeScolaireId: String(f.anneeScolaireId) })
+  const champs: [string, string | null | undefined][] = [
+    ['q', f.q?.trim()],
+    ['zoneId', f.zoneId],
+    ['etablissementId', f.etablissementId],
+    ['secteur', f.secteur],
+    ['typeEtablissementId', f.typeEtablissementId],
+    ['cycleId', f.cycleId],
+    ['niveauId', f.niveauId],
+    ['sexe', f.sexe],
+    ['statut', f.statut],
+  ]
+  champs.forEach(([cle, valeur]) => {
+    if (valeur !== undefined && valeur !== null && valeur !== '') p.set(cle, valeur)
+  })
+  return p
+}
+
+export const elevesNationaux = (f: FiltresEleves, page: number, taille: number) => {
+  const p = requeteEleves(f)
+  p.set('page', String(page))
+  p.set('taille', String(taille))
+  return api.get<ElevesPage>(`/api/ministere/eleves?${p.toString()}`)
+}
+
+export const telechargerElevesPdf = (f: FiltresEleves) =>
+  telecharger(`/api/ministere/eleves.pdf?${requeteEleves(f).toString()}`, 'liste-eleves.pdf')
+
+// ---------- Calendrier des examens : période, épreuves, affectation des centres ----------
+
+export const definirPeriodeExamen = (examenId: number, dateDebut: string | null, dateFin: string | null) =>
+  api.put<Examen>(`/api/examens/${examenId}/periode`, { dateDebut, dateFin })
+
+export const supprimerExamen = (examenId: number, forcer = false) =>
+  api.delete<void>(`/api/examens/${examenId}${forcer ? '?forcer=true' : ''}`)
+
+export const epreuvesExamen = (examenId: number) => api.get<Epreuve[]>(`/api/examens/${examenId}/epreuves`)
+
+export const ajouterEpreuve = (examenId: number, requete: EpreuveRequete) =>
+  api.post<Epreuve>(`/api/examens/${examenId}/epreuves`, requete)
+
+export const supprimerEpreuve = (id: number) => api.delete<void>(`/api/epreuves-examen/${id}`)
+
+export const affecterCentresAutomatiquement = (examenId: number) =>
+  api.post<AffectationAutomatique>(`/api/examens/${examenId}/affectation-automatique`)
+
+export const criteresCentres = () => api.get<CriteresCentre>('/api/centres-examen/criteres')
+
+export const modifierCriteresCentres = (requete: CriteresCentre) =>
+  api.put<CriteresCentre>('/api/centres-examen/criteres', requete)
+
+export const etablissementsCentres = () => api.get<EtablissementCentre[]>('/api/centres-examen/etablissements')

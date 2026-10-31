@@ -14,5 +14,11 @@ public record EtablissementRequest(@NotBlank @Size(max = 50) String codeOfficiel
                                    @NotBlank @Pattern(regexp = "PUBLIC|PRIVE", message = "Secteur : PUBLIC ou PRIVE") String secteur,
                                    @NotEmpty List<Long> cycleIds,
                                    @Size(max = 300) String adresse,
-                                   @Positive Integer capacite) {
+                                   @Positive Integer capacite,
+                                   Long typeEtablissementId) {
+
+    public EtablissementRequest(String codeOfficiel, String nom, Long zoneId, String secteur, List<Long> cycleIds,
+                                String adresse, Integer capacite) {
+        this(codeOfficiel, nom, zoneId, secteur, cycleIds, adresse, capacite, null);
+    }
 }

@@ -1,13 +1,31 @@
 import { useState } from 'react'
-import { Alert, Badge, Group, Loader, Stack, Table, Text, TextInput } from '@mantine/core'
-import { useQuery } from '@tanstack/react-query'
-import { historiquePresences } from '../../api/endpoints'
+import { Alert, Badge, Button, Group, Loader, Modal, Stack, Table, Text, TextInput, Textarea } from '@mantine/core'
+import { notifications } from '@mantine/notifications'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { demanderJustification, historiquePresences, justificationsEleve } from '../../api/endpoints'
+import type { PresenceEleve } from '../../api/types'
 import BadgeStatutPresence from '../../components/BadgeStatutPresence'
 import { aujourdhui, formaterDate, ilYaJours } from '../../utils/dates'
 
 export default function OngletPresences({ eleveId }: { eleveId: number }) {
   const [du, setDu] = useState(ilYaJours(30))
   const [au, setAu] = useState(aujourdhui())
+
+  const queryClient = useQueryClient()
+  const [aJustifier, setAJustifier] = useState<PresenceEleve | null>(null)
+  const [motif, setMotif] = useState('')
+  const demandes = useQuery({ queryKey: ['justifications-eleve', eleveId], queryFn: () => justificationsEleve(eleveId) })
+  const envoi = useMutation({
+    mutationFn: () => demanderJustification((aJustifier as PresenceEleve).id, motif.trim()),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['justifications-eleve', eleveId] })
+      notifications.show({ color: 'green', title: 'Demande envoyée', message: "La direction de l'école va l'examiner." })
+      setAJustifier(null)
+      setMotif('')
+    },
+    onError: (e) => notifications.show({ color: 'red', title: 'Envoi impossible', message: e.message }),
+  })
+  const demandeDe = (presenceId: number) => demandes.data?.find((d) => d.presenceId === presenceId)
 
   const periodeValide = du !== '' && au !== '' && du <= au
   const presences = useQuery({
@@ -77,7 +95,21 @@ export default function OngletPresences({ eleveId }: { eleveId: number }) {
                         <BadgeStatutPresence statut={p.statut} />
                       </Table.Td>
                       <Table.Td>{p.motif ?? '—'}</Table.Td>
-                      <Table.Td>{p.justifie ? 'Oui' : 'Non'}</Table.Td>
+                      <Table.Td>
+                        {p.justifie ? (
+                          'Oui'
+                        ) : demandeDe(p.id)?.statut === 'EN_ATTENTE' ? (
+                          <Badge color="blue" variant="light">Demande envoyée</Badge>
+                        ) : (
+                          <Group gap="xs" wrap="nowrap">
+                            Non
+                            <Button size="compact-xs" variant="light" onClick={() => setAJustifier(p)}>Justifier</Button>
+                          </Group>
+                        )}
+                        {demandeDe(p.id)?.statut === 'REFUSEE' && (
+                          <Text size="xs" c="red">Refusée{demandeDe(p.id)?.reponse ? ` : ${demandeDe(p.id)?.reponse}` : ''}</Text>
+                        )}
+                      </Table.Td>
                     </Table.Tr>
                   ))}
                 </Table.Tbody>
@@ -86,6 +118,15 @@ export default function OngletPresences({ eleveId }: { eleveId: number }) {
           )}
         </>
       )}
+      <Modal opened={aJustifier !== null} onClose={() => setAJustifier(null)} title="Justifier une absence">
+        <Stack>
+          {aJustifier && <Text size="sm">Absence du {formaterDate(aJustifier.date)}</Text>}
+          <Textarea label="Motif" placeholder="Maladie, décès dans la famille, rendez-vous médical…" autosize minRows={3} maxLength={500} value={motif} onChange={(e) => setMotif(e.currentTarget.value)} />
+          <Group justify="flex-end">
+            <Button disabled={motif.trim() === ''} loading={envoi.isPending} onClick={() => envoi.mutate()}>Envoyer à l'école</Button>
+          </Group>
+        </Stack>
+      </Modal>
     </Stack>
   )
 }

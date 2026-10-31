@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Alert, Button, Group, Loader, Select, Stack, Table, Text } from '@mantine/core'
 import { useDisclosure } from '@mantine/hooks'
 import { useQuery } from '@tanstack/react-query'
-import { listerEvaluations, listerPeriodes } from '../../api/endpoints'
+import { listerEvaluations, periodesDeLaClasse } from '../../api/endpoints'
 import type { Evaluation } from '../../api/types'
 import { formaterDate } from '../../utils/dates'
 import ModifierEvaluationModal from './ModifierEvaluationModal'
@@ -16,13 +16,13 @@ interface Props {
   mesMatieres: { id: number; libelle: string }[]
 }
 
-export default function OngletEvaluations({ classeId, anneeScolaireId, mesMatieres }: Props) {
+export default function OngletEvaluations({ classeId, mesMatieres }: Props) {
   const [periodeFiltre, setPeriodeFiltre] = useState<string | null>(null)
   const [nouvelleOuverte, { open, close }] = useDisclosure()
   const [ouverte, setOuverte] = useState<Evaluation | null>(null)
   const [aModifier, setAModifier] = useState<Evaluation | null>(null)
 
-  const periodes = useQuery({ queryKey: ['periodes', anneeScolaireId], queryFn: () => listerPeriodes(anneeScolaireId) })
+  const periodes = useQuery({ queryKey: ['periodes', 'classe', classeId], queryFn: () => periodesDeLaClasse(classeId) })
   const evaluations = useQuery({ queryKey: ['evaluations', classeId], queryFn: () => listerEvaluations(classeId) })
 
   const visibles = (evaluations.data ?? []).filter(

@@ -53,6 +53,9 @@ export default function CarteReussiteReseau({ cle, anneeScolaireId, charger }: P
           w={200}
         />
       </Group>
+      <Text c="dimmed" size="xs">
+        Chaque établissement est lu selon son propre découpage : la période choisie correspond à sa période de même rang (1re, 2e…).
+      </Text>
 
       {periodes.isSuccess && periodes.data.length === 0 && (
         <Text c="dimmed" size="sm">

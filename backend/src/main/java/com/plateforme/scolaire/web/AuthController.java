@@ -2,11 +2,14 @@ package com.plateforme.scolaire.web;
 
 import com.plateforme.scolaire.security.JwtService;
 import com.plateforme.scolaire.security.UtilisateurPrincipal;
+import com.plateforme.scolaire.service.DoubleAuthentificationService;
 import com.plateforme.scolaire.service.ReinitialisationMotDePasseService;
 import com.plateforme.scolaire.service.SecuriteComptesService;
 import com.plateforme.scolaire.web.dto.DemandeReinitialisationRequest;
 import com.plateforme.scolaire.web.dto.LoginRequest;
 import com.plateforme.scolaire.web.dto.LoginResponse;
+import com.plateforme.scolaire.web.dto.VerificationRequiseResponse;
+import org.springframework.http.ResponseEntity;
 import com.plateforme.scolaire.web.dto.ReinitialisationParJetonRequest;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import jakarta.validation.Valid;
@@ -32,16 +35,26 @@ public class AuthController {
     private final JwtService jwtService;
     private final SecuriteComptesService securiteComptesService;
     private final ReinitialisationMotDePasseService reinitialisationService;
+    private final DoubleAuthentificationService doubleAuthentification;
 
     @PostMapping("/login")
-    public LoginResponse login(@Valid @RequestBody LoginRequest requete) {
+    public ResponseEntity<?> login(@Valid @RequestBody LoginRequest requete) {
         try {
             Authentication auth = authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(requete.email(), requete.motDePasse()));
             UtilisateurPrincipal principal = (UtilisateurPrincipal) auth.getPrincipal();
+            if (doubleAuthentification.requise(principal)) {
+                if (requete.code() == null || requete.code().isBlank()) {
+                    doubleAuthentification.envoyerCode(principal.getId(), principal.getUsername());
+                    return ResponseEntity.accepted().body(new VerificationRequiseResponse(true));
+                }
+                if (!doubleAuthentification.verifier(principal.getId(), requete.code())) {
+                    throw refus();
+                }
+            }
             securiteComptesService.enregistrerSucces(principal.getId());
-            return new LoginResponse(jwtService.generer(principal.getId()), "Bearer", principal.getId(),
-                    principal.getUsername(), principal.isDoitChangerMotDePasse());
+            return ResponseEntity.ok(new LoginResponse(jwtService.generer(principal.getId()), "Bearer", principal.getId(),
+                    principal.getUsername(), principal.isDoitChangerMotDePasse()));
         } catch (BadCredentialsException e) {
             securiteComptesService.enregistrerEchec(requete.email());
             throw refus();

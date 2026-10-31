@@ -20,6 +20,18 @@ public interface StatistiquesRepository extends Repository<Etablissement, Long> 
             + "where e.id in :ids group by c.id, c.libelle, c.ordre order by c.ordre")
     List<Object[]> repartitionParType(@Param("ids") Collection<Long> ids);
 
+    /** [type d'établissement (ou « Sans type »), nombre d'établissements], du plus fréquent au moins fréquent. */
+    @Query("select coalesce(t.libelle, 'Sans type'), count(e) from Etablissement e left join e.typeEtablissement t "
+            + "where e.id in :ids group by t.id, t.libelle order by count(e) desc, t.libelle")
+    List<Object[]> repartitionParTypeEtablissement(@Param("ids") Collection<Long> ids);
+
+    /** [type d'établissement (ou « Sans type »), élèves] (inscriptions acceptées de l'année). */
+    @Query("select coalesce(t.libelle, 'Sans type'), count(i) from Inscription i join i.etablissement e "
+            + "left join e.typeEtablissement t "
+            + "where e.id in :ids and i.anneeScolaire.id = :annee and i.statut = 'ACCEPTEE' "
+            + "group by t.id, t.libelle order by count(i) desc, t.libelle")
+    List<Object[]> effectifsParTypeEtablissement(@Param("ids") Collection<Long> ids, @Param("annee") Long annee);
+
     /** [secteur, nombre d'établissements] : PUBLIC puis PRIVE. */
     @Query("select e.secteur, count(e) from Etablissement e where e.id in :ids group by e.secteur order by e.secteur")
     List<Object[]> repartitionParSecteur(@Param("ids") Collection<Long> ids);
@@ -90,4 +102,9 @@ public interface StatistiquesRepository extends Repository<Etablissement, Long> 
     @Query("select p.statut, count(p) from Presence p join p.inscription i "
             + "where i.etablissement.id in :ids and p.dateSeance >= :depuis group by p.statut")
     List<Object[]> presencesDepuis(@Param("ids") Collection<Long> ids, @Param("depuis") LocalDate depuis);
+
+    /** [établissement, date de la dernière présence saisie] : sert à repérer les données non transmises. */
+    @Query("select i.etablissement.id, max(p.dateSeance) from Presence p join p.inscription i "
+            + "where i.etablissement.id in :ids group by i.etablissement.id")
+    List<Object[]> dernieresPresences(@Param("ids") Collection<Long> ids);
 }

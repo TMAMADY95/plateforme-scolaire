@@ -10,22 +10,26 @@ import {
   creerMatiere,
   creerPeriode,
   creerNiveau,
+  creerTypeEtablissement,
   creerZone,
   listerAnnees,
   listerCycles,
   listerMatieres,
   listerNiveaux,
   listerPeriodes,
+  listerTypesEtablissement,
   listerZones,
   modifierAnnee,
   modifierCycle,
   modifierMatiere,
   modifierNiveau,
   modifierPeriode,
+  modifierTypeEtablissement,
   modifierZone,
+  supprimerTypeEtablissement,
   supprimerZone,
 } from '../../api/endpoints'
-import type { AnneeScolaire, Cycle, Matiere, Niveau, Periode, Zone } from '../../api/types'
+import type { AnneeScolaire, Cycle, Matiere, Niveau, Periode, TypeEtablissement, Zone } from '../../api/types'
 import { formaterDate } from '../../utils/dates'
 import EnteteSection from '../../components/EnteteSection'
 import CarteReferentiel from '../../components/CarteReferentiel'
@@ -519,7 +523,7 @@ function Zones() {
                 <Table.Td>
                   <Group gap="xs" wrap="nowrap">
                     <Button size="compact-xs" variant="light" onClick={() => setPourRegion(z)}>
-                      Direction régionale
+                      Compte de zone
                     </Button>
                     <Button size="compact-xs" variant="light" onClick={() => setZoneAModifier(z)}>
                       Modifier
@@ -596,9 +600,104 @@ function Zones() {
       )}
       {pourRegion && (
         <DirectionModal
-          titre={`Direction régionale — ${pourRegion.nom}`}
+          titre={`Compte de zone (${pourRegion.typeZone}) — ${pourRegion.nom}`}
           creer={(requete) => creerDirectionRegionale(pourRegion.id, requete)}
           onFermer={() => setPourRegion(null)}
+        />
+      )}
+    </CarteReferentiel>
+  )
+}
+
+/** Types d'établissement (communautaire, franco-arabe, confessionnel…) proposés à la création d'un établissement. */
+function TypesEtablissement() {
+  const types = useQuery({ queryKey: ['types-etablissement'], queryFn: listerTypesEtablissement })
+  const formulaire = useForm({
+    initialValues: { code: '', libelle: '' },
+    validate: {
+      code: (v) => (v.trim() === '' ? 'Code requis' : null),
+      libelle: (v) => (v.trim() === '' ? 'Libellé requis' : null),
+    },
+  })
+  const { mutation, erreur } = useCreation(creerTypeEtablissement, ['types-etablissement'], "Type d'établissement créé", () =>
+    formulaire.reset(),
+  )
+  const [aModifier, setAModifier] = useState<TypeEtablissement | null>(null)
+  const [aSupprimer, setASupprimer] = useState<TypeEtablissement | null>(null)
+  const queryClient = useQueryClient()
+  const suppression = useMutation({
+    mutationFn: (t: TypeEtablissement) => supprimerTypeEtablissement(t.id),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['types-etablissement'] })
+      notifications.show({ color: 'green', title: 'Type supprimé', message: '' })
+      setASupprimer(null)
+    },
+    onError: (e) => {
+      setASupprimer(null)
+      notifications.show({ color: 'red', title: 'Suppression impossible', message: e.message })
+    },
+  })
+
+  return (
+    <CarteReferentiel
+      titre="Types d'établissement"
+      description="Communautaire, franco-arabe, confessionnel, technique… proposés dans la fiche d'un établissement."
+      nombre={types.data?.length}
+    >
+      <Table highlightOnHover verticalSpacing="xs" mb="md">
+        <Table.Tbody>
+          {(types.data ?? []).map((t) => (
+            <Table.Tr key={t.id}>
+              <Table.Td>{t.code}</Table.Td>
+              <Table.Td>{t.libelle}</Table.Td>
+              <Table.Td>
+                <Group gap="xs" wrap="nowrap">
+                  <Button size="compact-xs" variant="light" onClick={() => setAModifier(t)}>
+                    Modifier
+                  </Button>
+                  <Button size="compact-xs" variant="subtle" color="red" onClick={() => setASupprimer(t)}>
+                    Supprimer
+                  </Button>
+                </Group>
+              </Table.Td>
+            </Table.Tr>
+          ))}
+        </Table.Tbody>
+      </Table>
+      <Divider label="Ajouter" labelPosition="left" my="sm" />
+      <form onSubmit={formulaire.onSubmit((v) => mutation.mutate({ code: v.code.trim(), libelle: v.libelle.trim() }))}>
+        <Stack gap="xs">
+          <Group grow align="flex-start">
+            <TextInput label="Code" {...formulaire.getInputProps('code')} />
+            <TextInput label="Libellé" {...formulaire.getInputProps('libelle')} />
+          </Group>
+          <Erreur message={erreur} />
+          <Button type="submit" loading={mutation.isPending}>
+            Ajouter
+          </Button>
+        </Stack>
+      </form>
+      {aModifier && (
+        <ModifierReferentielModal
+          titre={`Modifier le type ${aModifier.code}`}
+          champs={[
+            { nom: 'code', label: 'Code' },
+            { nom: 'libelle', label: 'Libellé' },
+          ]}
+          valeursInitiales={{ code: aModifier.code, libelle: aModifier.libelle }}
+          cles={['types-etablissement', 'etablissements']}
+          enregistrer={(v) => modifierTypeEtablissement(aModifier.id, { code: v.code.trim(), libelle: v.libelle.trim() })}
+          onFermer={() => setAModifier(null)}
+        />
+      )}
+      {aSupprimer && (
+        <ConfirmationModal
+          titre="Supprimer le type"
+          message={`Supprimer « ${aSupprimer.libelle} » ? Impossible s'il est utilisé par des établissements.`}
+          libelleConfirmer="Supprimer"
+          enCours={suppression.isPending}
+          onConfirmer={() => suppression.mutate(aSupprimer)}
+          onFermer={() => setASupprimer(null)}
         />
       )}
     </CarteReferentiel>
@@ -618,6 +717,7 @@ export default function Referentiels() {
       <Cycles />
       <Niveaux />
       <Matieres />
+      <TypesEtablissement />
       <Zones />
       </SimpleGrid>
     </Stack>
