@@ -4,6 +4,8 @@ import { useForm } from '@mantine/form'
 import { notifications } from '@mantine/notifications'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { envoyerPhotoEleve, infoPhotoEleve, modifierEleve, supprimerPhotoEleve } from '../../api/endpoints'
+import { identiteNationale } from '../../api/endpointsEcole'
+import { libelleActe } from '../../api/typesEcole'
 import type { Eleve } from '../../api/types'
 import { aujourdhui } from '../../utils/dates'
 
@@ -23,12 +25,16 @@ interface Valeurs {
   nomMere: string
 }
 
-/** Correction de l'identité d'un élève. Le matricule ne change jamais. */
+/** Correction de l'identité d'un élève. Le matricule et l'INE ne changent jamais. */
 export default function ModifierEleveModal({ eleve, etablissementId, onFermer }: Props) {
   const queryClient = useQueryClient()
   const [erreur, setErreur] = useState<string | null>(null)
   const [fichier, setFichier] = useState<File | null>(null)
   const photo = useQuery({ queryKey: ['photo-eleve', eleve.id], queryFn: () => infoPhotoEleve(eleve.id) })
+  const identite = useQuery({
+    queryKey: ['identite-nationale', eleve.id],
+    queryFn: () => identiteNationale(eleve.id),
+  })
   const envoi = useMutation({
     mutationFn: () => envoyerPhotoEleve(eleve.id, fichier as File),
     onSuccess: () => {
@@ -83,6 +89,18 @@ export default function ModifierEleveModal({ eleve, etablissementId, onFermer }:
         })}
       >
         <Stack>
+          <Stack gap={2}>
+            <Text size="sm" fw={500}>INE : {identite.data?.ine ?? eleve.ine ?? '—'}</Text>
+            <Text size="xs" c="dimmed">
+              Identifiant national attribué une seule fois. Il ne peut pas être modifié.
+            </Text>
+            {identite.data?.sansActe && (
+              <Text size="xs" c="orange">
+                État civil : {libelleActe(identite.data.typeActeNaissance ?? null)} — à régulariser avant les
+                examens nationaux.
+              </Text>
+            )}
+          </Stack>
           <Group grow align="flex-start">
             <TextInput label="Nom" {...formulaire.getInputProps('nom')} />
             <TextInput label="Prénom" {...formulaire.getInputProps('prenom')} />

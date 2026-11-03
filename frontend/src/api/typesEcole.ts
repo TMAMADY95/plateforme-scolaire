@@ -1,10 +1,5 @@
 import { api } from './client'
 
-/**
- * Types de l'identité nationale (INE et état civil).
- * À replacer dans api/types.ts quand la branche sera validée : ils sont isolés ici
- * pour ne modifier aucun fichier existant tant que la compilation n'a pas tourné.
- */
 export interface IdentiteNationale {
   id: number
   ine: string
@@ -35,7 +30,13 @@ export function libelleActe(type: string | null): string {
   return ACTES_NAISSANCE.find((a) => a.value === type)?.label ?? 'Non renseigné'
 }
 
-/** Un INE est exploitable s'il commence par GN suivi de 12 chiffres. La clé est vérifiée par le serveur. */
+/**
+ * Vérifie la forme d'un INE avant l'appel au serveur : GN suivi de 12 chiffres.
+ * La clé de contrôle est vérifiée par le serveur, qui reste seul juge.
+ */
 export function inePlausible(saisie: string): boolean {
   return /^GN\d{12}$/.test(saisie.toUpperCase().replace(/[\s-]/g, ''))
 }
+
+// Réexportés pour éviter d'ajouter deux points d'entrée aux écrans existants.
+export { api }
