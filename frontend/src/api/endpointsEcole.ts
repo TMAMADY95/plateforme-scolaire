@@ -1,5 +1,5 @@
 import { api } from './client'
-import type { Eleve, EleveRequete, IdentiteNationale } from './types'
+import type { Eleve, EleveRequete, IdentiteNationale, EtatCivilRequete } from './types'
 
 export const modifierEleve = (eleveId: number, requete: EleveRequete) =>
   api.put<Eleve>(`/api/eleves/${eleveId}`, requete)
