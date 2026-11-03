@@ -1,9 +1,11 @@
 package com.plateforme.scolaire.domain;
 
 import jakarta.persistence.*;
+import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import lombok.experimental.Accessors;
 import java.time.Instant;
 import java.time.LocalDate;
 import org.hibernate.annotations.Generated;
@@ -27,7 +29,6 @@ public class Eleve {
     /** Identifiant national de l'élève, généré par la base à l'insertion (voir V66) et jamais modifié. */
     @Generated
     @Column(insertable = false, updatable = false, length = 14)
-    @Setter(AccessLevel.NONE)
     private String ine;
 
     @Column(nullable = false, length = 100)

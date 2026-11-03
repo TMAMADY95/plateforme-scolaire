@@ -18,6 +18,9 @@ import org.springframework.web.server.ResponseStatusException;
 @Transactional
 public class IdentifiantNationalService {
 
+    /** Longueur de l'INE : GN + 12 chiffres. */
+    public static final int LONGUEUR_INF = 14;
+
     private final EleveRepository eleveRepository;
 
     /** Vrai si l'INE a le bon format et une clé modulo 97 correcte (détecte les fautes de frappe). */
@@ -30,9 +33,14 @@ public class IdentifiantNationalService {
         return cle == 97 - (int) ((corps * 100) % 97);
     }
 
+    /** Normalise une saisie d'INE : espaces et tirets retirés, majuscules. */
+    public static String normaliser(String saisi) {
+        return saisi == null ? "" : saisi.replace(" ", "").replace("-", "").trim().toUpperCase(Locale.ROOT);
+    }
+
     @Transactional(readOnly = true)
     public IdentiteNationaleDto parIne(String saisi) {
-        String ine = saisi == null ? "" : saisi.trim().toUpperCase(Locale.ROOT).replace(" ", "");
+        String ine = normaliser(saisi);
         if (!ineValide(ine)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "INE invalide (format ou clé de contrôle)");
         }
