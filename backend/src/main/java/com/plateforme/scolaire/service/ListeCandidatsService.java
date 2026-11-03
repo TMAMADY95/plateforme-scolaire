@@ -1,5 +1,6 @@
 package com.plateforme.scolaire.service;
 
+import com.plateforme.scolaire.security.DroitsExamen;
 import com.plateforme.scolaire.domain.CandidatExamen;
 import com.plateforme.scolaire.domain.ExamenNational;
 import com.plateforme.scolaire.domain.ListeCandidats;
@@ -19,14 +20,13 @@ import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.AccessDeniedException;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 /**
- * Circuit de validation des listes de candidats (règlement général) : l'établissement établit et transmet sa liste, l'autorité
- * régionale la vérifie, puis le ministère (DGECS) valide la liste définitive. Chaque niveau peut rejeter la liste avec un motif :
+ * Circuit de validation des listes de candidats (règlement général) : l'établissement établit et transmet sa liste, la direction
+ * préfectorale ou communale (DPE/DCE) la vérifie (l'IRE supervise sans être une étape obligatoire), puis la DGECS valide la liste définitive. Chaque niveau peut rejeter la liste avec un motif :
  * elle revient alors à l'établissement. Une liste transmise n'est plus modifiable.
  */
 @Service
@@ -75,7 +75,7 @@ public class ListeCandidatsService {
         return dto(l, examen, etablissementId);
     }
 
-    /** Direction régionale ou ministère : la liste transmise est vérifiée. */
+    /** Direction préfectorale/communale (ou régionale, en supervision) : la liste transmise est vérifiée. */
     public ListeCandidatsDto validerRegion(Long etablissementId, Long examenId) {
         ExamenNational examen = examen(examenId);
         ListeCandidats l = obtenir(examen, etablissementId);
@@ -88,15 +88,15 @@ public class ListeCandidatsService {
         return dto(l, examen, etablissementId);
     }
 
-    /** Ministère : validation de la liste définitive, après vérification régionale. */
+    /** DGECS : validation de la liste définitive, après vérification par la direction préfectorale ou communale. */
     public ListeCandidatsDto validerNationale(Long etablissementId, Long examenId) {
         ExamenNational examen = examen(examenId);
-        if (!estMinistere()) {
-            throw new AccessDeniedException("Seul le ministère valide les listes définitives");
+        if (!DroitsExamen.estDgecs()) {
+            throw new AccessDeniedException("Seule la DGECS valide les listes définitives");
         }
         ListeCandidats l = obtenir(examen, etablissementId);
         if (!VALIDEE_REGION.equals(l.getStatut())) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "La liste doit d'abord être vérifiée par la direction régionale");
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "La liste doit d'abord être vérifiée par la direction préfectorale ou communale");
         }
         l.setStatut(VALIDEE);
         l.setValideeLe(Instant.now(clock));
@@ -104,14 +104,14 @@ public class ListeCandidatsService {
         return dto(l, examen, etablissementId);
     }
 
-    /** Renvoie la liste à l'établissement avec un motif. Une liste déjà vérifiée par la région ne se rejette qu'au ministère. */
+    /** Renvoie la liste à l'établissement avec un motif. Une liste déjà vérifiée ne se rejette qu'à la DGECS. */
     public ListeCandidatsDto rejeter(Long etablissementId, Long examenId, String motif) {
         ExamenNational examen = examen(examenId);
         ListeCandidats l = obtenir(examen, etablissementId);
         if (motif == null || motif.isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Indiquez le motif du rejet");
         }
-        boolean rejetable = TRANSMISE.equals(l.getStatut()) || (VALIDEE_REGION.equals(l.getStatut()) && estMinistere());
+        boolean rejetable = TRANSMISE.equals(l.getStatut()) || (VALIDEE_REGION.equals(l.getStatut()) && DroitsExamen.estDgecs());
         if (!rejetable) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, VALIDEE.equals(l.getStatut())
                     ? "La liste est définitivement validée" : "Cette liste ne peut pas être rejetée dans son état actuel");
@@ -155,11 +155,6 @@ public class ListeCandidatsService {
         return new ListeCandidatsDto(l == null ? BROUILLON : l.getStatut(), liste.size(), complets,
                 l == null ? null : l.getTransmiseLe(), l == null ? null : l.getValideeRegionLe(),
                 l == null ? null : l.getValideeLe(), l == null ? null : l.getMotifRejet());
-    }
-
-    private static boolean estMinistere() {
-        var auth = SecurityContextHolder.getContext().getAuthentication();
-        return auth != null && auth.getAuthorities().stream().anyMatch(a -> "ROLE_MINISTERE".equals(a.getAuthority()));
     }
 
     private ExamenNational examen(Long id) {

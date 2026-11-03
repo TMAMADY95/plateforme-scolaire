@@ -1,5 +1,6 @@
 package com.plateforme.scolaire.web;
 
+import com.plateforme.scolaire.security.DroitsExamen;
 import com.plateforme.scolaire.service.ListeCandidatsService;
 import com.plateforme.scolaire.web.dto.ListeCandidatsDto;
 import java.util.Map;
@@ -12,7 +13,7 @@ import org.springframework.web.bind.annotation.*;
 @RequiredArgsConstructor
 public class ListeCandidatsController {
 
-    private static final String SUPERVISION = "hasAnyRole('MINISTERE','DIRECTION_REGIONALE') and @perimetre.peutAccederEtablissement(#id)";
+    private static final String SUPERVISION = DroitsExamen.GESTION + " and @perimetre.peutAccederEtablissement(#id)";
 
     private final ListeCandidatsService service;
 
@@ -35,7 +36,7 @@ public class ListeCandidatsController {
     }
 
     @PostMapping("/api/etablissements/{id}/examens/{examenId}/liste/validation")
-    @PreAuthorize("hasRole('MINISTERE')")
+    @PreAuthorize(DroitsExamen.NATIONAL)
     public ListeCandidatsDto valider(@PathVariable Long id, @PathVariable Long examenId) {
         return service.validerNationale(id, examenId);
     }

@@ -20,13 +20,16 @@ public class PlanActionController {
 
     private static final String SUPERVISEUR = "hasAnyRole('MINISTERE','DIRECTION_REGIONALE') "
             + "and @perimetre.peutAccederEtablissement(#id)";
+    /** Lecture : la DGECS et les directions locales consultent aussi. */
+    private static final String LECTURE = "hasAnyRole('MINISTERE','DGECS','DIRECTION_REGIONALE','DIRECTION_LOCALE') "
+            + "and @perimetre.peutAccederEtablissement(#id)";
 
     private final PlanActionService plans;
     private final JournalAlertes journalAlertes;
 
     /** Lecture : le ministère, la direction régionale du périmètre, et la direction de l'établissement. */
     @GetMapping("/api/etablissements/{id}/plans-action")
-    @PreAuthorize("(" + SUPERVISEUR + ") or @perimetre.peutGererEtablissement(#id)")
+    @PreAuthorize("(" + LECTURE + ") or @perimetre.peutGererEtablissement(#id)")
     public List<PlanActionDto> deLEtablissement(@PathVariable Long id) {
         return plans.deLEtablissement(id);
     }
@@ -46,13 +49,13 @@ public class PlanActionController {
     }
 
     @GetMapping("/api/ministere/plans-action")
-    @PreAuthorize("hasRole('MINISTERE')")
+    @PreAuthorize("hasAnyRole('MINISTERE','DGECS')")
     public List<PlanActionDto> nationale(@RequestParam(required = false) Long zoneId) {
         return plans.nationale(zoneId);
     }
 
     @GetMapping("/api/region/plans-action")
-    @PreAuthorize("hasRole('DIRECTION_REGIONALE')")
+    @PreAuthorize("hasAnyRole('DIRECTION_REGIONALE','DIRECTION_LOCALE')")
     public List<PlanActionDto> regionale() {
         return plans.regionale();
     }
@@ -66,7 +69,7 @@ public class PlanActionController {
 
     /** Journal national : alertes de niveau établissement uniquement (inspections, plans d'action, résultats d'examens). */
     @GetMapping("/api/ministere/alertes")
-    @PreAuthorize("hasRole('MINISTERE')")
+    @PreAuthorize("hasAnyRole('MINISTERE','DGECS')")
     public List<AlerteEnvoyeeDto> alertes() {
         return journalAlertes.recentes();
     }

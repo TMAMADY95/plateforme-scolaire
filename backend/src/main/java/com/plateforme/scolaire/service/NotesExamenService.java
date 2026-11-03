@@ -1,5 +1,6 @@
 package com.plateforme.scolaire.service;
 
+import com.plateforme.scolaire.domain.BaremeExamen;
 import com.plateforme.scolaire.domain.CandidatExamen;
 import com.plateforme.scolaire.domain.EpreuveExamen;
 import com.plateforme.scolaire.domain.ExamenNational;
@@ -45,7 +46,7 @@ public class NotesExamenService {
     public NotesCandidatsDto notes(Long examenId, Long etablissementId) {
         ExamenNational examen = examen(examenId);
         List<EpreuveExamen> liste = epreuves.findByExamenIdOrderByDateEpreuveAscHeureDebutAsc(examenId);
-        return new NotesCandidatsDto(examenId, examen.getStatutResultats(),
+        return new NotesCandidatsDto(examenId, examen.getStatutResultats(), examen.getBareme(),
                 liste.stream().map(e -> new NotesCandidatsDto.Epreuve(e.getId(), e.nom(), e.getCoefficient())).toList(),
                 candidats.deLEtablissement(examenId, etablissementId).stream()
                         .map(c -> new NotesCandidatsDto.Candidat(c.getId(), (c.getEleve().getPrenom() + " " + c.getEleve().getNom()).trim(),
@@ -75,8 +76,8 @@ public class NotesExamenService {
                 if (!connues.contains(e.getKey())) {
                     throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Épreuve inconnue pour cet examen");
                 }
-                if (e.getValue().signum() < 0 || e.getValue().compareTo(NOTE_MAX) > 0) {
-                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Les notes sont comprises entre 0 et 20");
+                if (e.getValue().signum() < 0 || e.getValue().compareTo(BigDecimal.valueOf(examen.getBareme())) > 0) {
+                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Les notes sont comprises entre 0 et " + examen.getBareme());
                 }
                 notes.put(e.getKey(), e.getValue().setScale(2, RoundingMode.HALF_UP));
             }
@@ -87,7 +88,7 @@ public class NotesExamenService {
         Map<Long, Integer> coefficients = new HashMap<>();
         liste.forEach(e -> coefficients.put(e.getId(), e.getCoefficient()));
         c.setMoyenne(moyenne(coefficients, notes));
-        c.setDecision(decision(r.statut(), c.getMoyenne()));
+        c.setDecision(decision(r.statut(), c.getMoyenne(), examen.getBareme()));
         return new NotesCandidatsDto.Candidat(c.getId(), (c.getEleve().getPrenom() + " " + c.getEleve().getNom()).trim(),
                 c.getEleve().getSexe(), c.getNumeroPv(), c.getStatutEpreuves(), new HashMap<>(c.getNotes()), c.getMoyenne(), c.getDecision());
     }
@@ -111,13 +112,18 @@ public class NotesExamenService {
 
     /** Éliminé pour fraude : non admis ; sinon admis à partir de 10 de moyenne ; rien tant que la moyenne manque. */
     static String decision(String statut, BigDecimal moyenne) {
+        return decision(statut, moyenne, BaremeExamen.SUR_20);
+    }
+
+    /** Idem, avec le barème de l'examen : admis à partir de la moitié du barème. */
+    static String decision(String statut, BigDecimal moyenne, int bareme) {
         if ("ELIMINE".equals(statut)) {
             return "NON_ADMIS";
         }
         if (!"PRESENT".equals(statut) || moyenne == null) {
             return null;
         }
-        return moyenne.compareTo(MOYENNE_ADMISSION) >= 0 ? "ADMIS" : "NON_ADMIS";
+        return moyenne.compareTo(BaremeExamen.seuilAdmission(bareme)) >= 0 ? "ADMIS" : "NON_ADMIS";
     }
 
     /**

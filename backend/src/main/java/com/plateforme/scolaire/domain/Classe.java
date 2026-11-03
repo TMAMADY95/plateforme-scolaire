@@ -33,4 +33,8 @@ public class Classe {
     private String nom;
 
     private Integer capacite;
+
+    /** Spécialisation du lycée ; null hors lycée. */
+    @Column(length = 30)
+    private String serie;
 }

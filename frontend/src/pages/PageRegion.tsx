@@ -21,7 +21,10 @@ import PanneauPostes from '../components/PanneauPostes'
 import PanneauExamens from '../components/PanneauExamens'
 import TableauDeBordConformite from '../components/TableauDeBordConformite'
 import SyntheseNationale from './ministere/SyntheseNationale'
-import { SECTIONS_REGION } from './sections'
+import { estDirectionLocale, estDirectionRegionale } from '../auth/roles'
+import { useUtilisateur } from '../auth/useAuth'
+import ComptesLocaux from './region/ComptesLocaux'
+import { SECTIONS_REGION, SECTION_COMPTES_LOCAUX } from './sections'
 
 const COULEURS: Record<string, string> = { ACTIF: 'green', SUSPENDU: 'orange', FERME: 'gray' }
 
@@ -37,15 +40,16 @@ const ONGLETS = [
  * gauche ; le suivi reste en onglets horizontaux.
  */
 export default function PageRegion() {
+  const utilisateur = useUtilisateur()
   const etablissements = useQuery({ queryKey: ['etablissements'], queryFn: listerEtablissements })
   const [parametres, setParametres] = useSearchParams()
   const demande = parametres.get('onglet')
-  const section = SECTIONS_REGION.find((s) => s.valeur === demande)
+  const section = [...SECTIONS_REGION, ...(estDirectionRegionale(utilisateur) ? [SECTION_COMPTES_LOCAUX] : [])].find((s) => s.valeur === demande)
   const onglet = ONGLETS.find((o) => o.valeur === demande)?.valeur ?? 'synthese'
 
   return (
     <Stack>
-      <Title order={2}>{section ? section.libelle : 'Direction régionale'}</Title>
+      <Title order={2}>{section ? section.libelle : estDirectionLocale(utilisateur) ? 'Direction préfectorale ou communale' : 'Inspection régionale'}</Title>
       {section?.valeur === 'etablissements' && (
         <Stack mt="md">
           {etablissements.isPending && <Loader />}
@@ -91,6 +95,7 @@ export default function PageRegion() {
           )}
         </Stack>
       )}
+      {section?.valeur === 'comptes-locaux' && <ComptesLocaux />}
       {section?.valeur === 'postes' && <PanneauPostes cle="regionale" charger={postesRegionaux} />}
       {!section && (
         <Tabs

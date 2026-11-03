@@ -32,7 +32,7 @@ import org.springframework.web.server.ResponseStatusException;
 @Transactional
 public class ComptesInstitutionnelsService {
 
-    private static final EnumSet<Role> ROLES = EnumSet.of(Role.MINISTERE, Role.DIRECTION_REGIONALE);
+    private static final EnumSet<Role> ROLES = EnumSet.of(Role.MINISTERE, Role.DGECS, Role.DIRECTION_REGIONALE, Role.DIRECTION_LOCALE);
 
     private final AffectationRoleRepository affectationRepository;
     private final UtilisateurRepository utilisateurRepository;
@@ -50,6 +50,15 @@ public class ComptesInstitutionnelsService {
     }
 
     public CompteInstitutionnelDto creerMinistere(DirectionRequest r) {
+        return creerNational(Role.MINISTERE, r);
+    }
+
+    /** Compte de la direction générale des examens et concours scolaires (périmètre national). */
+    public CompteInstitutionnelDto creerDgecs(DirectionRequest r) {
+        return creerNational(Role.DGECS, r);
+    }
+
+    private CompteInstitutionnelDto creerNational(Role role, DirectionRequest r) {
         String email = r.email().trim();
         if (utilisateurRepository.existsByEmailIgnoreCase(email)) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Cette adresse e-mail est déjà utilisée");
@@ -65,10 +74,10 @@ public class ComptesInstitutionnelsService {
 
         AffectationRole a = new AffectationRole();
         a.setUtilisateur(u);
-        a.setRole(Role.MINISTERE);
+        a.setRole(role);
         a.setPerimetre(Perimetre.NATIONAL);
         affectationRepository.save(a);
-        auditService.enregistrer("CREATION_COMPTE_MINISTERE", "utilisateur", u.getId(), Map.of("email", email));
+        auditService.enregistrer("CREATION_COMPTE_" + role.name(), "utilisateur", u.getId(), Map.of("email", email));
         return CompteInstitutionnelDto.de(a);
     }
 
@@ -95,7 +104,7 @@ public class ComptesInstitutionnelsService {
         boolean institutionnel = affectationRepository.findByUtilisateurId(utilisateurId).stream()
                 .anyMatch(a -> ROLES.contains(a.getRole()));
         if (!institutionnel) {
-            throw new AccessDeniedException("Ce compte n'est ni du ministère ni d'une direction régionale");
+            throw new AccessDeniedException("Ce compte n'est pas un compte institutionnel (ministère, DGECS, IRE, DPE/DCE)");
         }
     }
 }

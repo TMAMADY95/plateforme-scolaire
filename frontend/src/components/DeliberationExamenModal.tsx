@@ -11,6 +11,7 @@ import {
   rouvrirDeliberation,
 } from '../api/endpoints'
 import type { Examen, Jury, MembreJury } from '../api/types'
+import { useDroitsExamens } from '../auth/useDroitsExamens'
 import { formaterDate } from '../utils/dates'
 
 export const LIBELLE_STATUT: Record<Examen['statutResultats'], string> = {
@@ -23,6 +24,7 @@ export const COULEUR_STATUT: Record<Examen['statutResultats'], string> = { EN_CO
 /** Jury de délibération (composition du règlement général), quorum des deux tiers, délibération puis proclamation. */
 export default function DeliberationExamenModal({ examen, onFermer }: { examen: Examen; onFermer: () => void }) {
   const queryClient = useQueryClient()
+  const droits = useDroitsExamens()
   const jury = useQuery({ queryKey: ['jury-examen', examen.id], queryFn: () => juryExamen(examen.id) })
 
   const appliquer = (j: Jury) => {
@@ -37,7 +39,7 @@ export default function DeliberationExamenModal({ examen, onFermer }: { examen: 
   const reouverture = useMutation({ mutationFn: () => rouvrirDeliberation(examen.id), onSuccess: appliquer, onError: erreur('Action impossible') })
 
   const j = jury.data
-  const modifiable = j?.statut === 'EN_COURS'
+  const modifiable = j?.statut === 'EN_COURS' && droits.gestion
 
   return (
     <Modal opened onClose={onFermer} size="xl" title={`Jury et proclamation : ${examen.libelle}`}>
@@ -55,9 +57,13 @@ export default function DeliberationExamenModal({ examen, onFermer }: { examen: 
               Après la proclamation, les résultats ne peuvent plus être modifiés.
             </Text>
             {j.membres.length === 0 ? (
+              !droits.gestion ? (
+                <Text size="sm" c="dimmed">Le jury n'est pas encore constitué (DGECS ou direction organisatrice).</Text>
+              ) : (
               <Button loading={initialisation.isPending} onClick={() => initialisation.mutate()}>
                 Constituer le jury ({examen.niveauOrganisation === 'NATIONAL' ? 'jury national' : 'composition prévue pour ce niveau'})
               </Button>
+              )
             ) : (
               <>
                 <Table verticalSpacing="xs">
@@ -82,16 +88,18 @@ export default function DeliberationExamenModal({ examen, onFermer }: { examen: 
               </>
             )}
             <Group justify="flex-end">
-              {j.statut === 'EN_COURS' && j.membres.length > 0 && (
+              {droits.gestion && j.statut === 'EN_COURS' && j.membres.length > 0 && (
                 <Button loading={deliberation.isPending} disabled={!j.quorumAtteint} onClick={() => deliberation.mutate()}>
                   Enregistrer la délibération
                 </Button>
               )}
               {j.statut === 'DELIBERE' && (
                 <>
-                  <Button variant="default" loading={reouverture.isPending} onClick={() => reouverture.mutate()}>
-                    Rouvrir la délibération
-                  </Button>
+                  {droits.dgecs && (
+                    <Button variant="default" loading={reouverture.isPending} onClick={() => reouverture.mutate()}>
+                      Rouvrir la délibération
+                    </Button>
+                  )}
                   {j.peutProclamer && (
                     <Button color="green" loading={proclamation.isPending} onClick={() => proclamation.mutate()}>
                       Proclamer les résultats

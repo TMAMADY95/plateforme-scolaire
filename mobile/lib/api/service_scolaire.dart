@@ -53,6 +53,10 @@ class ServiceScolaire {
         await _api.get(enfant.estMoi ? '/api/me/factures' : '/api/me/enfants/${enfant.eleveId}/factures'),
       );
 
+  /// Résultats proclamés des examens nationaux de l'élève ; rien n'est renvoyé avant la proclamation.
+  Future<List<ResultatExamen>> resultatsExamens(Enfant enfant) async =>
+      ResultatExamen.listeDepuisJson(await _api.get('/api/eleves/${enfant.eleveId}/resultats-examens'));
+
   /// Démarre un paiement en ligne du reste à payer ; le paiement se termine chez le prestataire.
   Future<PaiementInitie> payerEnLigne(int factureId) async =>
       PaiementInitie.depuisJson(await _api.post('/api/me/factures/$factureId/paiements', corps: {}) as Map<String, dynamic>);

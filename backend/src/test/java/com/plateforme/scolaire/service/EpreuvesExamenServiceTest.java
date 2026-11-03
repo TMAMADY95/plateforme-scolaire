@@ -56,6 +56,15 @@ class EpreuvesExamenServiceTest {
 
         assertThat(ExamenService.peutGererCalendrier(examen("NATIONAL"), region)).isFalse();
         assertThat(ExamenService.peutGererCalendrier(examen("REGION"), region)).isTrue();
-        assertThat(ExamenService.peutGererCalendrier(examen("NATIONAL"), ministere)).isTrue();
+        // le ministère consulte et valide, mais ne saisit rien : l'organisation revient à la DGECS
+        assertThat(ExamenService.peutGererCalendrier(examen("NATIONAL"), ministere)).isFalse();
+        assertThat(ExamenService.peutGererCalendrier(examen("REGION"), ministere)).isFalse();
+
+        var dgecs = List.of(new AffectationInfo(Role.DGECS, Perimetre.NATIONAL, null, null));
+        var locale = List.of(new AffectationInfo(Role.DIRECTION_LOCALE, Perimetre.ZONE, 2L, null));
+        assertThat(ExamenService.peutGererCalendrier(examen("NATIONAL"), dgecs)).isTrue();
+        assertThat(ExamenService.peutGererCalendrier(examen("COMMUNE"), dgecs)).isTrue();
+        assertThat(ExamenService.peutGererCalendrier(examen("NATIONAL"), locale)).isFalse();
+        assertThat(ExamenService.peutGererCalendrier(examen("PREFECTURE"), locale)).isTrue();
     }
 }

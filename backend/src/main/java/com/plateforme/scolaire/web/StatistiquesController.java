@@ -26,7 +26,7 @@ public class StatistiquesController {
     private final ReussiteReseauService reussiteReseauService;
 
     @GetMapping("/api/ministere/statistiques")
-    @PreAuthorize("hasRole('MINISTERE')")
+    @PreAuthorize("hasAnyRole('MINISTERE','DGECS')")
     public StatistiquesDto nationales(@RequestParam Long anneeScolaireId, @RequestParam(required = false) Long zoneId) {
         return zoneId == null ? statistiquesService.nationales(anneeScolaireId)
                 : statistiquesService.zone(zoneId, anneeScolaireId);
@@ -34,7 +34,7 @@ public class StatistiquesController {
 
     /** Une ligne par établissement, pour tout le pays ou pour une zone (région…) et ses sous-zones. */
     @GetMapping("/api/ministere/statistiques/etablissements")
-    @PreAuthorize("hasRole('MINISTERE')")
+    @PreAuthorize("hasAnyRole('MINISTERE','DGECS')")
     public List<LigneEtablissementStatDto> etablissementsNationaux(@RequestParam Long anneeScolaireId,
                                                                    @RequestParam(required = false) Long zoneId) {
         return statistiquesService.lignesNationales(anneeScolaireId, zoneId);
@@ -42,19 +42,19 @@ public class StatistiquesController {
 
     /** Une ligne par zone, sous-zones comprises. */
     @GetMapping("/api/ministere/statistiques/zones")
-    @PreAuthorize("hasRole('MINISTERE')")
+    @PreAuthorize("hasAnyRole('MINISTERE','DGECS')")
     public List<LigneZoneStatDto> zones(@RequestParam Long anneeScolaireId) {
         return statistiquesService.lignesParZone(anneeScolaireId);
     }
 
     @GetMapping("/api/region/statistiques/etablissements")
-    @PreAuthorize("hasRole('DIRECTION_REGIONALE')")
+    @PreAuthorize("hasAnyRole('DIRECTION_REGIONALE','DIRECTION_LOCALE')")
     public List<LigneEtablissementStatDto> etablissementsRegionaux(@RequestParam Long anneeScolaireId) {
         return statistiquesService.lignesRegionales(anneeScolaireId);
     }
 
     @GetMapping("/api/region/statistiques")
-    @PreAuthorize("hasRole('DIRECTION_REGIONALE')")
+    @PreAuthorize("hasAnyRole('DIRECTION_REGIONALE','DIRECTION_LOCALE')")
     public StatistiquesDto regionales(@RequestParam Long anneeScolaireId) {
         return statistiquesService.regionales(anneeScolaireId);
     }
@@ -62,7 +62,7 @@ public class StatistiquesController {
     /** La direction de l'établissement, et le ministère ou la direction régionale pour les établissements de leur périmètre. */
     @GetMapping("/api/etablissements/{etablissementId}/statistiques")
     @PreAuthorize("@perimetre.peutGererEtablissement(#etablissementId) or "
-            + "(hasAnyRole('MINISTERE', 'DIRECTION_REGIONALE') and @perimetre.peutAccederEtablissement(#etablissementId))")
+            + "(hasAnyRole('MINISTERE','DGECS','DIRECTION_REGIONALE','DIRECTION_LOCALE') and @perimetre.peutAccederEtablissement(#etablissementId))")
     public StatistiquesDto etablissement(@PathVariable Long etablissementId, @RequestParam Long anneeScolaireId) {
         return statistiquesService.etablissement(etablissementId, anneeScolaireId);
     }
@@ -76,13 +76,13 @@ public class StatistiquesController {
     }
 
     @GetMapping("/api/ministere/reussite")
-    @PreAuthorize("hasRole('MINISTERE')")
+    @PreAuthorize("hasAnyRole('MINISTERE','DGECS')")
     public ReussiteReseauDto reussiteNationale(@RequestParam Long anneeScolaireId, @RequestParam Long periodeId) {
         return reussiteReseauService.nationale(anneeScolaireId, periodeId);
     }
 
     @GetMapping("/api/region/reussite")
-    @PreAuthorize("hasRole('DIRECTION_REGIONALE')")
+    @PreAuthorize("hasAnyRole('DIRECTION_REGIONALE','DIRECTION_LOCALE')")
     public ReussiteReseauDto reussiteRegionale(@RequestParam Long anneeScolaireId, @RequestParam Long periodeId) {
         return reussiteReseauService.regionale(anneeScolaireId, periodeId);
     }

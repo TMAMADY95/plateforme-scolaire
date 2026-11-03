@@ -35,7 +35,7 @@ interface LigneEpreuve {
 }
 
 /**
- * Page d'accueil des examens pour le ministère : on choisit le type d'examen, la période et l'emploi du temps
+ * Page d'accueil des examens pour la DGECS : on choisit le type d'examen, la période et l'emploi du temps
  * (date, créneau, matière), puis on planifie en une fois.
  */
 export default function PlanificationExamen({

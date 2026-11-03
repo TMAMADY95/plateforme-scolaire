@@ -1,5 +1,6 @@
 package com.plateforme.scolaire.web;
 
+import com.plateforme.scolaire.security.DroitsExamen;
 import com.plateforme.scolaire.service.IncidentsExamenService;
 import com.plateforme.scolaire.web.dto.IncidentExamenRequest;
 import com.plateforme.scolaire.web.dto.IncidentsCentreDto;
@@ -9,10 +10,10 @@ import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
-/** Incidents des centres d'examen : ministère et directions régionales. */
+/** Incidents des centres d'examen : signalement par le terrain, traitement par les directions. */
 @RestController
 @RequiredArgsConstructor
-@PreAuthorize("hasAnyRole('MINISTERE','DIRECTION_REGIONALE')")
+@PreAuthorize(DroitsExamen.LECTURE_TERRAIN + " and @accesCentre.peut(#centreId)")
 public class IncidentsExamenController {
 
     private final IncidentsExamenService service;
@@ -23,6 +24,7 @@ public class IncidentsExamenController {
     }
 
     @PostMapping("/api/examens/{examenId}/centres/{centreId}/incidents")
+    @PreAuthorize(DroitsExamen.TERRAIN + " and @accesCentre.peut(#centreId)")
     @ResponseStatus(HttpStatus.CREATED)
     public IncidentsCentreDto signaler(@PathVariable Long examenId, @PathVariable Long centreId,
                                        @Valid @RequestBody IncidentExamenRequest r) {
@@ -30,6 +32,7 @@ public class IncidentsExamenController {
     }
 
     @PostMapping("/api/examens/{examenId}/centres/{centreId}/incidents/{incidentId}/traitement")
+    @PreAuthorize(DroitsExamen.GESTION + " and @accesCentre.peut(#centreId)")
     public IncidentsCentreDto traiter(@PathVariable Long examenId, @PathVariable Long centreId, @PathVariable Long incidentId,
                                       @RequestBody java.util.Map<String, String> corps) {
         return service.traiter(examenId, centreId, incidentId, corps.get("decision"));

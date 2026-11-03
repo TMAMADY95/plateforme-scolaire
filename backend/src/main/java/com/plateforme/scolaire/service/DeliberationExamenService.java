@@ -1,5 +1,6 @@
 package com.plateforme.scolaire.service;
 
+import com.plateforme.scolaire.security.DroitsExamen;
 import com.plateforme.scolaire.domain.ExamenNational;
 import com.plateforme.scolaire.domain.JuryMembre;
 import com.plateforme.scolaire.repository.ExamenNationalRepository;
@@ -14,7 +15,6 @@ import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.AccessDeniedException;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
@@ -142,11 +142,11 @@ public class DeliberationExamenService {
         return dto(examen, membres.findByExamenIdOrderByOrdre(examenId));
     }
 
-    /** Réservé au ministère : annule une délibération (par exemple après une erreur de saisie) tant que rien n'est proclamé. */
+    /** Réservé à la DGECS : annule une délibération (par exemple après une erreur de saisie) tant que rien n'est proclamé. */
     public JuryDto rouvrir(Long examenId) {
         ExamenNational examen = examen(examenId);
-        if (!estMinistere()) {
-            throw new AccessDeniedException("Seul le ministère peut rouvrir une délibération");
+        if (!DroitsExamen.estDgecs()) {
+            throw new AccessDeniedException("Seule la DGECS peut rouvrir une délibération");
         }
         if (!DELIBERE.equals(examen.getStatutResultats())) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Seule une délibération non proclamée peut être rouverte");
@@ -171,19 +171,18 @@ public class DeliberationExamenService {
         }
     }
 
-    /** Le ministère gère tous les jurys ; une direction régionale seulement ceux des examens qui ne sont pas nationaux. */
-    private void verifierDroit(ExamenNational examen, boolean ministereSeul) {
-        if (estMinistere()) {
+    /** La DGECS gère tous les jurys ; une direction de zone seulement ceux des examens qui ne sont pas nationaux. */
+    private void verifierDroit(ExamenNational examen, boolean dgecsSeule) {
+        if (DroitsExamen.estDgecs()) {
             return;
         }
-        if (ministereSeul || "NATIONAL".equalsIgnoreCase(examen.getNiveauOrganisation())) {
-            throw new AccessDeniedException("Le jury d'un examen national relève du ministère");
+        if (dgecsSeule || "NATIONAL".equalsIgnoreCase(examen.getNiveauOrganisation())) {
+            throw new AccessDeniedException("Le jury d'un examen national relève de la DGECS");
         }
     }
 
     private static boolean estMinistere() {
-        var auth = SecurityContextHolder.getContext().getAuthentication();
-        return auth != null && auth.getAuthorities().stream().anyMatch(a -> "ROLE_MINISTERE".equals(a.getAuthority()));
+        return DroitsExamen.estMinistere();
     }
 
     private ExamenNational examen(Long id) {

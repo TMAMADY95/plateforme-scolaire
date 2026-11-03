@@ -111,15 +111,15 @@ public class AlertesUrgenceService {
         return signalees.size();
     }
 
-    /** Un destinataire par compte : le ministère voit tout, une direction régionale voit ses zones. */
+    /** Un destinataire par compte : le ministère et la DGECS voient tout, une direction régionale ou locale voit ses zones. */
     private Map<Long, Destinataire> destinataires() {
         Map<Long, Destinataire> resultat = new LinkedHashMap<>();
         Map<Long, Set<Long>> parZone = new HashMap<>();
-        for (AffectationRole a : affectationRepository.destinataires(EnumSet.of(Role.MINISTERE, Role.DIRECTION_REGIONALE))) {
+        for (AffectationRole a : affectationRepository.destinataires(EnumSet.of(Role.MINISTERE, Role.DGECS, Role.DIRECTION_REGIONALE, Role.DIRECTION_LOCALE))) {
             Long compte = a.getUtilisateur().getId();
             String email = a.getUtilisateur().getEmail();
             String tel = a.getUtilisateur().getTelephone();
-            if (a.getRole() == Role.MINISTERE) {
+            if (a.getRole() == Role.MINISTERE || a.getRole() == Role.DGECS) {
                 resultat.put(compte, new Destinataire(email, tel, null));
             } else if (a.getPerimetre() == Perimetre.ZONE && a.getZone() != null) {
                 Set<Long> ids = parZone.computeIfAbsent(a.getZone().getId(), z -> {

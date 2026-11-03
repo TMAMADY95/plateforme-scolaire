@@ -28,7 +28,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class PerimetreComptesService {
 
     private static final Set<Role> CIBLES_DU_MINISTERE =
-            EnumSet.of(Role.DIRECTION_ETABLISSEMENT, Role.DIRECTION_REGIONALE);
+            EnumSet.of(Role.DIRECTION_ETABLISSEMENT, Role.DGECS, Role.DIRECTION_REGIONALE, Role.DIRECTION_LOCALE);
 
     private final PerimetreService perimetreService;
     private final AffectationRoleRepository affectationRoleRepository;

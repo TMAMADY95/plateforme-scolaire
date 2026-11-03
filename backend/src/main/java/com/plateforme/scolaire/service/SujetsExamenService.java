@@ -1,5 +1,6 @@
 package com.plateforme.scolaire.service;
 
+import com.plateforme.scolaire.security.DroitsExamen;
 import com.plateforme.scolaire.domain.EpreuveExamen;
 import com.plateforme.scolaire.domain.ExamenNational;
 import com.plateforme.scolaire.domain.SujetExamen;
@@ -19,7 +20,6 @@ import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.AccessDeniedException;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
@@ -179,12 +179,10 @@ public class SujetsExamenService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Sujet introuvable"));
     }
 
-    /** Le ministère gère toutes les banques ; une direction régionale seulement celles des examens non nationaux. */
+    /** La DGECS gère toutes les banques ; une direction régionale seulement celles des examens non nationaux. */
     private void verifierDroit(ExamenNational examen) {
-        var auth = SecurityContextHolder.getContext().getAuthentication();
-        boolean ministere = auth != null && auth.getAuthorities().stream().anyMatch(a -> "ROLE_MINISTERE".equals(a.getAuthority()));
-        if (!ministere && "NATIONAL".equalsIgnoreCase(examen.getNiveauOrganisation())) {
-            throw new AccessDeniedException("Les sujets d'un examen national relèvent du ministère");
+        if (!DroitsExamen.estDgecs() && "NATIONAL".equalsIgnoreCase(examen.getNiveauOrganisation())) {
+            throw new AccessDeniedException("Les sujets d'un examen national relèvent de la DGECS");
         }
     }
 

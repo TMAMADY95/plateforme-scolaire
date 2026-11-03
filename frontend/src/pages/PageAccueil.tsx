@@ -1,8 +1,8 @@
-import { Alert, Badge, Button, Card, Group, Loader, Progress, SimpleGrid, Stack, Text, Title } from '@mantine/core'
+import { Alert, Badge, Button, Card, Group, Loader, Progress, Select, SimpleGrid, Stack, Text, Title } from '@mantine/core'
 import { useQuery } from '@tanstack/react-query'
 import { Link, Navigate } from 'react-router'
 import { bilanFinancier, obtenirEtablissement, plansActionEtablissement, statistiquesEtablissement } from '../api/endpoints'
-import { estDirectionEtablissement, estDirectionRegionale, estEleve, estEnseignant, estMinistere, estParent, etablissementCourant, LIBELLES_ROLES } from '../auth/roles'
+import { estChefCentre, estDirectionDeZone, estDirectionEtablissement, estEleve, estEnseignant, estNational, estParent, etablissementCourant, LIBELLES_ROLES } from '../auth/roles'
 import { useUtilisateur } from '../auth/useAuth'
 import { BadgeSecteur, BadgesCycles } from '../components/BadgesEtablissement'
 import CarteChiffre from '../components/CarteChiffre'
@@ -43,11 +43,14 @@ export default function PageAccueil() {
     enabled: etablissementId !== undefined && estDirectionEtablissement(utilisateur),
   })
 
-  if (etablissementId === undefined && estMinistere(utilisateur)) {
+  if (etablissementId === undefined && estNational(utilisateur)) {
     return <Navigate to="/ministere" replace />
   }
-  if (etablissementId === undefined && estDirectionRegionale(utilisateur)) {
+  if (etablissementId === undefined && estDirectionDeZone(utilisateur)) {
     return <Navigate to="/region" replace />
+  }
+  if (etablissementId === undefined && estChefCentre(utilisateur)) {
+    return <Navigate to="/mon-centre" replace />
   }
   if (etablissementId === undefined && estEnseignant(utilisateur)) {
     return <Navigate to="/mes-classes" replace />
@@ -74,14 +77,24 @@ export default function PageAccueil() {
 
   return (
     <Stack>
-      <div>
-        <Title order={2}>Tableau de bord</Title>
-        {etablissement.data && (
-          <Text c="dimmed">
-            {etablissement.data.nom} · Année {annee.options.find((o) => o.value === annee.anneeId)?.label ?? '—'}
-          </Text>
-        )}
-      </div>
+      <Group justify="space-between" align="flex-end">
+        <div>
+          <Title order={2}>Tableau de bord</Title>
+          {etablissement.data && (
+            <Text c="dimmed">
+              {etablissement.data.nom} · Année {annee.options.find((o) => o.value === annee.anneeId)?.label ?? '—'}
+            </Text>
+          )}
+        </div>
+        <Select
+          aria-label="Année scolaire"
+          data={annee.options}
+          value={annee.anneeId}
+          onChange={annee.setAnneeChoisie}
+          allowDeselect={false}
+          w={180}
+        />
+      </Group>
       {etablissement.isPending && <Loader />}
       {etablissement.isError && (
         <Alert color="red" variant="light">

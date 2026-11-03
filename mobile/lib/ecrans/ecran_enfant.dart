@@ -8,6 +8,7 @@ import 'onglet_annonces.dart';
 import 'onglet_bulletin.dart';
 import 'onglet_devoirs.dart';
 import 'onglet_emploi_du_temps.dart';
+import 'onglet_examens.dart';
 import 'onglet_factures.dart';
 import 'onglet_presences.dart';
 
@@ -20,7 +21,7 @@ class EcranEnfant extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
-      length: 6,
+      length: 7,
       child: Scaffold(
         appBar: AppBar(
           title: Text(enfant.nomComplet),
@@ -33,6 +34,7 @@ class EcranEnfant extends StatelessWidget {
               Tab(text: 'Annonces'),
               Tab(text: 'Présences'),
               Tab(text: 'Emploi du temps'),
+              Tab(text: 'Examens'),
               Tab(text: 'Factures'),
             ],
           ),
@@ -49,6 +51,7 @@ class EcranEnfant extends StatelessWidget {
                   OngletAnnonces(charger: () => context.read<ServiceScolaire>().annonces(enfant.classeId!)),
                   OngletPresences(enfant: enfant),
                   OngletEmploiDuTemps(enfant: enfant),
+                  OngletExamens(enfant: enfant),
                   OngletFactures(enfant: enfant),
                 ],
               )

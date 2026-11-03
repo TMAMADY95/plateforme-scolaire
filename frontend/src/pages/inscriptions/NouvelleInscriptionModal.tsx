@@ -21,6 +21,9 @@ interface Valeurs {
   prenom: string
   dateNaissance: string
   sexe: string | null
+  lieuNaissance: string
+  nomPere: string
+  nomMere: string
   matricule: string
   confirmerHomonyme: boolean
 }
@@ -38,6 +41,9 @@ export default function NouvelleInscriptionModal({ etablissementId, anneeIdIniti
       prenom: '',
       dateNaissance: '',
       sexe: null,
+      lieuNaissance: '',
+      nomPere: '',
+      nomMere: '',
       matricule: '',
       confirmerHomonyme: false,
     },
@@ -70,6 +76,9 @@ export default function NouvelleInscriptionModal({ etablissementId, anneeIdIniti
           prenom: v.prenom.trim(),
           dateNaissance: v.dateNaissance,
           sexe: v.sexe,
+          lieuNaissance: v.lieuNaissance.trim(),
+          nomPere: v.nomPere.trim(),
+          nomMere: v.nomMere.trim(),
         }
         if (v.confirmerHomonyme) requete.confirmerHomonyme = true
       }
@@ -134,6 +143,11 @@ export default function NouvelleInscriptionModal({ etablissementId, anneeIdIniti
                   clearable
                   {...formulaire.getInputProps('sexe')}
                 />
+              </Group>
+              <TextInput label="Lieu de naissance" {...formulaire.getInputProps('lieuNaissance')} />
+              <Group grow align="flex-start">
+                <TextInput label="Père" {...formulaire.getInputProps('nomPere')} />
+                <TextInput label="Mère" {...formulaire.getInputProps('nomMere')} />
               </Group>
             </>
           ) : (

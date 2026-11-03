@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useDroitsExamens } from '../auth/useDroitsExamens'
 import { Alert, Badge, Button, Checkbox, Group, Modal, Select, Stack, Table, Text, Textarea, TextInput } from '@mantine/core'
 import { notifications } from '@mantine/notifications'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -18,6 +19,7 @@ const LIBELLE = Object.fromEntries(TYPES.map((t) => [t.value, t.label]))
 /** Incidents d'un centre : un candidat pris en fraude peut être éliminé (non admis à l'examen). */
 export default function IncidentsCentreModal({ examenId, centre, onFermer }: { examenId: number; centre: { id: number; nom: string }; onFermer: () => void }) {
   const queryClient = useQueryClient()
+  const droits = useDroitsExamens()
   const cle = ['incidents-centre', examenId, centre.id]
   const donnees = useQuery({ queryKey: cle, queryFn: () => incidentsCentre(examenId, centre.id) })
   const [type, setType] = useState<TypeIncident | null>('FRAUDE')
@@ -76,11 +78,13 @@ export default function IncidentsCentreModal({ examenId, centre, onFermer }: { e
                 </Table.Thead>
                 <Table.Tbody>
                   {d.incidents.map((i) => (
-                    <LigneIncident key={`${i.id}-${i.statut}`} incident={i} examenId={examenId} centreId={centre.id} onChange={appliquer} />
+                    <LigneIncident traitable={droits.gestion} key={`${i.id}-${i.statut}`} incident={i} examenId={examenId} centreId={centre.id} onChange={appliquer} />
                   ))}
                 </Table.Tbody>
               </Table>
             )}
+            {droits.terrain && (
+              <>
             <Text fw={600}>Signaler un incident</Text>
             <Group align="flex-end">
               <Select label="Type" data={TYPES} value={type} onChange={(v) => setType(v as TypeIncident | null)} allowDeselect={false} w={200} />
@@ -99,6 +103,8 @@ export default function IncidentsCentreModal({ examenId, centre, onFermer }: { e
                 Signaler
               </Button>
             </Group>
+              </>
+            )}
             {erreur && <Alert color="red" variant="light">{erreur}</Alert>}
           </>
         )}
@@ -107,7 +113,8 @@ export default function IncidentsCentreModal({ examenId, centre, onFermer }: { e
   )
 }
 
-function LigneIncident({ incident: i, examenId, centreId, onChange }: {
+function LigneIncident({ incident: i, examenId, centreId, onChange, traitable }: {
+  traitable: boolean
   incident: IncidentsCentre['incidents'][number]
   examenId: number
   centreId: number
@@ -137,6 +144,8 @@ function LigneIncident({ incident: i, examenId, centreId, onChange }: {
       <Table.Td>
         {i.statut === 'TRAITE' ? (
           <Text size="sm">{i.decision}</Text>
+        ) : !traitable ? (
+          <Text size="sm" c="dimmed">En attente de traitement</Text>
         ) : (
           <Group gap={4} wrap="nowrap">
             <TextInput size="xs" placeholder="Décision prise" value={decision} onChange={(e) => setDecision(e.currentTarget.value)} />

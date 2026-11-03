@@ -3,7 +3,10 @@ import type { Moi, Role } from '../api/types'
 export const LIBELLES_ROLES: Record<Role, string> = {
   ADMIN_TECHNIQUE: 'Administrateur technique',
   MINISTERE: 'Ministère',
-  DIRECTION_REGIONALE: 'Direction régionale',
+  DGECS: 'DGECS (examens et concours)',
+  DIRECTION_REGIONALE: 'Inspection régionale (IRE)',
+  DIRECTION_LOCALE: 'Direction préfectorale / communale',
+  CHEF_CENTRE: "Chef de centre d'examen",
   DIRECTION_ETABLISSEMENT: "Direction d'établissement",
   PERSONNEL_ADMIN: 'Personnel administratif',
   ENSEIGNANT: 'Enseignant',
@@ -43,6 +46,56 @@ export function estMinistere(utilisateur: Moi): boolean {
 
 export function estDirectionRegionale(utilisateur: Moi): boolean {
   return utilisateur.affectations.some((a) => a.role === 'DIRECTION_REGIONALE')
+}
+
+export function estDgecs(utilisateur: Moi): boolean {
+  return utilisateur.affectations.some((a) => a.role === 'DGECS')
+}
+
+/** DPE ou DCE : un seul rôle, la zone dit s'il s'agit d'une préfecture ou d'une commune. */
+export function estDirectionLocale(utilisateur: Moi): boolean {
+  return utilisateur.affectations.some((a) => a.role === 'DIRECTION_LOCALE')
+}
+
+export function estChefCentre(utilisateur: Moi): boolean {
+  return utilisateur.affectations.some((a) => a.role === 'CHEF_CENTRE')
+}
+
+/** Ministère ou DGECS : vue nationale du réseau. */
+export function estNational(utilisateur: Moi): boolean {
+  return estMinistere(utilisateur) || estDgecs(utilisateur)
+}
+
+/** IRE ou DPE/DCE : direction rattachée à une zone. */
+export function estDirectionDeZone(utilisateur: Moi): boolean {
+  return estDirectionRegionale(utilisateur) || estDirectionLocale(utilisateur)
+}
+
+export interface DroitsExamens {
+  /** Le ministère consulte tout le circuit d'examen. */
+  ministere: boolean
+  /** DGECS : pilotage technique national. */
+  dgecs: boolean
+  /** Fixer le calendrier : le ministère, ou l'organisateur d'un examen non national (IRE, DPE/DCE). */
+  calendrier: boolean
+  /** Actions techniques : DGECS, IRE, DPE/DCE. */
+  gestion: boolean
+  /** Actions de terrain : gestion plus chef de centre. */
+  terrain: boolean
+}
+
+/** Qui peut quoi sur le circuit des examens : la DGECS organise tout ; le ministère suit, consulte et valide (proclamation), sans rien saisir. */
+export function droitsExamens(utilisateur: Moi): DroitsExamens {
+  const dgecs = estDgecs(utilisateur)
+  const ministere = estMinistere(utilisateur)
+  const zone = estDirectionDeZone(utilisateur)
+  return {
+    ministere,
+    dgecs,
+    calendrier: dgecs || zone,
+    gestion: dgecs || zone,
+    terrain: dgecs || zone || estChefCentre(utilisateur),
+  }
 }
 
 export function estEnseignant(utilisateur: Moi): boolean {

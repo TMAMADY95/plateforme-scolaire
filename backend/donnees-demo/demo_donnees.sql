@@ -191,15 +191,16 @@ INSERT INTO t_u VALUES
  ('admin@demo.gn',               'Administrateur', 'Technique', '+224 620 00 00 01', 'ADMIN_TECHNIQUE', 'NATIONAL', NULL, NULL, NULL),
  ('ministere.demo@demo.gn',      'Bangoura', 'Mohamed Lamine', '+224 620 00 00 02', 'MINISTERE', 'NATIONAL', NULL, NULL, NULL),
  ('secretaire.general@demo.gn',  'Camara', 'Aïssatou', '+224 620 00 00 03', 'MINISTERE', 'NATIONAL', NULL, NULL, NULL),
+ ('dgecs.demo@demo.gn',          'Baldé', 'Thierno', '+224 620 00 00 04', 'DGECS', 'NATIONAL', NULL, NULL, NULL),
  ('dr.conakry@demo.gn',   'Sylla', 'Mamadou Saliou', '+224 621 10 00 01', 'DIRECTION_REGIONALE', 'ZONE', 'Conakry', 'REGION', NULL),
  ('dr.kindia@demo.gn',    'Soumah', 'Fanta', '+224 621 10 00 02', 'DIRECTION_REGIONALE', 'ZONE', 'Kindia', 'REGION', NULL),
  ('dr.labe@demo.gn',      'Barry', 'Alpha Oumar', '+224 621 10 00 03', 'DIRECTION_REGIONALE', 'ZONE', 'Labé', 'REGION', NULL),
  ('dr.kankan@demo.gn',    'Keita', 'Sékou', '+224 621 10 00 04', 'DIRECTION_REGIONALE', 'ZONE', 'Kankan', 'REGION', NULL),
  ('dr.nzerekore@demo.gn', 'Guilavogui', 'Marie', '+224 621 10 00 05', 'DIRECTION_REGIONALE', 'ZONE', 'Nzérékoré', 'REGION', NULL),
- ('dp.coyah@demo.gn',     'Touré', 'Ibrahima', '+224 622 20 00 01', 'DIRECTION_REGIONALE', 'ZONE', 'Coyah', 'PREFECTURE', NULL),
- ('dp.kindia@demo.gn',    'Condé', 'Mariama', '+224 622 20 00 02', 'DIRECTION_REGIONALE', 'ZONE', 'Kindia', 'PREFECTURE', NULL),
- ('dc.coyah@demo.gn',     'Kourouma', 'Facinet', '+224 622 30 00 01', 'DIRECTION_REGIONALE', 'ZONE', 'Coyah-centre', 'COMMUNE', NULL),
- ('dc.ratoma@demo.gn',    'Diallo', 'Hawa', '+224 622 30 00 02', 'DIRECTION_REGIONALE', 'ZONE', 'Ratoma', 'COMMUNE', NULL);
+ ('dp.coyah@demo.gn',     'Touré', 'Ibrahima', '+224 622 20 00 01', 'DIRECTION_LOCALE', 'ZONE', 'Coyah', 'PREFECTURE', NULL),
+ ('dp.kindia@demo.gn',    'Condé', 'Mariama', '+224 622 20 00 02', 'DIRECTION_LOCALE', 'ZONE', 'Kindia', 'PREFECTURE', NULL),
+ ('dc.coyah@demo.gn',     'Kourouma', 'Facinet', '+224 622 30 00 01', 'DIRECTION_LOCALE', 'ZONE', 'Coyah-centre', 'COMMUNE', NULL),
+ ('dc.ratoma@demo.gn',    'Diallo', 'Hawa', '+224 622 30 00 02', 'DIRECTION_LOCALE', 'ZONE', 'Ratoma', 'COMMUNE', NULL);
 DO $$ BEGIN PERFORM pg_temp.creer_comptes(); END $$;
 
 -- Une direction et un secrétariat par établissement
@@ -253,6 +254,13 @@ INSERT INTO classe (etablissement_id, annee_scolaire_id, niveau_id, nom, capacit
 SELECT cd.etab_id, a.id, cd.niveau_id, cd.base || ' ' || cd.sec, 40
 FROM t_cls_def cd CROSS JOIN annee_scolaire a
 WHERE a.libelle IN ('2025-2026', '2026-2027');
+
+-- Spécialisations du lycée (11e, 12e, terminale) : section A = sciences mathématiques, B = sociales, C = expérimentales
+UPDATE classe cl SET serie = CASE right(cl.nom, 1)
+        WHEN 'A' THEN 'SCIENCES_MATHEMATIQUES' WHEN 'B' THEN 'SCIENCES_SOCIALES' ELSE 'SCIENCES_EXPERIMENTALES' END
+FROM niveau n
+WHERE n.id = cl.niveau_id AND n.code IN ('GN-11', 'GN-12', 'GN-13')
+  AND cl.etablissement_id IN (SELECT e.id FROM edef d JOIN etablissement e ON e.code_officiel = d.code);
 
 -- Une salle par classe de l'année courante, plus des salles spécialisées selon le cycle et la taille
 INSERT INTO salle (etablissement_id, nom, capacite, type_salle)

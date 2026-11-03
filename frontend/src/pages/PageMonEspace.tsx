@@ -7,6 +7,7 @@ import OngletCahierTexte from './enfant/OngletCahierTexte'
 import OngletBulletin from './enfant/OngletBulletin'
 import OngletDevoirs from './enfant/OngletDevoirs'
 import OngletEmploiDuTemps from './enfant/OngletEmploiDuTemps'
+import OngletExamens from './enfant/OngletExamens'
 import OngletFactures from './enfant/OngletFactures'
 import OngletPresences from './enfant/OngletPresences'
 import type { Enfant } from '../api/types'
@@ -65,6 +66,7 @@ export default function PageMonEspace() {
           <Tabs.Tab value="annonces">Annonces</Tabs.Tab>
           <Tabs.Tab value="presences">Présences</Tabs.Tab>
           <Tabs.Tab value="emploi-du-temps">Emploi du temps</Tabs.Tab>
+          <Tabs.Tab value="examens">Examens</Tabs.Tab>
           <Tabs.Tab value="frais">Frais</Tabs.Tab>
         </Tabs.List>
 
@@ -94,6 +96,10 @@ export default function PageMonEspace() {
 
         <Tabs.Panel value="emploi-du-temps" pt="md">
           <OngletEmploiDuTemps classeId={p.classeId} />
+        </Tabs.Panel>
+
+        <Tabs.Panel value="examens" pt="md">
+          <OngletExamens eleveId={p.eleveId} />
         </Tabs.Panel>
 
         <Tabs.Panel value="frais" pt="md">

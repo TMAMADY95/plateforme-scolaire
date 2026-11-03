@@ -34,7 +34,7 @@ public class AdministrationController {
     private final AdministrationService administrationService;
 
     @GetMapping("/api/zones")
-    @PreAuthorize("hasAnyRole('MINISTERE', 'DIRECTION_REGIONALE')")
+    @PreAuthorize("hasAnyRole('MINISTERE', 'DGECS', 'DIRECTION_REGIONALE', 'DIRECTION_LOCALE')")
     public List<ZoneDto> zones() {
         return administrationService.zones();
     }
@@ -67,6 +67,14 @@ public class AdministrationController {
         return administrationService.creerDirectionRegionale(id, requete);
     }
 
+    @PostMapping("/api/zones/{id}/direction-locale")
+    @ResponseStatus(HttpStatus.CREATED)
+    @PreAuthorize("hasRole('MINISTERE') or (hasRole('DIRECTION_REGIONALE') and @zonesAdmin.peutAdministrerZone(#id))")
+    public ComptePersonnelDto creerDirectionLocale(@PathVariable Long id,
+                                                   @Valid @RequestBody DirectionRequest requete) {
+        return administrationService.creerDirectionLocale(id, requete);
+    }
+
     @PostMapping("/api/etablissements")
     @ResponseStatus(HttpStatus.CREATED)
     @PreAuthorize(MINISTERE)
@@ -96,7 +104,7 @@ public class AdministrationController {
     }
 
     @GetMapping("/api/ministere/synthese")
-    @PreAuthorize(MINISTERE)
+    @PreAuthorize("hasAnyRole('MINISTERE','DGECS')")
     public SyntheseNationaleDto synthese(@RequestParam Long anneeScolaireId) {
         return administrationService.synthese(anneeScolaireId);
     }

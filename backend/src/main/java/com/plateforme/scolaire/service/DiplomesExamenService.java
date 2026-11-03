@@ -1,5 +1,7 @@
 package com.plateforme.scolaire.service;
 
+import com.plateforme.scolaire.security.DroitsExamen;
+import com.plateforme.scolaire.domain.BaremeExamen;
 import com.plateforme.scolaire.domain.CandidatExamen;
 import com.plateforme.scolaire.domain.DiplomeExamen;
 import com.plateforme.scolaire.domain.Etablissement;
@@ -21,13 +23,12 @@ import java.util.random.RandomGenerator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.AccessDeniedException;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 /**
- * Diplômes : après la proclamation, le ministère délivre un diplôme à chaque candidat admis. Chaque diplôme porte un numéro et un
+ * Diplômes : après la proclamation, la DGECS délivre un diplôme à chaque candidat admis. Chaque diplôme porte un numéro et un
  * code de vérification aléatoire ; n'importe qui peut contrôler en ligne qu'un diplôme est authentique, ou révoqué (par exemple
  * après la découverte d'une fraude). La mention se déduit de la moyenne.
  */
@@ -43,23 +44,15 @@ public class DiplomesExamenService {
     private final DiplomeExamenRepository diplomes;
     private final ExamenNationalRepository examens;
     private final EtablissementRepository etablissements;
+    private final com.plateforme.scolaire.repository.PhotoEleveRepository photos;
     private final GenerateurDiplomesPdf pdf;
     private final AuditService audit;
     private final Clock clock;
     private final RandomGenerator hasard = new SecureRandom();
 
-    /** Mention selon la moyenne sur 20 : 16 très bien, 14 bien, 12 assez bien, sinon passable. */
+    /** Mention d'une moyenne sur 20 (16 très bien, 14 bien, 12 assez bien) ; le barème de l'examen est géré par {@link BaremeExamen}. */
     static String mention(BigDecimal moyenne) {
-        if (moyenne == null) {
-            return "PASSABLE";
-        }
-        if (moyenne.compareTo(BigDecimal.valueOf(16)) >= 0) {
-            return "TRES_BIEN";
-        }
-        if (moyenne.compareTo(BigDecimal.valueOf(14)) >= 0) {
-            return "BIEN";
-        }
-        return moyenne.compareTo(BigDecimal.valueOf(12)) >= 0 ? "ASSEZ_BIEN" : "PASSABLE";
+        return BaremeExamen.mention(moyenne, BaremeExamen.SUR_20);
     }
 
     static String genererCode(RandomGenerator hasard) {
@@ -81,13 +74,13 @@ public class DiplomesExamenService {
 
     @Transactional(readOnly = true)
     public DiplomesExamenDto diplomes(Long examenId) {
-        exigerMinistere("Les diplômes relèvent du ministère");
+        exigerDgecs("Les diplômes relèvent de la DGECS");
         return dto(examen(examenId));
     }
 
     /** Délivre un diplôme à chaque admis qui n'en a pas encore : possible seulement après la proclamation. */
     public DiplomesExamenDto delivrer(Long examenId) {
-        exigerMinistere("Seul le ministère délivre les diplômes");
+        exigerDgecs("Seule la DGECS délivre les diplômes");
         ExamenNational examen = examen(examenId);
         if (!"PROCLAME".equals(examen.getStatutResultats())) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Les diplômes sont délivrés après la proclamation des résultats");
@@ -98,7 +91,7 @@ public class DiplomesExamenService {
             d.setCandidat(c);
             d.setNumero(numero(examenId, c.getId()));
             d.setCode(codeUnique());
-            d.setMention(mention(c.getMoyenne()));
+            d.setMention(BaremeExamen.mention(c.getMoyenne(), examen.getBareme()));
             d.setDelivreLe(LocalDate.now(clock));
             d.setCreatedAt(Instant.now(clock));
             diplomes.save(d);
@@ -109,7 +102,7 @@ public class DiplomesExamenService {
     }
 
     public DiplomesExamenDto revoquer(Long examenId, Long diplomeId, String motif) {
-        exigerMinistere("Seul le ministère révoque un diplôme");
+        exigerDgecs("Seule la DGECS révoque un diplôme");
         ExamenNational examen = examen(examenId);
         DiplomeExamen d = diplomes.findById(diplomeId).filter(x -> x.getCandidat().getExamen().getId().equals(examenId))
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Diplôme introuvable"));
@@ -149,8 +142,16 @@ public class DiplomesExamenService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Établissement introuvable"));
         DateTimeFormatter fmt = DateTimeFormatter.ofPattern("dd/MM/yyyy");
         List<GenerateurDiplomesPdf.Diplome> liste = diplomes.valablesDeLEtablissement(examenId, etablissementId).stream()
-                .map(d -> new GenerateurDiplomesPdf.Diplome((d.getCandidat().getEleve().getPrenom() + " " + d.getCandidat().getEleve().getNom()).trim(),
-                        d.getCandidat().getEleve().getMatricule(), d.getNumero(), d.getCode(), d.getMention(), d.getDelivreLe().format(fmt)))
+                .map(d -> {
+                    var c = d.getCandidat();
+                    var e = c.getEleve();
+                    return new GenerateurDiplomesPdf.Diplome((e.getPrenom() + " " + e.getNom()).trim(), e.getMatricule(), d.getNumero(),
+                            d.getCode(), d.getMention(), d.getDelivreLe().format(fmt), c.getSerie(), c.getNumeroPv(),
+                            c.getCentre() == null ? null : c.getCentre().getNom(), c.getEtablissement().getNom(),
+                            e.getDateNaissance() == null ? null : e.getDateNaissance().format(fmt), e.getLieuNaissance(), e.getNomPere(), e.getNomMere(),
+                            examen.getDateDeliberation() == null ? null : examen.getDateDeliberation().format(fmt),
+                            photos.findById(e.getId()).map(com.plateforme.scolaire.domain.PhotoEleve::getContenu).orElse(null));
+                })
                 .toList();
         return pdf.diplomes(new GenerateurDiplomesPdf.DonneesDiplomes(etab.getNom(), examen.getLibelle(), examen.getAnneeScolaire().getLibelle(), liste));
     }
@@ -174,9 +175,8 @@ public class DiplomesExamenService {
                         d.getCandidat().getEtablissement().getNom(), d.getMention(), d.getDelivreLe(), d.isRevoque(), d.getMotifRevocation())).toList());
     }
 
-    private static void exigerMinistere(String message) {
-        var auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth == null || auth.getAuthorities().stream().noneMatch(a -> "ROLE_MINISTERE".equals(a.getAuthority()))) {
+    private static void exigerDgecs(String message) {
+        if (!DroitsExamen.estDgecs()) {
             throw new AccessDeniedException(message);
         }
     }

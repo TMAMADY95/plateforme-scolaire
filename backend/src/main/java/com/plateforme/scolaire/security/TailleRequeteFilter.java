@@ -30,7 +30,8 @@ public class TailleRequeteFilter extends OncePerRequestFilter {
 
     private static boolean estEnvoiDePiece(HttpServletRequest r) {
         String chemin = r.getRequestURI();
-        return "POST".equals(r.getMethod()) && chemin.startsWith("/api/inspections/") && chemin.endsWith("/pieces");
+        return "POST".equals(r.getMethod()) && ((chemin.startsWith("/api/inspections/") && chemin.endsWith("/pieces"))
+                || (chemin.startsWith("/api/eleves/") && chemin.endsWith("/photo")));
     }
 
     @Override

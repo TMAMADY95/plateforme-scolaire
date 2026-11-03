@@ -154,7 +154,16 @@ public class ResolveurContexteAudit {
             case "CREATION_COMPTE_DIRECTION_REGIONALE" -> {
                 ajouterZone(contexte, id(d, "zoneId"));
                 ajouterCompte(contexte, entiteId);
-                yield "Compte de direction régionale créé : " + texte(d, "email");
+                yield "Compte d'inspection régionale créé : " + texte(d, "email");
+            }
+            case "CREATION_COMPTE_DIRECTION_LOCALE" -> {
+                ajouterZone(contexte, id(d, "zoneId"));
+                ajouterCompte(contexte, entiteId);
+                yield "Compte de direction préfectorale ou communale créé : " + texte(d, "email");
+            }
+            case "CREATION_COMPTE_DGECS" -> {
+                ajouterCompte(contexte, entiteId);
+                yield "Compte de la DGECS créé : " + texte(d, "email");
             }
             case "DEMANDE_INSCRIPTION" -> {
                 ajouterInscription(contexte, entiteId);

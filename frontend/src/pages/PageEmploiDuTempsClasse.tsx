@@ -1,6 +1,7 @@
 import { Alert, Anchor, Loader, Stack, Title } from '@mantine/core'
 import { useQuery } from '@tanstack/react-query'
 import { listerCreneauxClasse } from '../api/endpoints'
+import ConformiteProgrammeCarte from '../components/ConformiteProgrammeCarte'
 import GrilleEmploiDuTemps from '../components/GrilleEmploiDuTemps'
 import type { Creneau } from '../api/types'
 
@@ -41,6 +42,7 @@ export default function PageEmploiDuTempsClasse({ classeId }: { classeId: number
           }))}
         />
       )}
+      <ConformiteProgrammeCarte classeId={classeId} />
     </Stack>
   )
 }

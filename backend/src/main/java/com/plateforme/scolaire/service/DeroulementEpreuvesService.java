@@ -7,6 +7,7 @@ import com.plateforme.scolaire.repository.CandidatExamenRepository;
 import com.plateforme.scolaire.repository.CentreExamenRepository;
 import com.plateforme.scolaire.repository.EpreuveCentreRepository;
 import com.plateforme.scolaire.repository.EpreuveExamenRepository;
+import com.plateforme.scolaire.repository.SujetExamenRepository;
 import com.plateforme.scolaire.web.dto.DeroulementCentreDto;
 import com.plateforme.scolaire.web.dto.OuverturePliRequest;
 import com.plateforme.scolaire.web.dto.RapportEpreuveRequest;
@@ -40,6 +41,7 @@ public class DeroulementEpreuvesService {
     private final CentreExamenRepository centres;
     private final EpreuveExamenRepository epreuves;
     private final CandidatExamenRepository candidats;
+    private final SujetExamenRepository sujets;
     private final AuditService audit;
     private final Clock clock;
 
@@ -47,6 +49,28 @@ public class DeroulementEpreuvesService {
     static String etapeSuivante(String statut) {
         int i = CIRCUIT.indexOf(statut);
         return i < 0 || i >= CIRCUIT.size() - 1 ? null : CIRCUIT.get(i + 1);
+    }
+
+    /** Pur : un sujet a été tiré au sort et n'a pas été déclaré compromis depuis. */
+    static boolean sujetTire(List<String> statutsDesSujets) {
+        return statutsDesSujets.contains("TIRE");
+    }
+
+    /** Pur : le sujet a été remplacé (nouveau tirage) après le conditionnement du pli. */
+    static boolean pliPerime(Instant conditionneLe, Instant tireLe) {
+        return conditionneLe != null && tireLe != null && tireLe.isAfter(conditionneLe);
+    }
+
+    private boolean sujetRemplace(EpreuveCentre s, Long epreuveId) {
+        return sujets.findByEpreuveIdOrderByVariante(epreuveId).stream().filter(x -> "TIRE".equals(x.getStatut()))
+                .anyMatch(x -> pliPerime(s.getConditionneLe(), x.getTireLe()));
+    }
+
+    private static final String MESSAGE_PERIME =
+            "Le sujet a été remplacé après le conditionnement de ce pli : reconditionnez le pli avec le nouveau sujet";
+
+    private boolean aUnSujetTire(Long epreuveId) {
+        return sujetTire(sujets.findByEpreuveIdOrderByVariante(epreuveId).stream().map(x -> x.getStatut()).toList());
     }
 
     /** Écart entre les copies ramassées et celles attendues (présents et éliminés) ; null tant que le rapport est vide. */
@@ -71,6 +95,13 @@ public class DeroulementEpreuvesService {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "OUVERT".equals(s.getStatutPli())
                     ? "Le pli est déjà ouvert" : "Le pli est chez le président : il ne peut être ouvert qu'au début de l'épreuve, en présence de deux témoins");
         }
+        if (!"A_CONDITIONNER".equals(s.getStatutPli()) && sujetRemplace(s, epreuveId)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, MESSAGE_PERIME);
+        }
+        if ("CONDITIONNE".equals(suivante) && !aUnSujetTire(epreuveId)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Le sujet de cette épreuve n'a pas été tiré au sort : le pli ne peut pas être conditionné");
+        }
         Instant maintenant = Instant.now(clock);
         s.setStatutPli(suivante);
         switch (suivante) {
@@ -83,6 +114,25 @@ public class DeroulementEpreuvesService {
         return dto(centre);
     }
 
+    /** Remet à conditionner un pli scellé avec un sujet qui a été remplacé depuis (fuite et tirage de réserve). */
+    public DeroulementCentreDto reconditionner(Long examenId, Long centreId, Long epreuveId) {
+        CentreExamen centre = centre(examenId, centreId);
+        EpreuveCentre s = suivi(centre, epreuveId);
+        if ("OUVERT".equals(s.getStatutPli()) || "A_CONDITIONNER".equals(s.getStatutPli())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Ce pli n'est pas conditionné ou est déjà ouvert");
+        }
+        if (!sujetRemplace(s, epreuveId)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Le sujet de ce pli n'a pas été remplacé depuis son conditionnement");
+        }
+        s.setStatutPli("A_CONDITIONNER");
+        s.setConditionneLe(null);
+        s.setExpedieLe(null);
+        s.setRecuDpeLe(null);
+        s.setRecuPresidentLe(null);
+        audit.enregistrer("PLI_SUJET_RECONDITIONNE", "CentreExamen", centreId, Map.of("epreuve", epreuveId));
+        return dto(centre);
+    }
+
     /** Ouverture du pli par le président en présence de deux témoins : trois personnes distinctes. */
     public DeroulementCentreDto ouvrir(Long examenId, Long centreId, Long epreuveId, OuverturePliRequest r) {
         CentreExamen centre = centre(examenId, centreId);
@@ -90,6 +140,13 @@ public class DeroulementEpreuvesService {
         if (!"RECU_PRESIDENT".equals(s.getStatutPli())) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "OUVERT".equals(s.getStatutPli()) ? "Le pli est déjà ouvert"
                     : "Le pli doit d'abord être reçu par le président de la commission de surveillance");
+        }
+        if (sujetRemplace(s, epreuveId)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, MESSAGE_PERIME);
+        }
+        if (!aUnSujetTire(epreuveId)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Aucun sujet tiré au sort n'est en vigueur pour cette épreuve (sujet compromis ?) : le pli ne peut pas être ouvert");
         }
         String president = r.ouvertPar().trim();
         String t1 = r.temoin1().trim();

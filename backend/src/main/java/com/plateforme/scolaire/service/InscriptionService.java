@@ -194,6 +194,9 @@ public class InscriptionService {
         eleve.setPrenom(prenom);
         eleve.setDateNaissance(r.dateNaissance());
         eleve.setSexe(r.sexe());
+        eleve.setLieuNaissance(r.lieuNaissancePropre());
+        eleve.setNomPere(r.nomPerePropre());
+        eleve.setNomMere(r.nomMerePropre());
         return eleveRepository.save(eleve);
     }
 

@@ -1,5 +1,6 @@
 package com.plateforme.scolaire.web;
 
+import com.plateforme.scolaire.security.DroitsExamen;
 import com.plateforme.scolaire.service.CentresExamenService;
 import com.plateforme.scolaire.web.dto.CriteresCentreDto;
 import com.plateforme.scolaire.web.dto.CriteresCentreRequest;
@@ -18,19 +19,19 @@ public class CentresExamenController {
     private final CentresExamenService service;
 
     @GetMapping("/api/centres-examen/criteres")
-    @PreAuthorize("hasAnyRole('MINISTERE','DIRECTION_REGIONALE')")
+    @PreAuthorize(DroitsExamen.CONSULTATION)
     public CriteresCentreDto criteres() {
         return service.criteres();
     }
 
     @PutMapping("/api/centres-examen/criteres")
-    @PreAuthorize("hasRole('MINISTERE')")
+    @PreAuthorize(DroitsExamen.NATIONAL)
     public CriteresCentreDto modifier(@Valid @RequestBody CriteresCentreRequest r) {
         return service.modifier(r);
     }
 
     @GetMapping("/api/centres-examen/etablissements")
-    @PreAuthorize("hasAnyRole('MINISTERE','DIRECTION_REGIONALE')")
+    @PreAuthorize(DroitsExamen.CONSULTATION)
     public List<EtablissementCentreDto> etablissements() {
         return service.etablissements();
     }

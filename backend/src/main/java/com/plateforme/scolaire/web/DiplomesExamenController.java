@@ -1,6 +1,9 @@
 package com.plateforme.scolaire.web;
 
+import com.plateforme.scolaire.security.DroitsExamen;
 import com.plateforme.scolaire.service.DiplomesExamenService;
+import com.plateforme.scolaire.service.VerificationsDiplomeService;
+import com.plateforme.scolaire.web.dto.VerificationsDiplomeDto;
 import com.plateforme.scolaire.web.dto.DiplomesExamenDto;
 import com.plateforme.scolaire.web.dto.VerificationDiplomeDto;
 import java.util.Map;
@@ -17,21 +20,22 @@ import org.springframework.web.bind.annotation.*;
 public class DiplomesExamenController {
 
     private final DiplomesExamenService service;
+    private final VerificationsDiplomeService verifications;
 
     @GetMapping("/api/examens/{examenId}/diplomes")
-    @PreAuthorize("hasRole('MINISTERE')")
+    @PreAuthorize(DroitsExamen.CONSULTATION)
     public DiplomesExamenDto diplomes(@PathVariable Long examenId) {
         return service.diplomes(examenId);
     }
 
     @PostMapping("/api/examens/{examenId}/diplomes")
-    @PreAuthorize("hasRole('MINISTERE')")
+    @PreAuthorize(DroitsExamen.NATIONAL)
     public DiplomesExamenDto delivrer(@PathVariable Long examenId) {
         return service.delivrer(examenId);
     }
 
     @PostMapping("/api/examens/{examenId}/diplomes/{diplomeId}/revocation")
-    @PreAuthorize("hasRole('MINISTERE')")
+    @PreAuthorize(DroitsExamen.NATIONAL)
     public DiplomesExamenDto revoquer(@PathVariable Long examenId, @PathVariable Long diplomeId, @RequestBody Map<String, String> corps) {
         return service.revoquer(examenId, diplomeId, corps.get("motif"));
     }
@@ -48,6 +52,15 @@ public class DiplomesExamenController {
     /** Public : contrôle d'authenticité par le code imprimé sur le diplôme. */
     @GetMapping("/api/verification-diplome/{code}")
     public VerificationDiplomeDto verifier(@PathVariable String code) {
-        return service.verifier(code);
+        VerificationDiplomeDto resultat = service.verifier(code);
+        verifications.enregistrer(code, resultat.statut());
+        return resultat;
+    }
+
+    /** Synthèse des vérifications publiques : taux de codes inconnus et tentatives répétées. */
+    @GetMapping("/api/diplomes-verifications")
+    @PreAuthorize(DroitsExamen.CONSULTATION)
+    public VerificationsDiplomeDto syntheseVerifications() {
+        return verifications.synthese();
     }
 }

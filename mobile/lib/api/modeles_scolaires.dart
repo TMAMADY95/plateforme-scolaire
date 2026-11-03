@@ -352,3 +352,85 @@ class PaiementInitie {
         urlPaiement: json['urlPaiement'] as String,
       );
 }
+
+
+/// Note d'un candidat à une épreuve d'un examen national.
+class NoteExamen {
+  const NoteExamen({required this.epreuve, required this.coefficient, required this.note});
+
+  final String epreuve;
+  final int coefficient;
+  final double note;
+
+  factory NoteExamen.depuisJson(Map<String, dynamic> json) => NoteExamen(
+        epreuve: json['epreuve'] as String,
+        coefficient: (json['coefficient'] as num?)?.toInt() ?? 1,
+        note: (json['note'] as num).toDouble(),
+      );
+}
+
+/// Résultat proclamé d'un examen national (CEE, BEPC, BAC) pour un élève.
+class ResultatExamen {
+  const ResultatExamen({
+    required this.examen,
+    required this.anneeScolaire,
+    this.bareme = 20,
+    this.dateProclamation,
+    this.numero,
+    required this.statut,
+    this.decision,
+    this.moyenne,
+    this.mention,
+    this.notes = const [],
+  });
+
+  final String examen;
+  final String anneeScolaire;
+
+  /// Barème des notes : 10 (primaire) ou 20.
+  final int bareme;
+  final String? dateProclamation;
+  final String? numero;
+
+  /// PRESENT, ABSENT ou ELIMINE.
+  final String statut;
+
+  /// ADMIS ou NON_ADMIS.
+  final String? decision;
+  final double? moyenne;
+
+  /// TRES_BIEN, BIEN, ASSEZ_BIEN ou PASSABLE (admis seulement).
+  final String? mention;
+  final List<NoteExamen> notes;
+
+  factory ResultatExamen.depuisJson(Map<String, dynamic> json) => ResultatExamen(
+        examen: json['examen'] as String,
+        anneeScolaire: json['anneeScolaire'] as String? ?? '',
+        bareme: (json['bareme'] as num?)?.toInt() ?? 20,
+        dateProclamation: json['dateProclamation'] as String?,
+        numero: json['numero'] as String?,
+        statut: json['statut'] as String? ?? 'PRESENT',
+        decision: json['decision'] as String?,
+        moyenne: _decimal(json['moyenne']),
+        mention: json['mention'] as String?,
+        notes: _liste(json['notes'], NoteExamen.depuisJson),
+      );
+
+  static List<ResultatExamen> listeDepuisJson(Object? json) => _liste(json, ResultatExamen.depuisJson);
+
+  static const _mentions = {
+    'TRES_BIEN': 'Très bien',
+    'BIEN': 'Bien',
+    'ASSEZ_BIEN': 'Assez bien',
+    'PASSABLE': 'Passable',
+  };
+
+  /// Libellé du résultat : « Admis(e) : Bien », « Non admis(e) », « Absent(e) » ou « Éliminé(e) ».
+  String get libelleResultat {
+    if (statut == 'ABSENT') return 'Absent(e)';
+    if (statut == 'ELIMINE') return 'Éliminé(e)';
+    if (decision == 'ADMIS') return mention == null ? 'Admis(e)' : 'Admis(e) : ${_mentions[mention] ?? mention}';
+    if (decision == 'NON_ADMIS') return 'Non admis(e)';
+    return 'Résultat non disponible';
+  }
+}

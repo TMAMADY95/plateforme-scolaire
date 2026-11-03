@@ -1,13 +1,14 @@
 import type { ChangeEvent } from 'react'
 import { useState } from 'react'
-import { Alert, Badge, Button, Card, Group, Loader, Modal, PasswordInput, Stack, Table, Text, TextInput } from '@mantine/core'
+import { Alert, Badge, Button, Card, Group, Loader, Modal, PasswordInput, Select, Stack, Table, Text, TextInput } from '@mantine/core'
 import { notifications } from '@mantine/notifications'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { activerCompte, creerCompteMinistere, listerComptesInstitutionnels, reinitialiserCompteInstitutionnel } from '../../api/endpoints'
+import { activerCompte, creerCompteDgecs, creerCompteMinistere, listerComptesInstitutionnels, reinitialiserCompteInstitutionnel } from '../../api/endpoints'
 import type { CompteInstitutionnel } from '../../api/types'
+import { LIBELLES_ROLES } from '../../auth/roles'
 import EnteteSection from '../../components/EnteteSection'
 
-/** Comptes du ministère et des directions régionales : créer un compte ministère, désactiver, réinitialiser. */
+/** Comptes institutionnels (ministère, DGECS, IRE, DPE/DCE) : créer un compte national, désactiver, réinitialiser. */
 export default function ComptesInstitutionnels() {
   const queryClient = useQueryClient()
   const comptes = useQuery({ queryKey: ['comptes-institutionnels'], queryFn: listerComptesInstitutionnels })
@@ -24,9 +25,9 @@ export default function ComptesInstitutionnels() {
   return (
     <Stack mt="md" gap="lg">
       <EnteteSection
-        titre="Comptes du ministère et des régions"
-        description="Les comptes régionaux se créent depuis la zone concernée (onglet Référentiels). Un compte désactivé ne peut plus se connecter."
-        action={<Button onClick={() => setCreation(true)}>Nouveau compte ministère</Button>}
+        titre="Comptes institutionnels"
+        description="Ministère et DGECS se créent ici ; les comptes d'inspection régionale et de direction préfectorale ou communale se créent depuis la zone concernée (Référentiels). Un compte désactivé ne peut plus se connecter."
+        action={<Button onClick={() => setCreation(true)}>Nouveau compte national</Button>}
       />
       {erreur && (
         <Alert color="red" variant="light" withCloseButton onClose={() => setErreur(null)}>
@@ -64,7 +65,7 @@ export default function ComptesInstitutionnels() {
                         {c.telephone ? ` · ${c.telephone}` : ''}
                       </Text>
                     </Table.Td>
-                    <Table.Td>{c.role === 'MINISTERE' ? 'Ministère' : 'Direction régionale'}</Table.Td>
+                    <Table.Td>{LIBELLES_ROLES[c.role]}</Table.Td>
                     <Table.Td>{c.zone ?? '—'}</Table.Td>
                     <Table.Td>
                       <Badge variant="light" color={c.actif ? 'green' : 'gray'}>
@@ -102,13 +103,14 @@ export default function ComptesInstitutionnels() {
 
 function NouveauCompte({ onFermer }: { onFermer: () => void }) {
   const queryClient = useQueryClient()
+  const [type, setType] = useState<string | null>('DGECS')
   const [valeurs, setValeurs] = useState({ prenom: '', nom: '', email: '', telephone: '', motDePasseInitial: '' })
   const [erreur, setErreur] = useState<string | null>(null)
   const maj = (cle: keyof typeof valeurs) => (e: ChangeEvent<HTMLInputElement>) => setValeurs({ ...valeurs, [cle]: e.currentTarget.value })
 
   const creation = useMutation({
     mutationFn: () =>
-      creerCompteMinistere({
+      (type === 'MINISTERE' ? creerCompteMinistere : creerCompteDgecs)({
         prenom: valeurs.prenom.trim(),
         nom: valeurs.nom.trim(),
         email: valeurs.email.trim(),
@@ -125,8 +127,16 @@ function NouveauCompte({ onFermer }: { onFermer: () => void }) {
   const complet = valeurs.prenom.trim() !== '' && valeurs.nom.trim() !== '' && valeurs.email.trim() !== '' && valeurs.motDePasseInitial.length >= 10
 
   return (
-    <Modal opened onClose={onFermer} title="Nouveau compte ministère">
+    <Modal opened onClose={onFermer} title="Nouveau compte national">
       <Stack>
+        <Select
+          label="Type de compte"
+          description="Le ministère fixe le calendrier et proclame ; la DGECS pilote les examens."
+          data={[{ value: 'DGECS', label: LIBELLES_ROLES.DGECS }, { value: 'MINISTERE', label: LIBELLES_ROLES.MINISTERE }]}
+          value={type}
+          onChange={setType}
+          allowDeselect={false}
+        />
         <TextInput label="Prénom" value={valeurs.prenom} onChange={maj('prenom')} />
         <TextInput label="Nom" value={valeurs.nom} onChange={maj('nom')} />
         <TextInput label="Adresse e-mail" value={valeurs.email} onChange={maj('email')} />

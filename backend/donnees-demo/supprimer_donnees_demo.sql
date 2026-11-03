@@ -10,7 +10,8 @@ CREATE TEMP TABLE c_user AS SELECT id FROM utilisateur WHERE lower(email) LIKE '
 DELETE FROM journal_audit WHERE utilisateur_id IN (SELECT id FROM c_user) OR details ->> 'origine' = 'jeu de démonstration';
 DELETE FROM alerte_envoyee WHERE destinataire LIKE '%@demo.gn';
 DELETE FROM examen_national WHERE libelle IN ('CEE 2026', 'BEPC 2026', 'Baccalauréat 2026', 'Évaluation de rentrée 6e année', 'CEE 2027',
-                                              'BEPC 2027', 'Baccalauréat 2027', 'Évaluation communale 6e année', 'CEE franco-arabe 2027');
+                                              'BEPC 2027', 'Baccalauréat 2027', 'Évaluation communale 6e année', 'CEE franco-arabe 2027',
+                                              'CEE blanc 6e année 2026');
 DELETE FROM paiement WHERE facture_id IN (SELECT id FROM facture WHERE etablissement_id IN (SELECT id FROM c_etab));
 DELETE FROM facture WHERE etablissement_id IN (SELECT id FROM c_etab);
 DELETE FROM devoir_fait WHERE eleve_id IN (SELECT id FROM c_eleve);

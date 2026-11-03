@@ -1,5 +1,6 @@
 package com.plateforme.scolaire.service;
 
+import com.plateforme.scolaire.security.DroitsExamen;
 import com.plateforme.scolaire.domain.CommissionCorrection;
 import com.plateforme.scolaire.domain.EpreuveExamen;
 import com.plateforme.scolaire.domain.ExamenNational;
@@ -21,7 +22,6 @@ import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.AccessDeniedException;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
@@ -247,12 +247,10 @@ public class CorrectionExamenService {
         }
     }
 
-    /** Le ministère gère toutes les commissions ; une direction régionale seulement celles des examens non nationaux. */
+    /** La DGECS gère toutes les commissions ; une direction régionale seulement celles des examens non nationaux. */
     private void verifierDroit(ExamenNational examen) {
-        var auth = SecurityContextHolder.getContext().getAuthentication();
-        boolean ministere = auth != null && auth.getAuthorities().stream().anyMatch(a -> "ROLE_MINISTERE".equals(a.getAuthority()));
-        if (!ministere && "NATIONAL".equalsIgnoreCase(examen.getNiveauOrganisation())) {
-            throw new AccessDeniedException("La correction d'un examen national relève du ministère");
+        if (!DroitsExamen.estDgecs() && "NATIONAL".equalsIgnoreCase(examen.getNiveauOrganisation())) {
+            throw new AccessDeniedException("La correction d'un examen national relève de la DGECS");
         }
     }
 

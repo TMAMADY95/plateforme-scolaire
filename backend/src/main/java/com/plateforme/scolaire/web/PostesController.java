@@ -17,13 +17,13 @@ public class PostesController {
     private final PostesService postes;
 
     @GetMapping("/api/ministere/postes")
-    @PreAuthorize("hasRole('MINISTERE')")
+    @PreAuthorize("hasAnyRole('MINISTERE','DGECS')")
     public RapportPostesDto nationale(@RequestParam Long anneeScolaireId, @RequestParam(required = false) Long zoneId) {
         return postes.nationale(anneeScolaireId, zoneId);
     }
 
     @GetMapping("/api/region/postes")
-    @PreAuthorize("hasRole('DIRECTION_REGIONALE')")
+    @PreAuthorize("hasAnyRole('DIRECTION_REGIONALE','DIRECTION_LOCALE')")
     public RapportPostesDto regionale(@RequestParam Long anneeScolaireId) {
         return postes.regionale(anneeScolaireId);
     }

@@ -1,7 +1,8 @@
 import { useState } from 'react'
+import { useDroitsExamens } from '../auth/useDroitsExamens'
 import { Alert, Badge, Button, Card, Group, Modal, NumberInput, Stack, Text, Textarea, TextInput } from '@mantine/core'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { avancerPli, deroulementCentre, enregistrerRapportEpreuve, ouvrirPli } from '../api/endpoints'
+import { avancerPli, concordanceRapports, deroulementCentre, enregistrerRapportEpreuve, ouvrirPli, reconditionnerPli } from '../api/endpoints'
 import type { DeroulementCentre, EtatPli } from '../api/types'
 
 type Epreuve = DeroulementCentre['epreuves'][number]
@@ -38,16 +39,34 @@ export default function DeroulementCentreModal({ examenId, centre, onFermer }: {
         </Text>
         {donnees.isError && <Alert color="red" variant="light">{donnees.error.message}</Alert>}
         {d && <Text size="sm">{d.candidats} candidat(s) dans ce centre.</Text>}
+        {d && <Concordance examenId={examenId} centreId={centre.id} version={d.epreuves.map((e) => `${e.presents}-${e.absents}-${e.elimines}-${e.copiesRamassees}-${e.rapportClos}`).join('|')} />}
         {d?.epreuves.map((e) => <CarteEpreuve key={e.epreuveId} epreuve={e} examenId={examenId} centreId={centre.id} onChange={appliquer} />)}
       </Stack>
     </Modal>
   )
 }
 
+/** Écarts entre les rapports de surveillance et les statuts des candidats du centre. */
+function Concordance({ examenId, centreId, version }: { examenId: number; centreId: number; version: string }) {
+  const c = useQuery({ queryKey: ['concordance-rapports', examenId, centreId, version], queryFn: () => concordanceRapports(examenId, centreId) })
+  if (!c.data || c.data.ecarts.length === 0) return null
+  return (
+    <Alert color={c.data.ecarts.some((e) => e.gravite === 'ERREUR') ? 'red' : 'orange'} variant="light" title="Écarts entre rapports et statuts des candidats">
+      <Stack gap={2}>
+        {c.data.ecarts.map((e, i) => (
+          <Text key={`${e.code}-${e.epreuveId}-${i}`} size="sm">{e.epreuve} : {e.message}</Text>
+        ))}
+      </Stack>
+    </Alert>
+  )
+}
+
 function CarteEpreuve({ epreuve: e, examenId, centreId, onChange }: { epreuve: Epreuve; examenId: number; centreId: number; onChange: (d: DeroulementCentre) => void }) {
+  const { terrain } = useDroitsExamens()
   const [erreur, setErreur] = useState<string | null>(null)
   const options = { onSuccess: (d: DeroulementCentre) => { onChange(d); setErreur(null) }, onError: (x: Error) => setErreur(x.message) }
   const avancement = useMutation({ mutationFn: () => avancerPli(examenId, centreId, e.epreuveId), ...options })
+  const reconditionnement = useMutation({ mutationFn: () => reconditionnerPli(examenId, centreId, e.epreuveId), ...options })
   const [president, setPresident] = useState('')
   const [temoin1, setTemoin1] = useState('')
   const [temoin2, setTemoin2] = useState('')
@@ -69,12 +88,12 @@ function CarteEpreuve({ epreuve: e, examenId, centreId, onChange }: { epreuve: E
             heure(e.recuDpeLe) && `reçu DPE/DCE ${heure(e.recuDpeLe)}`, heure(e.recuPresidentLe) && `reçu président ${heure(e.recuPresidentLe)}`]
             .filter(Boolean).map((t) => ` · ${t}`).join('')}
         </Text>
-        {e.etapeSuivante && (
+        {terrain && e.etapeSuivante && (
           <Group>
             <Button size="xs" variant="light" loading={avancement.isPending} onClick={() => avancement.mutate()}>{MARQUEUR[e.etapeSuivante]}</Button>
           </Group>
         )}
-        {e.statutPli === 'RECU_PRESIDENT' && (
+        {terrain && e.statutPli === 'RECU_PRESIDENT' && (
           <Group align="flex-end" gap="xs">
             <TextInput size="xs" label="Président de la commission" value={president} onChange={(x) => setPresident(x.currentTarget.value)} w={200} />
             <TextInput size="xs" label="Témoin 1" value={temoin1} onChange={(x) => setTemoin1(x.currentTarget.value)} w={180} />
@@ -90,6 +109,11 @@ function CarteEpreuve({ epreuve: e, examenId, centreId, onChange }: { epreuve: E
             <Rapport epreuve={e} examenId={examenId} centreId={centreId} onChange={onChange} />
           </>
         )}
+        {terrain && erreur && erreur.includes('reconditionnez') && (
+          <Button size="xs" color="orange" variant="light" loading={reconditionnement.isPending} onClick={() => reconditionnement.mutate()}>
+            Reconditionner le pli
+          </Button>
+        )}
         {erreur && <Alert color="red" variant="light">{erreur}</Alert>}
       </Stack>
     </Card>
@@ -99,6 +123,7 @@ function CarteEpreuve({ epreuve: e, examenId, centreId, onChange }: { epreuve: E
 const versLocal = (iso: string | null) => (iso ? new Date(new Date(iso).getTime() - new Date(iso).getTimezoneOffset() * 60000).toISOString().slice(0, 16) : '')
 
 function Rapport({ epreuve: e, examenId, centreId, onChange }: { epreuve: Epreuve; examenId: number; centreId: number; onChange: (d: DeroulementCentre) => void }) {
+  const { terrain } = useDroitsExamens()
   const [debut, setDebut] = useState(versLocal(e.compositionDebut))
   const [fin, setFin] = useState(versLocal(e.compositionFin))
   const [presents, setPresents] = useState<number | string>(e.presents ?? 0)
@@ -118,14 +143,14 @@ function Rapport({ epreuve: e, examenId, centreId, onChange }: { epreuve: Epreuv
     cloturer,
   })
   const enregistrement = useMutation({ mutationFn: (cloturer: boolean) => envoi(cloturer), onSuccess: (d) => { onChange(d); setErreur(null) }, onError: (x) => setErreur(x.message) })
-  const clos = e.rapportClos
+  const clos = e.rapportClos || !terrain
   const ecart = (Number(copies) || 0) - ((Number(presents) || 0) + (Number(elimines) || 0))
 
   return (
     <Stack gap="xs">
       <Group gap="xs">
         <Text fw={600} size="sm">Rapport de surveillance</Text>
-        {clos && <Badge color="green" variant="light">Clos</Badge>}
+        {e.rapportClos && <Badge color="green" variant="light">Clos</Badge>}
         {ecart !== 0 && <Badge color="orange" variant="light">Écart de copies : {ecart > 0 ? `+${ecart}` : ecart}</Badge>}
       </Group>
       <Group align="flex-end" gap="xs">

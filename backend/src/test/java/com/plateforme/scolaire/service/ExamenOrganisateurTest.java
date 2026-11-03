@@ -67,8 +67,15 @@ class ExamenOrganisateurTest {
         // examen régional : un compte communal ne saisit pas
         assertThat(ExamenService.peutSaisir(ecole, "REGION", compte(role, 3L))).isFalse();
         assertThat(ExamenService.peutSaisir(ecole, "REGION", compte(role, 1L))).isTrue();
-        // le ministère saisit tout ; un examen national dépend seulement du périmètre
-        assertThat(ExamenService.peutSaisir(ecole, "REGION", compte(com.plateforme.scolaire.domain.Role.MINISTERE, null))).isTrue();
+        // la DGECS saisit tout ; le ministère consulte sans saisir ; la direction préfectorale/communale suit la même règle de zone
+        assertThat(ExamenService.peutSaisir(ecole, "REGION", compte(com.plateforme.scolaire.domain.Role.DGECS, null))).isTrue();
+        assertThat(ExamenService.peutSaisir(ecole, "REGION", compte(com.plateforme.scolaire.domain.Role.MINISTERE, null))).isFalse();
+        assertThat(ExamenService.peutSaisir(ecole, "NATIONAL", compte(com.plateforme.scolaire.domain.Role.MINISTERE, null))).isFalse();
+        var locale = com.plateforme.scolaire.domain.Role.DIRECTION_LOCALE;
+        assertThat(ExamenService.peutSaisir(ecole, "COMMUNE", compte(locale, 3L))).isTrue();
+        assertThat(ExamenService.peutSaisir(ecole, "PREFECTURE", compte(locale, 3L))).isFalse();
+        assertThat(ExamenService.peutSaisir(ecole, "PREFECTURE", compte(locale, 2L))).isTrue();
+        // un examen national dépend seulement du périmètre
         assertThat(ExamenService.peutSaisir(ecole, "NATIONAL", compte(role, 3L))).isTrue();
     }
 }

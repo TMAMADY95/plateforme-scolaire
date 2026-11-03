@@ -22,12 +22,15 @@ public class ConformiteController {
 
     private static final String SUPERVISEUR = "hasAnyRole('MINISTERE','DIRECTION_REGIONALE') "
             + "and @perimetre.peutAccederEtablissement(#id)";
+    /** Lecture : la DGECS et les directions locales consultent aussi. */
+    private static final String LECTURE = "hasAnyRole('MINISTERE','DGECS','DIRECTION_REGIONALE','DIRECTION_LOCALE') "
+            + "and @perimetre.peutAccederEtablissement(#id)";
 
     private final ConformiteService conformiteService;
     private final InspectionService inspectionService;
 
     @GetMapping("/api/ministere/conformite")
-    @PreAuthorize("hasRole('MINISTERE')")
+    @PreAuthorize("hasAnyRole('MINISTERE','DGECS')")
     public ConformiteDto nationale(@RequestParam(required = false) Long zoneId,
                                    @RequestParam(required = false) String statut,
                                    @RequestParam(required = false) String secteur,
@@ -36,7 +39,7 @@ public class ConformiteController {
     }
 
     @GetMapping("/api/region/conformite")
-    @PreAuthorize("hasRole('DIRECTION_REGIONALE')")
+    @PreAuthorize("hasAnyRole('DIRECTION_REGIONALE','DIRECTION_LOCALE')")
     public ConformiteDto regionale(@RequestParam(required = false) String statut,
                                    @RequestParam(required = false) String secteur,
                                    @RequestParam(required = false) Long cycleId) {
@@ -44,7 +47,7 @@ public class ConformiteController {
     }
 
     @GetMapping("/api/etablissements/{id}/inspections")
-    @PreAuthorize(SUPERVISEUR)
+    @PreAuthorize(LECTURE)
     public List<InspectionDto> inspections(@PathVariable Long id) {
         return inspectionService.inspections(id);
     }
@@ -57,7 +60,7 @@ public class ConformiteController {
     }
 
     @GetMapping("/api/etablissements/{id}/signalements-securite")
-    @PreAuthorize(SUPERVISEUR)
+    @PreAuthorize(LECTURE)
     public List<SignalementDto> signalements(@PathVariable Long id) {
         return inspectionService.signalements(id);
     }

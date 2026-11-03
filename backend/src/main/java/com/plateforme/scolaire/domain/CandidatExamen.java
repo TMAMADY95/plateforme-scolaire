@@ -53,6 +53,10 @@ public class CandidatExamen {
     /** Salle (1, 2, 3…) et table (1 à 30) dans le centre. */
     private Integer salle;
 
+    /** Série du lycée recopiée de la classe à l'inscription ; null sinon. */
+    @Column(length = 30)
+    private String serie;
+
     @Column(name = "table_numero")
     private Integer tableNumero;
 
@@ -75,6 +79,14 @@ public class CandidatExamen {
     @Column(name = "note", precision = 4, scale = 2)
     @org.hibernate.annotations.BatchSize(size = 100)
     private java.util.Map<Long, java.math.BigDecimal> notes = new java.util.HashMap<>();
+
+    /** Type de handicap (MOTEUR, VISUEL, AUDITIF, INTELLECTUEL, AUTRE) ; null sans handicap. */
+    @Column(length = 15)
+    private String handicap;
+
+    /** Aménagement accordé (tiers-temps, assistant, sujet en braille…). */
+    @Column(length = 200)
+    private String amenagement;
 
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;

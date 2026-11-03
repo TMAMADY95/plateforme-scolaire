@@ -6,6 +6,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   creerAnnee,
   creerCycle,
+  creerDirectionLocale,
   creerDirectionRegionale,
   creerMatiere,
   creerPeriode,
@@ -35,6 +36,7 @@ import EnteteSection from '../../components/EnteteSection'
 import CarteReferentiel from '../../components/CarteReferentiel'
 import ConfirmationModal from '../../components/ConfirmationModal'
 import DirectionModal from './DirectionModal'
+import ProgrammeOfficiel from './ProgrammeOfficiel'
 import ModifierReferentielModal from './ModifierReferentielModal'
 
 /** Petit formulaire de création : déclenche la mutation, vide les champs, affiche l'erreur éventuelle. */
@@ -523,7 +525,7 @@ function Zones() {
                 <Table.Td>
                   <Group gap="xs" wrap="nowrap">
                     <Button size="compact-xs" variant="light" onClick={() => setPourRegion(z)}>
-                      Compte de zone
+                      {['PREFECTURE', 'COMMUNE'].includes(z.typeZone) ? 'Compte DPE/DCE' : 'Compte IRE'}
                     </Button>
                     <Button size="compact-xs" variant="light" onClick={() => setZoneAModifier(z)}>
                       Modifier
@@ -600,8 +602,16 @@ function Zones() {
       )}
       {pourRegion && (
         <DirectionModal
-          titre={`Compte de zone (${pourRegion.typeZone}) — ${pourRegion.nom}`}
-          creer={(requete) => creerDirectionRegionale(pourRegion.id, requete)}
+          titre={
+            ['PREFECTURE', 'COMMUNE'].includes(pourRegion.typeZone)
+              ? `Direction préfectorale ou communale (DPE/DCE) — ${pourRegion.nom}`
+              : `Inspection régionale (IRE) — ${pourRegion.nom}`
+          }
+          creer={(requete) =>
+            ['PREFECTURE', 'COMMUNE'].includes(pourRegion.typeZone)
+              ? creerDirectionLocale(pourRegion.id, requete)
+              : creerDirectionRegionale(pourRegion.id, requete)
+          }
           onFermer={() => setPourRegion(null)}
         />
       )}
@@ -720,6 +730,7 @@ export default function Referentiels() {
       <TypesEtablissement />
       <Zones />
       </SimpleGrid>
+      <ProgrammeOfficiel />
     </Stack>
   )
 }

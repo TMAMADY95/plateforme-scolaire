@@ -15,6 +15,7 @@ public class AlertesUrgenceTache {
     private final AlertesUrgenceService alertes;
     private final RappelsPlansActionService rappels;
     private final RappelsResultatsExamenService rappelsExamens;
+    private final RappelsListesCandidatsService rappelsListes;
 
     @Value("${app.alertes.actif:true}")
     private boolean actif;
@@ -47,6 +48,14 @@ public class AlertesUrgenceTache {
             }
         } catch (RuntimeException e) {
             log.error("Rappels de résultats d'examen impossibles", e);
+        }
+        try {
+            int n = rappelsListes.rappeler();
+            if (n > 0) {
+                log.info("{} responsable(s) rappelé(s) pour des listes de candidats en attente", n);
+            }
+        } catch (RuntimeException e) {
+            log.error("Rappels de listes de candidats impossibles", e);
         }
     }
 }

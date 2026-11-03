@@ -32,6 +32,15 @@ public class Eleve {
     @Column(name = "date_naissance", nullable = false)
     private LocalDate dateNaissance;
 
+    @Column(name = "lieu_naissance", length = 150)
+    private String lieuNaissance;
+
+    @Column(name = "nom_pere", length = 150)
+    private String nomPere;
+
+    @Column(name = "nom_mere", length = 150)
+    private String nomMere;
+
     /** F ou M */
     @JdbcTypeCode(SqlTypes.CHAR)
     @Column(length = 1)

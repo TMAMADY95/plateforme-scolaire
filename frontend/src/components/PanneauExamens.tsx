@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useDroitsExamens } from '../auth/useDroitsExamens'
 import { Alert, Badge, Button, Card, Group, Loader, Modal, NumberInput, SegmentedControl, Select, SimpleGrid, Stack, Table, Text } from '@mantine/core'
 import { notifications } from '@mantine/notifications'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -29,20 +30,23 @@ const pourcent = (t: number | null) => (t === null ? '—' : `${String(t).replac
 interface Props {
   cle: string
   charger: (examenId: number, zoneId?: number) => Promise<RapportExamen>
-  /** Ministère : création des examens et filtre par zone. */
+  /** Panneau national (DGECS et ministère) : planification des examens (DGECS) et filtre par zone. */
   ministere?: boolean
 }
 
 /** Résultats des examens nationaux : taux de réussite par établissement, zone et secteur ; saisie des chiffres. */
 export default function PanneauExamens({ cle, charger, ministere = false }: Props) {
+  const droits = useDroitsExamens()
+  // La DGECS organise tous les examens (nationaux, régionaux, communaux) ; le ministère les suit sans rien saisir.
+  const planif = ministere && droits.dgecs
   const annee = useAnneeScolaire()
   const anneeId = annee.anneeId === null ? null : Number(annee.anneeId)
   const [examenId, setExamenId] = useState<string | null>(null)
   const [zoneId, setZoneId] = useState<string | null>(null)
   const [import_, setImport] = useState(false)
   const [calendrierId, setCalendrierId] = useState<number | null>(null)
-  // Le ministère arrive sur la planification ; les autres comptes sur les résultats.
-  const [vue, setVue] = useState<'planifier' | 'planifies' | 'centres' | 'resultats'>(ministere ? 'planifier' : 'resultats')
+  // La DGECS arrive sur la planification ; les autres comptes sur les examens planifiés ou les résultats.
+  const [vue, setVue] = useState<'planifier' | 'planifies' | 'centres' | 'resultats'>(planif ? 'planifier' : ministere ? 'planifies' : 'resultats')
 
   const examens = useQuery({
     queryKey: ['examens', anneeId],
@@ -50,8 +54,8 @@ export default function PanneauExamens({ cle, charger, ministere = false }: Prop
     enabled: anneeId !== null,
   })
   const zones = useQuery({ queryKey: ['zones'], queryFn: listerZones, enabled: ministere })
-  // Résultats : le ministère ne suit que les examens qu'il organise ; les examens locaux sont suivis par leur organisateur.
-  const examensResultats = (examens.data ?? []).filter((e) => !ministere || e.niveauOrganisation === 'NATIONAL')
+  // Résultats : le panneau national suit tous les examens (nationaux, régionaux, communaux).
+  const examensResultats = examens.data ?? []
   const examenCourant =
     examenId !== null && examensResultats.some((e) => String(e.id) === examenId)
       ? examenId
@@ -79,7 +83,7 @@ export default function PanneauExamens({ cle, charger, ministere = false }: Prop
             value={vue}
             onChange={(v) => setVue(v as typeof vue)}
             data={[
-              { value: 'planifier', label: 'Planifier un examen' },
+              ...(planif ? [{ value: 'planifier', label: 'Planifier un examen' }] : []),
               { value: 'planifies', label: `Examens planifiés${examens.data ? ` (${examens.data.length})` : ''}` },
               { value: 'centres', label: 'Centres d\'examen' },
               { value: 'resultats', label: 'Résultats' },
@@ -90,7 +94,7 @@ export default function PanneauExamens({ cle, charger, ministere = false }: Prop
         )}
         <Select aria-label="Année scolaire" data={annee.options} value={annee.anneeId} onChange={annee.setAnneeChoisie} allowDeselect={false} w={200} />
       </Group>
-      {ministere && vue === 'planifier' && anneeId !== null && <PlanificationExamen anneeId={anneeId} onPlanifie={planifie} />}
+      {planif && vue === 'planifier' && anneeId !== null && <PlanificationExamen anneeId={anneeId} onPlanifie={planifie} />}
       {ministere && vue === 'centres' && anneeId !== null && <CentresExamen anneeId={anneeId} />}
       {ministere && vue === 'planifies' && (
         <ExamensPlanifies
@@ -104,11 +108,12 @@ export default function PanneauExamens({ cle, charger, ministere = false }: Prop
             setVue('resultats')
           }}
           onNouveau={() => setVue('planifier')}
+          peutPlanifier={planif}
         />
       )}
       {vue === 'resultats' && examens.isSuccess && examensResultats.length === 0 && (
         <Alert color="blue" variant="light">
-          {ministere ? 'Aucun examen organisé par le ministère pour cette année : planifiez-en un.' : 'Aucun examen pour cette année.'}
+          {ministere ? (planif ? 'Aucun examen pour cette année : planifiez-en un.' : 'Aucun examen planifié pour cette année par la DGECS.') : 'Aucun examen pour cette année.'}
         </Alert>
       )}
       {vue === 'resultats' && examensResultats.length > 0 && (
@@ -137,9 +142,11 @@ export default function PanneauExamens({ cle, charger, ministere = false }: Prop
       )}
       {vue === 'resultats' && examenCourant !== null && examens.data && (
         <Group>
-          <Button variant="default" size="xs" onClick={() => setImport(true)}>
-            Importer les résultats (CSV)
-          </Button>
+          {droits.gestion && (
+            <Button variant="default" size="xs" onClick={() => setImport(true)}>
+              Importer les résultats (CSV)
+            </Button>
+          )}
           <Button variant="light" size="xs" onClick={() => setCalendrierId(Number(examenCourant))}>
             Calendrier et centres
           </Button>
@@ -184,12 +191,14 @@ function ExamensPlanifies({
   onCalendrier,
   onResultats,
   onNouveau,
+  peutPlanifier,
 }: {
   examens: Examen[]
   chargement: boolean
   onCalendrier: (id: number) => void
   onResultats: (id: number) => void
   onNouveau: () => void
+  peutPlanifier: boolean
 }) {
   const queryClient = useQueryClient()
   const [aSupprimer, setASupprimer] = useState<Examen | null>(null)
@@ -221,9 +230,11 @@ function ExamensPlanifies({
     return (
       <Alert color="blue" variant="light">
         Aucun examen planifié pour cette année.{' '}
-        <Button size="compact-xs" variant="light" onClick={onNouveau}>
-          Planifier un examen
-        </Button>
+        {peutPlanifier && (
+          <Button size="compact-xs" variant="light" onClick={onNouveau}>
+            Planifier un examen
+          </Button>
+        )}
       </Alert>
     )
   }
@@ -272,9 +283,11 @@ function ExamensPlanifies({
                         Résultats
                       </Button>
                     )}
-                    <Button size="compact-xs" variant="subtle" color="red" onClick={() => setASupprimer(e)}>
-                      Supprimer
-                    </Button>
+                    {peutPlanifier && (
+                      <Button size="compact-xs" variant="subtle" color="red" onClick={() => setASupprimer(e)}>
+                        Supprimer
+                      </Button>
+                    )}
                   </Group>
                 </Table.Td>
               </Table.Tr>
@@ -482,6 +495,7 @@ function Rapport({ rapport, ministere }: { rapport: RapportExamen; ministere: bo
 
 function LigneSaisie({ examenId, ligne }: { examenId: number; ligne: LigneExamen }) {
   const queryClient = useQueryClient()
+  const { gestion } = useDroitsExamens()
   const [presentes, setPresentes] = useState<number | string>(ligne.presentes ?? '')
   const [admis, setAdmis] = useState<number | string>(ligne.admis ?? '')
   const [erreur, setErreur] = useState<string | null>(null)
@@ -525,16 +539,18 @@ function LigneSaisie({ examenId, ligne }: { examenId: number; ligne: LigneExamen
         <BadgeSecteur secteur={ligne.secteur} />
       </Table.Td>
       <Table.Td>
-        <NumberInput aria-label="Présentés" min={0} allowDecimal={false} size="xs" w={90} value={presentes} onChange={setPresentes} />
+        <NumberInput aria-label="Présentés" min={0} allowDecimal={false} size="xs" w={90} value={presentes} onChange={setPresentes} disabled={!gestion} />
       </Table.Td>
       <Table.Td>
-        <NumberInput aria-label="Admis" min={0} allowDecimal={false} size="xs" w={90} value={admis} onChange={setAdmis} error={presentes !== '' && admis !== '' && !valide} />
+        <NumberInput aria-label="Admis" min={0} allowDecimal={false} size="xs" w={90} value={admis} onChange={setAdmis} disabled={!gestion} error={presentes !== '' && admis !== '' && !valide} />
       </Table.Td>
       <Table.Td ta="right">{pourcent(ligne.taux)}</Table.Td>
       <Table.Td>
-        <Button size="compact-xs" variant="light" disabled={!valide} loading={saisie.isPending} onClick={() => saisie.mutate()}>
-          Enregistrer
-        </Button>
+        {gestion && (
+          <Button size="compact-xs" variant="light" disabled={!valide} loading={saisie.isPending} onClick={() => saisie.mutate()}>
+            Enregistrer
+          </Button>
+        )}
         <Button size="compact-xs" variant="subtle" onClick={() => setDetail(true)}>
           Détail
         </Button>

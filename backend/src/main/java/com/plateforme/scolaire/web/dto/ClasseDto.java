@@ -3,7 +3,7 @@ package com.plateforme.scolaire.web.dto;
 import com.plateforme.scolaire.domain.Classe;
 
 public record ClasseDto(Long id, Long etablissementId, Long anneeScolaireId, Long niveauId,
-                        String niveauLibelle, String nom, Integer capacite) {
+                        String niveauLibelle, String nom, Integer capacite, String serie) {
 
     public static ClasseDto de(Classe c) {
         return new ClasseDto(
@@ -13,6 +13,7 @@ public record ClasseDto(Long id, Long etablissementId, Long anneeScolaireId, Lon
                 c.getNiveau().getId(),
                 c.getNiveau().getLibelle(),
                 c.getNom(),
-                c.getCapacite());
+                c.getCapacite(),
+                c.getSerie());
     }
 }

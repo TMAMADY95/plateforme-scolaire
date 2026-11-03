@@ -30,4 +30,11 @@ class NotesExamenServiceTest {
         assertThat(NotesExamenService.decision("ABSENT", null)).isNull();
         assertThat(NotesExamenService.decision("ELIMINE", null)).isEqualTo("NON_ADMIS");
     }
+
+    @Test
+    void admissionSurBaremeDeDix() {
+        assertThat(NotesExamenService.decision("PRESENT", new BigDecimal("5.00"), 10)).isEqualTo("ADMIS");
+        assertThat(NotesExamenService.decision("PRESENT", new BigDecimal("4.99"), 10)).isEqualTo("NON_ADMIS");
+        assertThat(NotesExamenService.decision("PRESENT", new BigDecimal("9.99"), 20)).isEqualTo("NON_ADMIS");
+    }
 }

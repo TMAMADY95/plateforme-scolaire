@@ -31,6 +31,12 @@ public class ComptesInstitutionnelsController {
         return comptes.creerMinistere(r);
     }
 
+    @PostMapping("/api/ministere/comptes-dgecs")
+    @ResponseStatus(HttpStatus.CREATED)
+    public CompteInstitutionnelDto creerDgecs(@Valid @RequestBody DirectionRequest r) {
+        return comptes.creerDgecs(r);
+    }
+
     @PostMapping("/api/ministere/comptes/{id}/activation")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void activer(@PathVariable Long id, @RequestBody ActivationRequest r) {

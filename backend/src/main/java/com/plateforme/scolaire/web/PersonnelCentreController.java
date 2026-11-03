@@ -1,5 +1,6 @@
 package com.plateforme.scolaire.web;
 
+import com.plateforme.scolaire.security.DroitsExamen;
 import com.plateforme.scolaire.service.PersonnelCentreService;
 import com.plateforme.scolaire.web.dto.PersonnelCentreDto;
 import com.plateforme.scolaire.web.dto.PersonnelCentreRequest;
@@ -12,7 +13,7 @@ import org.springframework.web.bind.annotation.*;
 /** Personnel des centres d'examen : ministère et directions régionales. */
 @RestController
 @RequiredArgsConstructor
-@PreAuthorize("hasAnyRole('MINISTERE','DIRECTION_REGIONALE')")
+@PreAuthorize(DroitsExamen.LECTURE_TERRAIN + " and @accesCentre.peut(#centreId)")
 public class PersonnelCentreController {
 
     private final PersonnelCentreService service;
@@ -23,6 +24,7 @@ public class PersonnelCentreController {
     }
 
     @PostMapping("/api/examens/{examenId}/centres/{centreId}/personnel")
+    @PreAuthorize(DroitsExamen.TERRAIN + " and @accesCentre.peut(#centreId)")
     @ResponseStatus(HttpStatus.CREATED)
     public PersonnelCentreDto ajouter(@PathVariable Long examenId, @PathVariable Long centreId,
                                       @Valid @RequestBody PersonnelCentreRequest r) {
@@ -30,6 +32,7 @@ public class PersonnelCentreController {
     }
 
     @DeleteMapping("/api/examens/{examenId}/centres/{centreId}/personnel/{personneId}")
+    @PreAuthorize(DroitsExamen.TERRAIN + " and @accesCentre.peut(#centreId)")
     public PersonnelCentreDto retirer(@PathVariable Long examenId, @PathVariable Long centreId, @PathVariable Long personneId) {
         return service.retirer(examenId, centreId, personneId);
     }

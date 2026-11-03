@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useDroitsExamens } from '../auth/useDroitsExamens'
 import { Alert, Badge, Button, Group, Modal, NumberInput, Select, Stack, Table, Text } from '@mantine/core'
 import { notifications } from '@mantine/notifications'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -23,6 +24,7 @@ export default function NotesCandidatsModal({ examenId, etablissementId, nom, on
   onFermer: () => void
 }) {
   const queryClient = useQueryClient()
+  const { gestion } = useDroitsExamens()
   const cle = ['notes-candidats', examenId, etablissementId]
   const donnees = useQuery({ queryKey: cle, queryFn: () => notesCandidats(examenId, etablissementId) })
   const consolidation = useMutation({
@@ -65,7 +67,7 @@ export default function NotesCandidatsModal({ examenId, etablissementId, nom, on
               </Table.Thead>
               <Table.Tbody>
                 {d.candidats.map((c) => (
-                  <LigneCandidat key={`${c.id}-${c.moyenne}-${c.statut}`} donnees={d} candidat={c} clos={clos}
+                  <LigneCandidat key={`${c.id}-${c.moyenne}-${c.statut}`} donnees={d} candidat={c} clos={clos || !gestion}
                     examenId={examenId} etablissementId={etablissementId} onEnregistre={remplacer} />
                 ))}
               </Table.Tbody>
@@ -74,7 +76,7 @@ export default function NotesCandidatsModal({ examenId, etablissementId, nom, on
         )}
         <Group justify="flex-end">
           <Button variant="default" onClick={onFermer}>Fermer</Button>
-          <Button disabled={clos || !d || d.candidats.length === 0} loading={consolidation.isPending} onClick={() => consolidation.mutate()}>
+          <Button disabled={clos || !gestion || !d || d.candidats.length === 0} loading={consolidation.isPending} onClick={() => consolidation.mutate()}>
             Établir les résultats de l'établissement
           </Button>
         </Group>
@@ -126,7 +128,7 @@ function LigneCandidat({ donnees, candidat, clos, examenId, etablissementId, onE
       </Table.Td>
       {donnees.epreuves.map((e) => (
         <Table.Td key={e.id}>
-          <NumberInput size="xs" w={80} min={0} max={20} decimalScale={2} disabled={clos || statut !== 'PRESENT'}
+          <NumberInput size="xs" w={80} min={0} max={donnees.bareme} decimalScale={2} disabled={clos || statut !== 'PRESENT'}
             value={notes[String(e.id)]} onChange={(v) => setNotes((x) => ({ ...x, [String(e.id)]: v }))} />
         </Table.Td>
       ))}

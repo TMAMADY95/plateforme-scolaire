@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useDroitsExamens } from '../auth/useDroitsExamens'
 import { Alert, Badge, Button, Card, Group, Modal, Select, Stack, Table, Text, TextInput } from '@mantine/core'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ajouterSujet, banqueSujets, compromettreSujet, supprimerSujet, tirerSujet, validerSujet } from '../api/endpoints'
@@ -32,6 +33,7 @@ export default function BanqueSujetsModal({ examen, onFermer }: { examen: Examen
 }
 
 function CarteEpreuve({ epreuve: e, examenId, onChange }: { epreuve: Epreuve; examenId: number; onChange: (d: BanqueSujets) => void }) {
+  const { gestion } = useDroitsExamens()
   const [variante, setVariante] = useState<string | null>(null)
   const [intitule, setIntitule] = useState('')
   const [auteurs, setAuteurs] = useState('')
@@ -59,7 +61,7 @@ function CarteEpreuve({ epreuve: e, examenId, onChange }: { epreuve: Epreuve; ex
             {e.varianteTiree ? <Badge color="green" variant="light">Variante {e.varianteTiree} utilisée</Badge>
               : <Badge color="gray" variant="light">{e.validees} / 3 validée(s)</Badge>}
           </Group>
-          {!e.varianteTiree && (
+          {gestion && !e.varianteTiree && (
             <Button size="xs" variant="light" disabled={!e.tirable} loading={tirage.isPending} onClick={() => tirage.mutate()}>
               Tirer au sort
             </Button>
@@ -75,9 +77,9 @@ function CarteEpreuve({ epreuve: e, examenId, onChange }: { epreuve: Epreuve; ex
                   <Table.Td w={150}><Badge color={COULEUR[v.statut]} variant="light">{LIBELLE[v.statut]}</Badge></Table.Td>
                   <Table.Td w={200}>
                     <Group gap={4} justify="flex-end">
-                      {v.statut === 'ELABORATION' && <Button size="compact-xs" variant="light" onClick={() => validation.mutate(v.id)}>Valider</Button>}
-                      {v.statut === 'TIRE' && <Button size="compact-xs" color="red" variant="light" onClick={() => compromission.mutate(v.id)}>Fuite : remplacer</Button>}
-                      {(v.statut === 'ELABORATION' || v.statut === 'VALIDE') && (
+                      {gestion && v.statut === 'ELABORATION' && <Button size="compact-xs" variant="light" onClick={() => validation.mutate(v.id)}>Valider</Button>}
+                      {gestion && v.statut === 'TIRE' && <Button size="compact-xs" color="red" variant="light" onClick={() => compromission.mutate(v.id)}>Fuite : remplacer</Button>}
+                      {gestion && (v.statut === 'ELABORATION' || v.statut === 'VALIDE') && (
                         <Button size="compact-xs" color="red" variant="subtle" onClick={() => suppression.mutate(v.id)}>Supprimer</Button>
                       )}
                     </Group>
@@ -87,7 +89,7 @@ function CarteEpreuve({ epreuve: e, examenId, onChange }: { epreuve: Epreuve; ex
             </Table.Tbody>
           </Table>
         )}
-        {!e.varianteTiree && libres.length > 0 && (
+        {gestion && !e.varianteTiree && libres.length > 0 && (
           <Group align="flex-end" gap="xs">
             <Select size="xs" label="Variante" data={libres} value={variante} onChange={setVariante} w={90} />
             <TextInput size="xs" label="Intitulé du sujet" value={intitule} onChange={(x) => setIntitule(x.currentTarget.value)} w={260} />

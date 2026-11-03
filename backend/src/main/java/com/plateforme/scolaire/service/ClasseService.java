@@ -69,6 +69,7 @@ public class ClasseService {
         classe.setNiveau(niveau);
         classe.setNom(r.nom());
         classe.setCapacite(r.capacite());
+        classe.setSerie(serie(r.serie()));
         return ClasseDto.de(classeRepository.save(classe));
     }
 
@@ -86,7 +87,16 @@ public class ClasseService {
         classe.setNiveau(niveau);
         classe.setNom(r.nom());
         classe.setCapacite(r.capacite());
+        classe.setSerie(serie(r.serie()));
         return ClasseDto.de(classe);
+    }
+
+    private static String serie(String code) {
+        try {
+            return com.plateforme.scolaire.domain.SerieLycee.normaliser(code);
+        } catch (IllegalArgumentException e) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage());
+        }
     }
 
     private Classe charger(Long id) {

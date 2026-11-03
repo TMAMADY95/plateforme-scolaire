@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useDroitsExamens } from '../auth/useDroitsExamens'
 import { Alert, Badge, Button, Group, Select, Stack, Table, Text, MultiSelect } from '@mantine/core'
 import { notifications } from '@mantine/notifications'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -10,12 +11,15 @@ import {
   inscrireCandidats,
   preparationExamen,
   retirerCandidat,
+  telechargerCartesExamen,
   telechargerConvocations,
   telechargerDiplomes,
   telechargerReleves,
 } from '../api/endpoints'
-import type { ExamenEtablissement } from '../api/types'
+import type { Candidat, ExamenEtablissement } from '../api/types'
 import { libelleOrganisation } from '../utils/organisationExamen'
+import ControleCoherenceModal from './ControleCoherenceModal'
+import AmenagementCandidatModal from './AmenagementCandidatModal'
 import CandidatLibreForm from './CandidatLibreForm'
 import DossiersCandidaturesModal from './DossiersCandidaturesModal'
 import ListeCandidatsPanneau from './ListeCandidatsPanneau'
@@ -75,6 +79,7 @@ export default function ExamensEtablissement({ etablissementId, anneeScolaireId,
 }
 
 function DetailExamen({ etablissementId, examenId, anneeScolaireId, supervision }: Props & { examenId: number }) {
+  const droits = useDroitsExamens()
   const queryClient = useQueryClient()
   const preparation = useQuery({
     queryKey: ['preparation-examen', etablissementId, examenId],
@@ -82,6 +87,8 @@ function DetailExamen({ etablissementId, examenId, anneeScolaireId, supervision 
   })
   const [selection, setSelection] = useState<string[]>([])
   const [dossiersOuverts, setDossiersOuverts] = useState(false)
+  const [controleOuvert, setControleOuvert] = useState(false)
+  const [amenagement, setAmenagement] = useState<Candidat | null>(null)
   const [erreur, setErreur] = useState<string | null>(null)
 
   const rafraichir = () => {
@@ -103,6 +110,10 @@ function DetailExamen({ etablissementId, examenId, anneeScolaireId, supervision 
     mutationFn: (candidatId: number) => retirerCandidat(candidatId),
     onSuccess: rafraichir,
     onError: (e) => notifications.show({ color: 'red', title: 'Retrait impossible', message: e.message }),
+  })
+  const cartes = useMutation({
+    mutationFn: () => telechargerCartesExamen(etablissementId, examenId),
+    onError: (e) => notifications.show({ color: 'red', title: 'Cartes indisponibles', message: e.message }),
   })
   const convocations = useMutation({
     mutationFn: () => telechargerConvocations(etablissementId, examenId),
@@ -128,7 +139,7 @@ function DetailExamen({ etablissementId, examenId, anneeScolaireId, supervision 
     <Stack gap="md">
       <Calendrier examenId={examenId} dateDebut={preparation.data.examen.dateDebut} dateFin={preparation.data.examen.dateFin} />
       <ListeCandidatsPanneau etablissementId={etablissementId} examenId={examenId} supervision={supervision} />
-      {supervision && <Centres etablissementId={etablissementId} examenId={examenId} onAffecte={rafraichir} />}
+      {supervision && droits.gestion && <Centres etablissementId={etablissementId} examenId={examenId} onAffecte={rafraichir} />}
       {!supervision && (
         <Group align="flex-end">
           <MultiSelect
@@ -172,12 +183,15 @@ function DetailExamen({ etablissementId, examenId, anneeScolaireId, supervision 
               {candidats.map((c) => (
                 <Table.Tr key={c.id}>
                   <Table.Td>{c.numero ?? '—'}</Table.Td>
-                  <Table.Td>{c.nom}</Table.Td>
+                  <Table.Td>{c.nom}{c.handicap && <Badge ml="xs" variant="light" color="teal" title={c.amenagement ?? ''}>Aménagement</Badge>}</Table.Td>
                   <Table.Td>{c.libre ? <Badge variant="light" color="grape">Candidat libre</Badge> : (c.classe ?? '—')}</Table.Td>
                   <Table.Td>{c.centre ?? <Text size="sm" c="dimmed">À attribuer</Text>}</Table.Td>
                   <Table.Td>{c.numeroPv ? `${c.numeroPv} · salle ${c.salle} · table ${c.table}` : '—'}</Table.Td>
                   {!supervision && (
                     <Table.Td>
+                      <Button size="xs" variant="subtle" onClick={() => setAmenagement(c)}>
+                        Aménagement
+                      </Button>
                       <Button size="xs" color="red" variant="subtle" onClick={() => retrait.mutate(c.id)}>
                         Retirer
                       </Button>
@@ -191,8 +205,14 @@ function DetailExamen({ etablissementId, examenId, anneeScolaireId, supervision 
             <Button variant="light" loading={convocations.isPending} onClick={() => convocations.mutate()}>
               Télécharger les convocations (PDF)
             </Button>
+            <Button variant="light" loading={cartes.isPending} onClick={() => cartes.mutate()}>
+              Cartes spéciales d'examen (PDF)
+            </Button>
             <Button variant="light" onClick={() => setDossiersOuverts(true)}>
               Dossiers de candidature
+            </Button>
+            <Button variant="light" color="orange" onClick={() => setControleOuvert(true)}>
+              Contrôle de cohérence
             </Button>
             {preparation.data.examen.statutResultats === 'PROCLAME' && (
               <Button variant="light" color="green" loading={releves.isPending} onClick={() => releves.mutate()}>
@@ -206,6 +226,17 @@ function DetailExamen({ etablissementId, examenId, anneeScolaireId, supervision 
             )}
           </Group>
         </>
+      )}
+      {amenagement && (
+        <AmenagementCandidatModal candidat={amenagement} onClose={() => setAmenagement(null)} onEnregistre={() => { setAmenagement(null); rafraichir() }} />
+      )}
+      {controleOuvert && preparation.data && (
+        <ControleCoherenceModal
+          etablissementId={etablissementId}
+          examenId={examenId}
+          titre={preparation.data.examen.libelle}
+          onFermer={() => setControleOuvert(false)}
+        />
       )}
       {dossiersOuverts && preparation.data && (
         <DossiersCandidaturesModal

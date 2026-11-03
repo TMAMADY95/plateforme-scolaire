@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useDroitsExamens } from '../auth/useDroitsExamens'
 import { Alert, Badge, Button, Card, Group, Loader, NumberInput, Select, Stack, Switch, Table, Text, TextInput } from '@mantine/core'
 import { notifications } from '@mantine/notifications'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -32,6 +33,7 @@ export default function CentresExamen({ anneeId }: { anneeId: number }) {
 
 function Conditions() {
   const queryClient = useQueryClient()
+  const { dgecs } = useDroitsExamens()
   const criteres = useQuery({ queryKey: ['criteres-centres'], queryFn: criteresCentres })
   const [valeurs, setValeurs] = useState<CriteresCentre | null>(null)
   const [erreur, setErreur] = useState<string | null>(null)
@@ -98,15 +100,18 @@ function Conditions() {
             onChange={(e) => setValeurs({ ...valeurs, autorisationRequise: e.currentTarget.checked })}
             mb={6}
           />
-          <Button disabled={!modifie} loading={enregistrement.isPending} onClick={() => enregistrement.mutate()}>
-            Enregistrer
-          </Button>
+          {dgecs && (
+            <Button disabled={!modifie} loading={enregistrement.isPending} onClick={() => enregistrement.mutate()}>
+              Enregistrer
+            </Button>
+          )}
         </Group>
         {erreur && (
           <Alert color="red" variant="light">
             {erreur}
           </Alert>
         )}
+        {!dgecs && <Text size="xs" c="dimmed">Les conditions sont fixées par la DGECS.</Text>}
       </Stack>
     </Card>
   )
@@ -114,6 +119,7 @@ function Conditions() {
 
 function Etablissements({ anneeId }: { anneeId: number }) {
   const queryClient = useQueryClient()
+  const { gestion } = useDroitsExamens()
   const examens = useQuery({ queryKey: ['examens', anneeId], queryFn: () => listerExamens(anneeId) })
   const liste = useQuery({ queryKey: ['etablissements-centres'], queryFn: etablissementsCentres })
   const [examenChoisi, setExamenChoisi] = useState<string | null>(null)
@@ -247,7 +253,7 @@ function Etablissements({ anneeId }: { anneeId: number }) {
                         )}
                       </Table.Td>
                       <Table.Td ta="right">
-                        {examenId !== null &&
+                        {gestion && examenId !== null &&
                           (centreId !== undefined ? (
                             <Button size="compact-xs" color="red" variant="subtle" loading={retrait.isPending && retrait.variables === centreId} onClick={() => retrait.mutate(centreId)}>
                               Retirer des centres

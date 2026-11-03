@@ -80,6 +80,9 @@ public class CandidatureLibreService {
             eleve.setPrenom(prenom);
             eleve.setDateNaissance(r.dateNaissance());
             eleve.setSexe(r.sexe());
+            eleve.setLieuNaissance(r.lieuNaissancePropre());
+            eleve.setNomPere(r.nomPerePropre());
+            eleve.setNomMere(r.nomMerePropre());
             eleve = eleves.save(eleve);
         }
         CandidatExamen c = new CandidatExamen();

@@ -7,6 +7,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { creerClasse, listerAnnees, listerClasses, listerNiveaux } from '../api/endpoints'
 import { etablissementCourant } from '../auth/roles'
 import { useUtilisateur } from '../auth/useAuth'
+import { SERIES_LYCEE, libelleSerie } from '../api/types'
 import type { Classe } from '../api/types'
 import AnnoncesModal from './classes/AnnoncesModal'
 import CoefficientsModal from './classes/CoefficientsModal'
@@ -17,6 +18,7 @@ interface ValeursClasse {
   niveauId: string | null
   nom: string
   capacite: number | string
+  serie: string | null
 }
 
 export default function PageClasses() {
@@ -42,7 +44,7 @@ export default function PageClasses() {
   })
 
   const formulaire = useForm<ValeursClasse>({
-    initialValues: { anneeScolaireId: null, niveauId: null, nom: '', capacite: '' },
+    initialValues: { anneeScolaireId: null, niveauId: null, nom: '', capacite: '', serie: null },
     validate: {
       anneeScolaireId: (v) => (v === null ? 'Année requise' : null),
       niveauId: (v) => (v === null ? 'Niveau requis' : null),
@@ -58,6 +60,7 @@ export default function PageClasses() {
         niveauId: Number(valeurs.niveauId),
         nom: valeurs.nom.trim(),
         capacite: valeurs.capacite === '' ? null : Number(valeurs.capacite),
+        serie: valeurs.serie,
       }),
     onSuccess: (classe) => {
       void queryClient.invalidateQueries({ queryKey: ['classes', etablissementId] })
@@ -120,6 +123,7 @@ export default function PageClasses() {
             <Table.Tr>
               <Table.Th>Nom</Table.Th>
               <Table.Th>Niveau</Table.Th>
+              <Table.Th>Série</Table.Th>
               <Table.Th>Capacité</Table.Th>
               <Table.Th />
             </Table.Tr>
@@ -129,6 +133,7 @@ export default function PageClasses() {
               <Table.Tr key={classe.id}>
                 <Table.Td>{classe.nom}</Table.Td>
                 <Table.Td>{classe.niveauLibelle}</Table.Td>
+                <Table.Td>{libelleSerie(classe.serie)}</Table.Td>
                 <Table.Td>{classe.capacite ?? '—'}</Table.Td>
                 <Table.Td>
                   <Group gap="xs" wrap="nowrap">
@@ -167,6 +172,13 @@ export default function PageClasses() {
               {...formulaire.getInputProps('anneeScolaireId')}
             />
             <Select label="Niveau" data={optionsNiveaux} {...formulaire.getInputProps('niveauId')} />
+            <Select
+              label="Série (lycée)"
+              description="Pour les classes de 11e, 12e et terminale"
+              clearable
+              data={SERIES_LYCEE}
+              {...formulaire.getInputProps('serie')}
+            />
             <TextInput label="Nom de la classe" placeholder="A" {...formulaire.getInputProps('nom')} />
             <NumberInput
               label="Capacité"

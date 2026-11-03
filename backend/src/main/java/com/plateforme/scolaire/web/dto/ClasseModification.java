@@ -8,5 +8,6 @@ import jakarta.validation.constraints.Size;
 /** L'année scolaire et l'établissement d'une classe ne se modifient pas. */
 public record ClasseModification(@NotNull Long niveauId,
                                  @NotBlank @Size(max = 50) String nom,
-                                 @Positive Integer capacite) {
+                                 @Positive Integer capacite,
+                                 @Size(max = 30) String serie) {
 }

@@ -1,34 +1,39 @@
+import { Center, Loader } from '@mantine/core'
+import { Suspense, lazy } from 'react'
 import { Navigate, Route, Routes, useParams } from 'react-router'
 import RequiertRole from './auth/RequiertRole'
 import RequiertSession from './auth/RequiertSession'
-import { estDirectionEtablissement, estDirectionRegionale, estEleve, estEnseignant, estGestionnaire, estMinistere, estParent } from './auth/roles'
+import { estChefCentre, estDirectionDeZone, estDirectionEtablissement, estEleve, estEnseignant, estGestionnaire, estNational, estParent } from './auth/roles'
 import MiseEnPage from './layout/MiseEnPage'
-import PageAccueil from './pages/PageAccueil'
-import PageAlertesParents from './pages/PageAlertesParents'
-import PageChangementMotDePasse from './pages/PageChangementMotDePasse'
-import PageClasseEnseignant from './pages/PageClasseEnseignant'
-import PageClasses from './pages/PageClasses'
-import PageComptes from './pages/PageComptes'
 import PageConnexion from './pages/PageConnexion'
-import PageEleves from './pages/PageEleves'
-import PageEmploiDuTempsClasse from './pages/PageEmploiDuTempsClasse'
-import PageEmploisDuTemps from './pages/PageEmploisDuTemps'
-import PageEnfant from './pages/PageEnfant'
-import PageEnseignants from './pages/PageEnseignants'
-import PageFinances from './pages/PageFinances'
-import PageInscriptions from './pages/PageInscriptions'
-import PageMessages from './pages/PageMessages'
-import PageMesClasses from './pages/PageMesClasses'
-import PageMesEnfants from './pages/PageMesEnfants'
-import PageMinistere from './pages/PageMinistere'
-import PageMonEspace from './pages/PageMonEspace'
-import PageMotDePasseOublie from './pages/PageMotDePasseOublie'
-import PageReinitialisation from './pages/PageReinitialisation'
-import PagePaiementSimule from './pages/PagePaiementSimule'
-import PagePresences from './pages/PagePresences'
-import PageRegion from './pages/PageRegion'
-import PageResultats from './pages/PageResultats'
-import PageVerificationDiplome from './pages/PageVerificationDiplome'
+
+// Chaque page est chargée à la demande : le premier chargement ne télécharge que le socle commun.
+const PageAccueil = lazy(() => import('./pages/PageAccueil'))
+const PageAlertesParents = lazy(() => import('./pages/PageAlertesParents'))
+const PageChangementMotDePasse = lazy(() => import('./pages/PageChangementMotDePasse'))
+const PageClasseEnseignant = lazy(() => import('./pages/PageClasseEnseignant'))
+const PageClasses = lazy(() => import('./pages/PageClasses'))
+const PageComptes = lazy(() => import('./pages/PageComptes'))
+const PageEleves = lazy(() => import('./pages/PageEleves'))
+const PageEmploiDuTempsClasse = lazy(() => import('./pages/PageEmploiDuTempsClasse'))
+const PageEmploisDuTemps = lazy(() => import('./pages/PageEmploisDuTemps'))
+const PageEnfant = lazy(() => import('./pages/PageEnfant'))
+const PageEnseignants = lazy(() => import('./pages/PageEnseignants'))
+const PageFinances = lazy(() => import('./pages/PageFinances'))
+const PageInscriptions = lazy(() => import('./pages/PageInscriptions'))
+const PageMessages = lazy(() => import('./pages/PageMessages'))
+const PageMesClasses = lazy(() => import('./pages/PageMesClasses'))
+const PageMesEnfants = lazy(() => import('./pages/PageMesEnfants'))
+const PageMinistere = lazy(() => import('./pages/PageMinistere'))
+const PageMonCentre = lazy(() => import('./pages/PageMonCentre'))
+const PageMonEspace = lazy(() => import('./pages/PageMonEspace'))
+const PageMotDePasseOublie = lazy(() => import('./pages/PageMotDePasseOublie'))
+const PageReinitialisation = lazy(() => import('./pages/PageReinitialisation'))
+const PagePaiementSimule = lazy(() => import('./pages/PagePaiementSimule'))
+const PagePresences = lazy(() => import('./pages/PagePresences'))
+const PageRegion = lazy(() => import('./pages/PageRegion'))
+const PageResultats = lazy(() => import('./pages/PageResultats'))
+const PageVerificationDiplome = lazy(() => import('./pages/PageVerificationDiplome'))
 
 /** Route paramétrée : l'emploi du temps d'une classe choisie dans la liste. */
 function EmploiDuTempsClasse() {
@@ -38,6 +43,7 @@ function EmploiDuTempsClasse() {
 
 export default function App() {
   return (
+    <Suspense fallback={<Center h="60vh"><Loader /></Center>}>
     <Routes>
       <Route path="/connexion" element={<PageConnexion />} />
       <Route path="/mot-de-passe-oublie" element={<PageMotDePasseOublie />} />
@@ -80,10 +86,13 @@ export default function App() {
         <Route path="paiement-simule/:reference" element={<PagePaiementSimule />} />
 
         {/* Ministère */}
-        <Route path="ministere" element={<RequiertRole autorise={estMinistere}><PageMinistere /></RequiertRole>} />
+        <Route path="ministere" element={<RequiertRole autorise={estNational}><PageMinistere /></RequiertRole>} />
 
         {/* Direction régionale */}
-        <Route path="region" element={<RequiertRole autorise={estDirectionRegionale}><PageRegion /></RequiertRole>} />
+        <Route path="region" element={<RequiertRole autorise={estDirectionDeZone}><PageRegion /></RequiertRole>} />
+
+        {/* Chef de centre d'examen */}
+        <Route path="mon-centre" element={<RequiertRole autorise={estChefCentre}><PageMonCentre /></RequiertRole>} />
 
         {/* Enseignants */}
         <Route path="mes-classes" element={<RequiertRole autorise={estEnseignant}><PageMesClasses /></RequiertRole>} />
@@ -110,5 +119,6 @@ export default function App() {
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>
+    </Suspense>
   )
 }

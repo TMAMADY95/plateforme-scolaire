@@ -28,6 +28,11 @@ public class ExamenNational {
     @JoinColumn(name = "cycle_id")
     private CycleScolaire cycle;
 
+    /** Barème des notes : 10 (primaire) ou 20 (collège, lycée). */
+    @Column(nullable = false)
+    @org.hibernate.annotations.JdbcTypeCode(org.hibernate.type.SqlTypes.SMALLINT)
+    private int bareme = 20;
+
     /** Classe d'examen (6e année, 10e année, terminale…) ; facultatif. */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "niveau_id")
@@ -53,6 +58,19 @@ public class ExamenNational {
 
     @Column(name = "date_proclamation")
     private java.time.LocalDate dateProclamation;
+
+    /** Calendrier prévisionnel de la correction, de la délibération et de la proclamation. */
+    @Column(name = "correction_debut_prevue")
+    private java.time.LocalDate correctionDebutPrevue;
+
+    @Column(name = "correction_fin_prevue")
+    private java.time.LocalDate correctionFinPrevue;
+
+    @Column(name = "deliberation_prevue")
+    private java.time.LocalDate deliberationPrevue;
+
+    @Column(name = "proclamation_prevue")
+    private java.time.LocalDate proclamationPrevue;
 
     /** Types d'établissement qui participent ; vide : tous les types. */
     @ManyToMany

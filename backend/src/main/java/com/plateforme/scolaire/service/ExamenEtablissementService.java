@@ -128,6 +128,7 @@ public class ExamenEtablissementService {
             c.setEleve(i.getEleve());
             c.setEtablissement(etab);
             c.setClasse(i.getClasse());
+            c.setSerie(i.getClasse() == null ? null : i.getClasse().getSerie());
             c.setCreatedAt(Instant.now(clock));
             CandidatExamen enregistre = candidats.save(c);
             enregistre.setNumero(numero(examen, enregistre.getId()));
@@ -381,7 +382,7 @@ public class ExamenEtablissementService {
                         c.getMoyenne(), c.getDecision()))
                 .toList();
         return pdf.releves(new GenerateurPdf.DonneesReleves(etab.getNom(), examen.getLibelle(),
-                examen.getAnneeScolaire().getLibelle(),
+                examen.getAnneeScolaire().getLibelle(), examen.getBareme(),
                 examen.getDateProclamation() == null ? null
                         : examen.getDateProclamation().format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy")), releves));
     }

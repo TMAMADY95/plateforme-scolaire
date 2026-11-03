@@ -18,7 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Chiffres clés de la direction régionale : uniquement les établissements des zones (et sous-zones)
- * qui lui sont confiées par un rôle DIRECTION_REGIONALE. Les autres rôles de l'utilisateur
+ * qui lui sont confiées par un rôle DIRECTION_REGIONALE (IRE) ou DIRECTION_LOCALE (DPE/DCE). Les autres rôles de l'utilisateur
  * n'élargissent pas ce périmètre.
  */
 @Service
@@ -37,7 +37,7 @@ public class RegionService {
         Map<Long, Etablissement> etablissements = new LinkedHashMap<>();
         if (p != null) {
             for (UtilisateurPrincipal.AffectationInfo a : p.getAffectations()) {
-                if (a.role() == Role.DIRECTION_REGIONALE && a.perimetre() == Perimetre.ZONE && a.zoneId() != null) {
+                if ((a.role() == Role.DIRECTION_REGIONALE || a.role() == Role.DIRECTION_LOCALE) && a.perimetre() == Perimetre.ZONE && a.zoneId() != null) {
                     etablissementRepository.findByZoneEtSousZones(a.zoneId())
                             .forEach(e -> etablissements.put(e.getId(), e));
                 }

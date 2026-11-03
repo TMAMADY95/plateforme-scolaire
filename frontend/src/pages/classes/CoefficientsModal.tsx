@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Alert, Button, Group, Loader, Modal, NumberInput, Stack, Table, Text } from '@mantine/core'
 import { notifications } from '@mantine/notifications'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { enregistrerCoefficients, listerCoefficients } from '../../api/endpoints'
+import { appliquerProgrammeAClasse, enregistrerCoefficients, listerCoefficients } from '../../api/endpoints'
 import type { Classe, CoefficientMatiere } from '../../api/types'
 
 /** Coefficient de chaque matière de la classe : il pondère la moyenne générale (1 par défaut). */
@@ -39,6 +39,17 @@ function Formulaire({
     Object.fromEntries(initiaux.map((c) => [c.matiereId, c.coefficient])),
   )
   const [erreur, setErreur] = useState<string | null>(null)
+  const depuisProgramme = useMutation({
+    mutationFn: () => appliquerProgrammeAClasse(classe.id),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['coefficients', classe.id] })
+      void queryClient.invalidateQueries({ queryKey: ['resultats'] })
+      void queryClient.invalidateQueries({ queryKey: ['bulletin'] })
+      notifications.show({ color: 'green', title: 'Programme appliqué', message: `Les coefficients du programme officiel sont appliqués à la classe ${classe.nom}.` })
+      onFermer()
+    },
+    onError: (e) => setErreur(e.message),
+  })
 
   const enregistrement = useMutation({
     mutationFn: (lignes: { matiereId: number; coefficient: number }[]) => enregistrerCoefficients(classe.id, lignes),
@@ -79,11 +90,20 @@ function Formulaire({
     return (
       <Stack>
         <Text c="dimmed">
-          Aucune matière n'est encore enseignée dans cette classe. Affectez d'abord des enseignants.
+          Aucune matière n'est encore enseignée dans cette classe. Affectez d'abord des enseignants, ou appliquez le programme
+          officiel du niveau.
         </Text>
+        {erreur !== null && (
+          <Alert color="red" variant="light">
+            {erreur}
+          </Alert>
+        )}
         <Group justify="flex-end">
           <Button variant="default" onClick={onFermer}>
             Fermer
+          </Button>
+          <Button variant="light" loading={depuisProgramme.isPending} onClick={() => depuisProgramme.mutate()}>
+            Appliquer le programme officiel
           </Button>
         </Group>
       </Stack>
@@ -124,6 +144,9 @@ function Formulaire({
       <Group justify="flex-end">
         <Button variant="default" onClick={onFermer}>
           Annuler
+        </Button>
+        <Button variant="light" loading={depuisProgramme.isPending} onClick={() => depuisProgramme.mutate()}>
+          Appliquer le programme officiel
         </Button>
         <Button onClick={enregistrer} loading={enregistrement.isPending}>
           Enregistrer

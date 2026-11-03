@@ -4,12 +4,14 @@ import { useForm } from '@mantine/form'
 import { notifications } from '@mantine/notifications'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { modifierClasse } from '../../api/endpoints'
+import { SERIES_LYCEE } from '../../api/types'
 import type { Classe, Niveau } from '../../api/types'
 
 interface Valeurs {
   niveauId: string | null
   nom: string
   capacite: number | string
+  serie: string | null
 }
 
 /** Modification d'une classe : niveau, nom et capacité (l'année ne change pas). */
@@ -26,7 +28,7 @@ export default function ModifierClasseModal({
   const [erreur, setErreur] = useState<string | null>(null)
 
   const formulaire = useForm<Valeurs>({
-    initialValues: { niveauId: String(classe.niveauId), nom: classe.nom, capacite: classe.capacite ?? '' },
+    initialValues: { niveauId: String(classe.niveauId), nom: classe.nom, capacite: classe.capacite ?? '', serie: classe.serie },
     validate: {
       niveauId: (v) => (v === null ? 'Niveau requis' : null),
       nom: (v) => (v.trim() === '' ? 'Nom requis' : null),
@@ -40,6 +42,7 @@ export default function ModifierClasseModal({
         niveauId: Number(v.niveauId),
         nom: v.nom.trim(),
         capacite: v.capacite === '' ? null : Number(v.capacite),
+        serie: v.serie,
       }),
     onSuccess: (c) => {
       for (const cle of ['classes', 'classes-etab']) {
@@ -66,6 +69,7 @@ export default function ModifierClasseModal({
             data={niveaux.map((n) => ({ value: String(n.id), label: n.libelle }))}
             {...formulaire.getInputProps('niveauId')}
           />
+          <Select label="Série (lycée)" clearable data={SERIES_LYCEE} {...formulaire.getInputProps('serie')} />
           <TextInput label="Nom" {...formulaire.getInputProps('nom')} />
           <NumberInput
             label="Capacité"

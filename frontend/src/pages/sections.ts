@@ -20,6 +20,9 @@ export const SECTIONS_MINISTERE: Section[] = [
   { valeur: 'audit', libelle: "Journal d'audit", icone: 'horaires' },
 ]
 
+/** Section réservée à l'IRE : les comptes des directions préfectorales et communales de sa région. */
+export const SECTION_COMPTES_LOCAUX: Section = { valeur: 'comptes-locaux', libelle: 'Directions DPE/DCE', icone: 'enfants' }
+
 export const SECTIONS_REGION: Section[] = [
   { valeur: 'etablissements', libelle: 'Établissements de la zone', icone: 'ecole' },
   { valeur: 'postes', libelle: 'Enseignants', icone: 'enseignants' },

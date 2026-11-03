@@ -1,5 +1,6 @@
 package com.plateforme.scolaire.web;
 
+import com.plateforme.scolaire.security.DroitsExamen;
 import com.plateforme.scolaire.service.ExamenEtablissementService;
 import com.plateforme.scolaire.web.dto.AffectationCentreRequest;
 import com.plateforme.scolaire.web.dto.CentreExamenDto;
@@ -22,7 +23,10 @@ import org.springframework.web.bind.annotation.*;
 @RequiredArgsConstructor
 public class ExamenEtablissementController {
 
-    private static final String SUPERVISION = "hasAnyRole('MINISTERE','DIRECTION_REGIONALE')";
+    private static final String SUPERVISION = DroitsExamen.CONSULTATION;
+    private static final String GESTION = DroitsExamen.GESTION;
+    /** Le calendrier des épreuves est fixé par le ministère (ou l'organisateur d'un examen non national). */
+    private static final String CALENDRIER = DroitsExamen.GESTION;
 
     private final ExamenEtablissementService service;
     private final com.plateforme.scolaire.service.EpreuvesExamenService epreuves;
@@ -79,20 +83,20 @@ public class ExamenEtablissementController {
 
     @PostMapping("/api/examens/{examenId}/centres")
     @ResponseStatus(HttpStatus.CREATED)
-    @PreAuthorize(SUPERVISION)
+    @PreAuthorize(GESTION)
     public CentreExamenDto creerCentre(@PathVariable Long examenId, @Valid @RequestBody CentreExamenRequest r) {
         return service.creerCentre(examenId, r);
     }
 
     @DeleteMapping("/api/centres-examen/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    @PreAuthorize(SUPERVISION)
+    @PreAuthorize(GESTION + " and @accesCentre.peut(#id)")
     public void supprimerCentre(@PathVariable Long id) {
         service.supprimerCentre(id);
     }
 
     @PutMapping("/api/examens/{examenId}/etablissements/{etablissementId}/centre")
-    @PreAuthorize(SUPERVISION + " and @perimetre.peutAccederEtablissement(#etablissementId)")
+    @PreAuthorize(GESTION + " and @perimetre.peutAccederEtablissement(#etablissementId)")
     public int affecterCentre(@PathVariable Long examenId, @PathVariable Long etablissementId,
                               @Valid @RequestBody AffectationCentreRequest r) {
         return service.affecterCentre(examenId, etablissementId, r.centreId());
@@ -100,14 +104,14 @@ public class ExamenEtablissementController {
 
     /** Emploi du temps officiel : lisible par les directions et la supervision. */
     @GetMapping("/api/examens/{examenId}/epreuves")
-    @PreAuthorize("hasAnyRole('MINISTERE','DIRECTION_REGIONALE','DIRECTION_ETABLISSEMENT','PERSONNEL_ADMIN')")
+    @PreAuthorize("hasAnyRole('MINISTERE','DGECS','DIRECTION_REGIONALE','DIRECTION_LOCALE','DIRECTION_ETABLISSEMENT','PERSONNEL_ADMIN')")
     public List<com.plateforme.scolaire.web.dto.EpreuveDto> epreuves(@PathVariable Long examenId) {
         return epreuves.lister(examenId);
     }
 
     @PostMapping("/api/examens/{examenId}/epreuves")
     @ResponseStatus(HttpStatus.CREATED)
-    @PreAuthorize(SUPERVISION)
+    @PreAuthorize(CALENDRIER)
     public com.plateforme.scolaire.web.dto.EpreuveDto ajouterEpreuve(@PathVariable Long examenId,
             @Valid @RequestBody com.plateforme.scolaire.web.dto.EpreuveRequest r) {
         return epreuves.ajouter(examenId, r);
@@ -115,20 +119,20 @@ public class ExamenEtablissementController {
 
     @DeleteMapping("/api/epreuves-examen/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    @PreAuthorize(SUPERVISION)
+    @PreAuthorize(CALENDRIER)
     public void supprimerEpreuve(@PathVariable Long id) {
         epreuves.supprimer(id);
     }
 
     /** Plan du centre : salles de 30 candidats au plus, tables et numéros de PV. */
     @GetMapping("/api/examens/{examenId}/centres/{centreId}/repartition")
-    @PreAuthorize(SUPERVISION)
+    @PreAuthorize(SUPERVISION + " and @accesCentre.peut(#centreId)")
     public com.plateforme.scolaire.web.dto.RepartitionCentreDto repartition(@PathVariable Long examenId, @PathVariable Long centreId) {
         return service.repartition(examenId, centreId);
     }
 
     @GetMapping("/api/examens/{examenId}/centres/{centreId}/liste-appel.pdf")
-    @PreAuthorize(SUPERVISION)
+    @PreAuthorize(SUPERVISION + " and @accesCentre.peut(#centreId)")
     public ResponseEntity<byte[]> listeAppel(@PathVariable Long examenId, @PathVariable Long centreId) {
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"liste-appel.pdf\"")
@@ -137,14 +141,14 @@ public class ExamenEtablissementController {
     }
 
     @PostMapping("/api/examens/{examenId}/centres/{centreId}/repartition")
-    @PreAuthorize(SUPERVISION)
+    @PreAuthorize(GESTION + " and @accesCentre.peut(#centreId)")
     public com.plateforme.scolaire.web.dto.RepartitionCentreDto repartir(@PathVariable Long examenId, @PathVariable Long centreId) {
         return service.repartir(examenId, centreId);
     }
 
     /** Place dans un centre de leur commune les candidats qui n'en ont pas encore. */
     @PostMapping("/api/examens/{examenId}/affectation-automatique")
-    @PreAuthorize(SUPERVISION)
+    @PreAuthorize(GESTION)
     public com.plateforme.scolaire.web.dto.AffectationAutomatiqueDto affectationAutomatique(@PathVariable Long examenId) {
         return service.affecterAutomatiquement(examenId);
     }

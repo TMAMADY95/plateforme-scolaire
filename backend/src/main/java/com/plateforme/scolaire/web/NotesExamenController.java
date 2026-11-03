@@ -1,5 +1,6 @@
 package com.plateforme.scolaire.web;
 
+import com.plateforme.scolaire.security.DroitsExamen;
 import com.plateforme.scolaire.service.NotesExamenService;
 import com.plateforme.scolaire.web.dto.NotesCandidatsDto;
 import com.plateforme.scolaire.web.dto.SaisieNotesRequest;
@@ -13,12 +14,13 @@ import org.springframework.web.bind.annotation.*;
 @RequiredArgsConstructor
 public class NotesExamenController {
 
-    private static final String DROIT = "hasAnyRole('MINISTERE','DIRECTION_REGIONALE') and @perimetre.peutAccederEtablissement(#etablissementId)";
+    private static final String LECTURE = DroitsExamen.CONSULTATION + " and @perimetre.peutAccederEtablissement(#etablissementId)";
+    private static final String DROIT = DroitsExamen.GESTION + " and @perimetre.peutAccederEtablissement(#etablissementId)";
 
     private final NotesExamenService service;
 
     @GetMapping("/api/examens/{examenId}/etablissements/{etablissementId}/notes")
-    @PreAuthorize(DROIT)
+    @PreAuthorize(LECTURE)
     public NotesCandidatsDto notes(@PathVariable Long examenId, @PathVariable Long etablissementId) {
         return service.notes(examenId, etablissementId);
     }

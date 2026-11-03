@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useDroitsExamens } from '../auth/useDroitsExamens'
 import { Alert, Badge, Button, Card, Group, Modal, NumberInput, Progress, Select, Stack, Table, Text, TextInput } from '@mantine/core'
 import { notifications } from '@mantine/notifications'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -25,6 +26,7 @@ const LIBELLE_ROLE = Object.fromEntries(ROLES.map((r) => [r.value, r.label]))
 /** Commissions de correction d'un examen : commission générale et sous-commissions par discipline, avancement de la correction. */
 export default function CorrectionExamenModal({ examen, onFermer }: { examen: Examen; onFermer: () => void }) {
   const queryClient = useQueryClient()
+  const { gestion } = useDroitsExamens()
   const cle = ['correction-examen', examen.id]
   const donnees = useQuery({ queryKey: cle, queryFn: () => correctionExamen(examen.id) })
   const appliquer = (d: CorrectionExamen) => queryClient.setQueryData(cle, d)
@@ -49,7 +51,7 @@ export default function CorrectionExamenModal({ examen, onFermer }: { examen: Ex
               </div>
             )}
             {figee && <Alert color="gray" variant="light">Les résultats sont proclamés : la correction est close.</Alert>}
-            {!figee && (
+            {!figee && gestion && (
               <Group>
                 <Button size="xs" variant="light" loading={generation.isPending} onClick={() => generation.mutate()}>
                   {d.commissions.length === 0 ? 'Constituer les commissions' : 'Ajouter les sous-commissions manquantes'}
@@ -58,7 +60,7 @@ export default function CorrectionExamenModal({ examen, onFermer }: { examen: Ex
               </Group>
             )}
             {d.commissions.map((c) => (
-              <CarteCommission key={c.id} commission={c} examenId={examen.id} figee={figee} onChange={appliquer} onErreur={erreur} />
+              <CarteCommission key={c.id} commission={c} examenId={examen.id} figee={figee || !gestion} onChange={appliquer} onErreur={erreur} />
             ))}
           </>
         )}

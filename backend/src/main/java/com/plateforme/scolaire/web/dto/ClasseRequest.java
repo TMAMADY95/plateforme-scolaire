@@ -8,5 +8,6 @@ import jakarta.validation.constraints.Size;
 public record ClasseRequest(@NotNull Long anneeScolaireId,
                             @NotNull Long niveauId,
                             @NotBlank @Size(max = 50) String nom,
-                            @Positive Integer capacite) {
+                            @Positive Integer capacite,
+                            @Size(max = 30) String serie) {
 }

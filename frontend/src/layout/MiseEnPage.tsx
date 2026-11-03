@@ -2,6 +2,9 @@ import { AppShell, Avatar, Badge, Burger, Group, Menu, NavLink, Stack, Text, Uns
 import { useDisclosure } from '@mantine/hooks'
 import { Link, Outlet, useLocation, useSearchParams } from 'react-router'
 import {
+  estChefCentre,
+  estDgecs,
+  estDirectionLocale,
   estDirectionRegionale,
   estEleve,
   estEnseignant,
@@ -16,7 +19,7 @@ import Icone from '../components/Icone'
 import type { NomIcone } from '../components/Icone'
 import Logo from '../components/Logo'
 import { useMessagesNonLus } from '../hooks/useMessagesNonLus'
-import { SECTIONS_MINISTERE, SECTIONS_REGION } from '../pages/sections'
+import { SECTIONS_MINISTERE, SECTIONS_REGION, SECTION_COMPTES_LOCAUX } from '../pages/sections'
 import type { Section } from '../pages/sections'
 
 interface Lien {
@@ -64,10 +67,18 @@ export default function MiseEnPage() {
 
   if (estMinistere(utilisateur)) {
     liens.push({ chemin: '/ministere', libelle: 'Administration nationale', icone: 'national', sections: SECTIONS_MINISTERE })
+  } else if (estDgecs(utilisateur)) {
+    liens.push({ chemin: '/ministere', libelle: 'DGECS : examens', icone: 'national' })
   }
 
   if (estDirectionRegionale(utilisateur)) {
-    liens.push({ chemin: '/region', libelle: 'Ma région', icone: 'region', sections: SECTIONS_REGION })
+    liens.push({ chemin: '/region', libelle: 'Ma région', icone: 'region', sections: [...SECTIONS_REGION, SECTION_COMPTES_LOCAUX] })
+  } else if (estDirectionLocale(utilisateur)) {
+    liens.push({ chemin: '/region', libelle: 'Ma préfecture / commune', icone: 'region', sections: SECTIONS_REGION })
+  }
+
+  if (estChefCentre(utilisateur)) {
+    liens.push({ chemin: '/mon-centre', libelle: 'Mon centre', icone: 'ecole' })
   }
 
   if (estEnseignant(utilisateur)) {

@@ -20,7 +20,7 @@ public class ElevesMinistereController {
     private final ElevesMinistereService service;
 
     @GetMapping("/api/ministere/eleves")
-    @PreAuthorize("hasRole('MINISTERE')")
+    @PreAuthorize("hasAnyRole('MINISTERE','DGECS')")
     public ElevesPageDto lister(@RequestParam Long anneeScolaireId, @RequestParam(required = false) String q,
                                 @RequestParam(required = false) Long zoneId, @RequestParam(required = false) Long etablissementId,
                                 @RequestParam(required = false) String secteur,
@@ -33,7 +33,7 @@ public class ElevesMinistereController {
     }
 
     @GetMapping("/api/ministere/eleves.pdf")
-    @PreAuthorize("hasRole('MINISTERE')")
+    @PreAuthorize("hasAnyRole('MINISTERE','DGECS')")
     public ResponseEntity<byte[]> pdf(@RequestParam Long anneeScolaireId, @RequestParam(required = false) String q,
                                       @RequestParam(required = false) Long zoneId,
                                       @RequestParam(required = false) Long etablissementId,

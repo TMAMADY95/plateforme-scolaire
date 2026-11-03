@@ -71,7 +71,7 @@ public class GenerateurPdf {
                          BigDecimal moyenne, String decision) {
     }
 
-    public record DonneesReleves(String etablissement, String examen, String anneeScolaire, String dateProclamation,
+    public record DonneesReleves(String etablissement, String examen, String anneeScolaire, int bareme, String dateProclamation,
                                  List<Releve> releves) {
     }
 
@@ -390,7 +390,7 @@ public class GenerateurPdf {
                 } else {
                     PdfPTable table = new PdfPTable(new float[] {6f, 2f, 2f});
                     table.setWidthPercentage(100);
-                    entete(table, "Épreuve", "Coefficient", "Note / 20");
+                    entete(table, "Épreuve", "Coefficient", "Note / " + d.bareme());
                     for (LigneReleve l : r.lignes()) {
                         table.addCell(cellule(l.epreuve(), NORMAL, Element.ALIGN_LEFT));
                         table.addCell(cellule(String.valueOf(l.coefficient()), NORMAL, Element.ALIGN_RIGHT));
@@ -398,7 +398,7 @@ public class GenerateurPdf {
                     }
                     document.add(table);
                     document.add(espace());
-                    document.add(ligne("Moyenne", r.moyenne() == null ? "—" : r.moyenne().toPlainString().replace('.', ',') + " / 20"));
+                    document.add(ligne("Moyenne", r.moyenne() == null ? "—" : r.moyenne().toPlainString().replace('.', ',') + " / " + d.bareme()));
                 }
                 document.add(ligne("Décision", "ADMIS".equals(r.decision()) ? "Admis" : "Non admis"));
                 document.add(espace());

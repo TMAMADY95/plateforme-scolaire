@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useDroitsExamens } from '../auth/useDroitsExamens'
 import { Alert, Badge, Button, Group, Modal, NumberInput, Select, Stack, Table, Text, TextInput } from '@mantine/core'
 import { notifications } from '@mantine/notifications'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -19,6 +20,7 @@ const LIBELLE = Object.fromEntries(FONCTIONS.map((f) => [f.value, f.label]))
 /** Personnel d'un centre d'examen et couverture des besoins : deux surveillants par salle, président, chef de centre, secrétariat. */
 export default function PersonnelCentreModal({ examenId, centre, onFermer }: { examenId: number; centre: { id: number; nom: string }; onFermer: () => void }) {
   const queryClient = useQueryClient()
+  const droits = useDroitsExamens()
   const cle = ['personnel-centre', examenId, centre.id]
   const donnees = useQuery({ queryKey: cle, queryFn: () => personnelCentre(examenId, centre.id) })
   const [role, setRole] = useState<FonctionCentre | null>('SURVEILLANT')
@@ -104,13 +106,16 @@ export default function PersonnelCentreModal({ examenId, centre, onFermer }: { e
                       <Table.Td>{p.telephone ?? '—'}</Table.Td>
                       <Table.Td>{p.salle ?? '—'}</Table.Td>
                       <Table.Td ta="right">
-                        <Button size="compact-xs" color="red" variant="subtle" onClick={() => retrait.mutate(p.id)}>Retirer</Button>
+                        {droits.terrain && (
+                          <Button size="compact-xs" color="red" variant="subtle" onClick={() => retrait.mutate(p.id)}>Retirer</Button>
+                        )}
                       </Table.Td>
                     </Table.Tr>
                   ))}
                 </Table.Tbody>
               </Table>
             )}
+            {droits.terrain && (
             <Group align="flex-end">
               <Select label="Fonction" data={FONCTIONS} value={role} onChange={(v) => setRole(v as FonctionCentre | null)} allowDeselect={false} w={270} />
               <TextInput label="Nom" value={nom} onChange={(e) => setNom(e.currentTarget.value)} w={200} />
@@ -118,6 +123,7 @@ export default function PersonnelCentreModal({ examenId, centre, onFermer }: { e
               {parSalle && <NumberInput label="Salle" min={1} allowDecimal={false} value={salle} onChange={setSalle} w={80} />}
               <Button disabled={role === null || nom.trim() === ''} loading={ajout.isPending} onClick={() => ajout.mutate()}>Désigner</Button>
             </Group>
+            )}
             {erreur && <Alert color="red" variant="light">{erreur}</Alert>}
             <Text size="xs" c="dimmed">Les surveillants sont désignés par note de service de l'autorité éducative : saisissez ici les noms qu'elle a arrêtés.</Text>
           </>

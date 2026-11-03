@@ -60,6 +60,9 @@ public class DevDataInitializer implements CommandLineRunner {
         Utilisateur ministere = utilisateur(EMAIL_MINISTERE, "Ministère", "Démo");
         affecter(ministere, Role.MINISTERE, Perimetre.NATIONAL, null);
 
+        Utilisateur dgecs = utilisateur("dgecs@example.org", "DGECS", "Démo");
+        affecter(dgecs, Role.DGECS, Perimetre.NATIONAL, null);
+
         Utilisateur direction = utilisateur(EMAIL_DIRECTION, "Direction", "École 1");
         affecter(direction, Role.DIRECTION_ETABLISSEMENT, Perimetre.ETABLISSEMENT, ecole1);
 

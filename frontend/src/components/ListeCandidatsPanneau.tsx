@@ -3,13 +3,13 @@ import { Alert, Badge, Button, Group, Stack, Text, TextInput } from '@mantine/co
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { listeCandidats, rejeterListe, transmettreListe, validerListe, verifierListe } from '../api/endpoints'
 import type { ListeCandidats } from '../api/types'
-import { estMinistere } from '../auth/roles'
+import { droitsExamens } from '../auth/roles'
 import { useUtilisateur } from '../auth/useAuth'
 
-const LIBELLE = { BROUILLON: 'En préparation', TRANSMISE: 'Transmise', VALIDEE_REGION: 'Vérifiée par la région', VALIDEE: 'Validée' }
+const LIBELLE = { BROUILLON: 'En préparation', TRANSMISE: 'Transmise', VALIDEE_REGION: 'Vérifiée (DPE/DCE)', VALIDEE: 'Validée' }
 const COULEUR = { BROUILLON: 'gray', TRANSMISE: 'blue', VALIDEE_REGION: 'cyan', VALIDEE: 'green' }
 
-/** Circuit de validation de la liste des candidats : l'établissement transmet, la région vérifie, le ministère valide. */
+/** Circuit de validation de la liste des candidats : l'établissement transmet, la direction préfectorale ou communale (DPE/DCE) vérifie, la DGECS valide. */
 export default function ListeCandidatsPanneau({ etablissementId, examenId, supervision }: { etablissementId: number; examenId: number; supervision: boolean }) {
   const queryClient = useQueryClient()
   const utilisateur = useUtilisateur()
@@ -32,8 +32,8 @@ export default function ListeCandidatsPanneau({ etablissementId, examenId, super
   if (!l) {
     return null
   }
-  const ministere = estMinistere(utilisateur)
-  const peutRejeter = supervision && (l.statut === 'TRANSMISE' || (l.statut === 'VALIDEE_REGION' && ministere))
+  const droits = droitsExamens(utilisateur)
+  const peutRejeter = supervision && droits.gestion && (l.statut === 'TRANSMISE' || (l.statut === 'VALIDEE_REGION' && droits.dgecs))
 
   return (
     <Stack gap="xs">
@@ -50,10 +50,10 @@ export default function ListeCandidatsPanneau({ etablissementId, examenId, super
             Transmettre la liste
           </Button>
         )}
-        {supervision && l.statut === 'TRANSMISE' && (
+        {supervision && droits.gestion && l.statut === 'TRANSMISE' && (
           <Button size="xs" loading={verification.isPending} onClick={() => verification.mutate()}>Marquer vérifiée</Button>
         )}
-        {supervision && ministere && l.statut === 'VALIDEE_REGION' && (
+        {supervision && droits.dgecs && l.statut === 'VALIDEE_REGION' && (
           <Button size="xs" color="green" loading={validation.isPending} onClick={() => validation.mutate()}>Valider la liste définitive</Button>
         )}
         {peutRejeter && (

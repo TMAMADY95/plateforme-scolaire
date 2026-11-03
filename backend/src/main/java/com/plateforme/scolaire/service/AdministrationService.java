@@ -175,6 +175,31 @@ public class AdministrationService {
         return ComptePersonnelDto.de(utilisateur, Role.DIRECTION_REGIONALE.name());
     }
 
+    /**
+     * Compte de direction préfectorale (DPE) ou communale (DCE) : un seul rôle, la zone dit s'il s'agit d'une préfecture
+     * ou d'une commune. Il vérifie les listes de candidats et suit les centres d'examen de sa zone.
+     */
+    public ComptePersonnelDto creerDirectionLocale(Long zoneId, DirectionRequest r) {
+        ZoneGeographique zone = zoneRepository.findById(zoneId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Zone introuvable"));
+        if (!"PREFECTURE".equalsIgnoreCase(zone.getTypeZone()) && !"COMMUNE".equalsIgnoreCase(zone.getTypeZone())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Une direction préfectorale ou communale se rattache à une préfecture ou à une commune");
+        }
+        Utilisateur utilisateur = creerCompte(r);
+
+        AffectationRole role = new AffectationRole();
+        role.setUtilisateur(utilisateur);
+        role.setRole(Role.DIRECTION_LOCALE);
+        role.setPerimetre(Perimetre.ZONE);
+        role.setZone(zone);
+        affectationRoleRepository.save(role);
+
+        auditService.enregistrer("CREATION_COMPTE_DIRECTION_LOCALE", "utilisateur", utilisateur.getId(),
+                Map.of("zoneId", zoneId, "email", utilisateur.getEmail()));
+        return ComptePersonnelDto.de(utilisateur, Role.DIRECTION_LOCALE.name());
+    }
+
     // ---------- Chiffres clés ----------
 
     @Transactional(readOnly = true)

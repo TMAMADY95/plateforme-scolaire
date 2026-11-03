@@ -1,9 +1,15 @@
 import { useState } from 'react'
+import { useDroitsExamens } from '../auth/useDroitsExamens'
+import ChefsCentreModal from './ChefsCentreModal'
+import PreparationCentreModal from './PreparationCentreModal'
 import { Alert, Badge, Button, Divider, Group, Modal, NumberInput, Select, Stack, Table, Text, TextInput } from '@mantine/core'
 import { notifications } from '@mantine/notifications'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
+  definirBaremeExamen,
   affecterCentresAutomatiquement,
+  calendrierPrevisionnel,
+  definirCalendrierPrevisionnel,
   ajouterEpreuve,
   centresExamen,
   creerCentreExamen,
@@ -16,9 +22,11 @@ import {
   supprimerCentreExamen,
   supprimerEpreuve,
   telechargerListeAppel,
+  suiviPreparationCentres,
 } from '../api/endpoints'
 import type { AffectationAutomatique, Examen } from '../api/types'
 import { formaterDate } from '../utils/dates'
+import SuiviListesModal from './SuiviListesModal'
 import DeroulementCentreModal from './DeroulementCentreModal'
 import IncidentsCentreModal from './IncidentsCentreModal'
 import PersonnelCentreModal from './PersonnelCentreModal'
@@ -27,10 +35,19 @@ const heure = (h: string) => h.slice(0, 5)
 
 /** Période officielle, emploi du temps des épreuves et centres d'examen d'un examen. */
 export default function CalendrierExamenModal({ examen, onFermer }: { examen: Examen; onFermer: () => void }) {
+  const [suiviOuvert, setSuiviOuvert] = useState(false)
   return (
     <Modal opened onClose={onFermer} size="xl" title={`Calendrier et centres : ${examen.libelle}`}>
       <Stack gap="lg">
+        <Group>
+          <Button variant="light" onClick={() => setSuiviOuvert(true)}>Suivi des listes de candidats</Button>
+        </Group>
+        {suiviOuvert && <SuiviListesModal examenId={examen.id} titre={examen.libelle} onFermer={() => setSuiviOuvert(false)} />}
         <Periode examen={examen} />
+        <Divider />
+        <Bareme examen={examen} />
+        <Divider />
+        <Previsionnel examenId={examen.id} />
         <Divider />
         <Epreuves examenId={examen.id} />
         <Divider />
@@ -40,8 +57,52 @@ export default function CalendrierExamenModal({ examen, onFermer }: { examen: Ex
   )
 }
 
+/** Barème des notes de l'examen : 10 (primaire) ou 20, modifiable par la DGECS tant qu'aucune note n'est saisie. */
+function Bareme({ examen }: { examen: Examen }) {
+  const queryClient = useQueryClient()
+  const { dgecs } = useDroitsExamens()
+  const [bareme, setBareme] = useState<string | null>(String(examen.bareme))
+  const [erreur, setErreur] = useState<string | null>(null)
+  const enregistrement = useMutation({
+    mutationFn: () => definirBaremeExamen(examen.id, Number(bareme)),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['examens'] })
+      setErreur(null)
+      notifications.show({ color: 'green', title: 'Barème enregistré', message: `${examen.libelle} : notes sur ${bareme}` })
+    },
+    onError: (e) => setErreur(e.message),
+  })
+  return (
+    <Stack gap="xs">
+      <Text fw={600}>Barème des notes</Text>
+      <Group align="flex-end">
+        <Select
+          label="Notes sur"
+          data={[{ value: '10', label: '10 (primaire)' }, { value: '20', label: '20 (collège, lycée)' }]}
+          value={bareme}
+          onChange={setBareme}
+          allowDeselect={false}
+          disabled={!dgecs}
+          w={200}
+        />
+        {dgecs && (
+          <Button loading={enregistrement.isPending} disabled={bareme === String(examen.bareme)} onClick={() => enregistrement.mutate()}>
+            Enregistrer
+          </Button>
+        )}
+      </Group>
+      <Text size="xs" c="dimmed">
+        Les mentions suivent le barème : passable à 50 %, assez bien à 60 %, bien à 70 %, très bien à 80 %. Le barème ne peut plus changer dès
+        que des notes ou des statuts de candidats sont saisis.
+      </Text>
+      {erreur && <Alert color="red" variant="light">{erreur}</Alert>}
+    </Stack>
+  )
+}
+
 function Periode({ examen }: { examen: Examen }) {
   const queryClient = useQueryClient()
+  const { calendrier } = useDroitsExamens()
   const [debut, setDebut] = useState(examen.dateDebut ?? '')
   const [fin, setFin] = useState(examen.dateFin ?? '')
   const [erreur, setErreur] = useState<string | null>(null)
@@ -58,18 +119,88 @@ function Periode({ examen }: { examen: Examen }) {
     <Stack gap="xs">
       <Text fw={600}>Période des épreuves</Text>
       <Group align="flex-end">
-        <TextInput label="Début" type="date" value={debut} onChange={(e) => setDebut(e.currentTarget.value)} />
-        <TextInput label="Fin" type="date" value={fin} onChange={(e) => setFin(e.currentTarget.value)} />
-        <Button loading={enregistrement.isPending} onClick={() => enregistrement.mutate()}>
-          Enregistrer
-        </Button>
+        <TextInput label="Début" type="date" value={debut} onChange={(e) => setDebut(e.currentTarget.value)} disabled={!calendrier} />
+        <TextInput label="Fin" type="date" value={fin} onChange={(e) => setFin(e.currentTarget.value)} disabled={!calendrier} />
+        {calendrier && (
+          <Button loading={enregistrement.isPending} onClick={() => enregistrement.mutate()}>
+            Enregistrer
+          </Button>
+        )}
       </Group>
       {erreur && <Alert color="red" variant="light">{erreur}</Alert>}
     </Stack>
   )
 }
 
+const ETAPES: Record<string, string> = { CORRECTION: 'Correction', DELIBERATION: 'Délibération', PROCLAMATION: 'Proclamation' }
+
+/** Calendrier prévisionnel des suites de l'examen : correction, délibération, proclamation, avec signalement des retards. */
+function Previsionnel({ examenId }: { examenId: number }) {
+  const queryClient = useQueryClient()
+  const { calendrier } = useDroitsExamens()
+  const cle = ['calendrier-previsionnel', examenId]
+  const donnees = useQuery({ queryKey: cle, queryFn: () => calendrierPrevisionnel(examenId) })
+  const [saisie, setSaisie] = useState<Record<string, string> | null>(null)
+  const [erreur, setErreur] = useState<string | null>(null)
+  const d = donnees.data
+  const valeurs = saisie ?? {
+    correctionDebut: d?.correctionDebut ?? '',
+    correctionFin: d?.correctionFin ?? '',
+    deliberation: d?.deliberation ?? '',
+    proclamation: d?.proclamation ?? '',
+  }
+  const champ = (cle: string, label: string) => (
+    <TextInput
+      label={label}
+      type="date"
+      value={valeurs[cle]}
+      disabled={!calendrier}
+      onChange={(e) => setSaisie({ ...valeurs, [cle]: e.currentTarget.value })}
+    />
+  )
+  const vide = (v: string) => (v === '' ? null : v)
+  const enregistrement = useMutation({
+    mutationFn: () =>
+      definirCalendrierPrevisionnel(examenId, {
+        correctionDebut: vide(valeurs.correctionDebut),
+        correctionFin: vide(valeurs.correctionFin),
+        deliberation: vide(valeurs.deliberation),
+        proclamation: vide(valeurs.proclamation),
+      }),
+    onSuccess: (r) => {
+      queryClient.setQueryData(cle, r)
+      setSaisie(null)
+      setErreur(null)
+      notifications.show({ color: 'green', title: 'Calendrier prévisionnel enregistré', message: '' })
+    },
+    onError: (e) => setErreur(e.message),
+  })
+  return (
+    <Stack gap="xs">
+      <Text fw={600}>Calendrier prévisionnel des résultats</Text>
+      <Group align="flex-end">
+        {champ('correctionDebut', 'Début de la correction')}
+        {champ('correctionFin', 'Fin de la correction')}
+        {champ('deliberation', 'Délibération')}
+        {champ('proclamation', 'Proclamation')}
+        {calendrier && (
+          <Button loading={enregistrement.isPending} onClick={() => enregistrement.mutate()}>
+            Enregistrer
+          </Button>
+        )}
+      </Group>
+      {d && d.retards.length > 0 && (
+        <Alert color="orange" variant="light">
+          En retard sur le calendrier prévisionnel : {d.retards.map((r) => ETAPES[r] ?? r).join(', ')}.
+        </Alert>
+      )}
+      {erreur && <Alert color="red" variant="light">{erreur}</Alert>}
+    </Stack>
+  )
+}
+
 function Epreuves({ examenId }: { examenId: number }) {
+  const { calendrier } = useDroitsExamens()
   const queryClient = useQueryClient()
   const liste = useQuery({ queryKey: ['epreuves', examenId], queryFn: () => epreuvesExamen(examenId) })
   const matieres = useQuery({ queryKey: ['matieres'], queryFn: listerMatieres })
@@ -130,15 +261,18 @@ function Epreuves({ examenId }: { examenId: number }) {
                 <Table.Td>{e.matiere}</Table.Td>
                 <Table.Td>{e.coefficient}</Table.Td>
                 <Table.Td ta="right">
-                  <Button size="compact-xs" color="red" variant="subtle" onClick={() => suppression.mutate(e.id)}>
-                    Supprimer
-                  </Button>
+                  {calendrier && (
+                    <Button size="compact-xs" color="red" variant="subtle" onClick={() => suppression.mutate(e.id)}>
+                      Supprimer
+                    </Button>
+                  )}
                 </Table.Td>
               </Table.Tr>
             ))}
           </Table.Tbody>
         </Table>
       )}
+      {calendrier && (
       <Group align="flex-end">
         <Select
           label="Matière"
@@ -165,12 +299,14 @@ function Epreuves({ examenId }: { examenId: number }) {
           Ajouter
         </Button>
       </Group>
+      )}
       {erreur && <Alert color="red" variant="light">{erreur}</Alert>}
     </Stack>
   )
 }
 
 function Centres({ examenId }: { examenId: number }) {
+  const { gestion } = useDroitsExamens()
   const queryClient = useQueryClient()
   const centres = useQuery({ queryKey: ['centres-examen', examenId], queryFn: () => centresExamen(examenId) })
   const etablissements = useQuery({ queryKey: ['etablissements-centres'], queryFn: etablissementsCentres })
@@ -179,6 +315,10 @@ function Centres({ examenId }: { examenId: number }) {
   const [resultat, setResultat] = useState<AffectationAutomatique | null>(null)
   const [centreSalles, setCentreSalles] = useState<{ id: number; nom: string } | null>(null)
   const [centrePersonnel, setCentrePersonnel] = useState<{ id: number; nom: string } | null>(null)
+  const [centrePreparation, setCentrePreparation] = useState<{ id: number; nom: string } | null>(null)
+  const preparation = useQuery({ queryKey: ['preparation-centres', examenId], queryFn: () => suiviPreparationCentres(examenId) })
+  const suivi = new Map((preparation.data ?? []).map((p) => [p.centreId, p]))
+  const [centreChefs, setCentreChefs] = useState<{ id: number; nom: string } | null>(null)
   const [centreIncidents, setCentreIncidents] = useState<{ id: number; nom: string } | null>(null)
   const [centreDeroulement, setCentreDeroulement] = useState<{ id: number; nom: string } | null>(null)
 
@@ -225,7 +365,14 @@ function Centres({ examenId }: { examenId: number }) {
           <Table.Tbody>
             {centres.data.map((c) => (
               <Table.Tr key={c.id}>
-                <Table.Td>{c.nom}</Table.Td>
+                <Table.Td>
+                  {c.nom}{' '}
+                  {suivi.get(c.id) && (
+                    <Badge variant="light" color={suivi.get(c.id)!.pret ? 'green' : 'orange'} size="sm">
+                      {suivi.get(c.id)!.pret ? 'Prêt' : `${suivi.get(c.id)!.faits}/${suivi.get(c.id)!.total}`}
+                    </Badge>
+                  )}
+                </Table.Td>
                 <Table.Td>{c.zone ?? '—'}</Table.Td>
                 <Table.Td ta="right">
                   <Button size="compact-xs" variant="subtle" onClick={() => setCentreSalles(c)}>
@@ -240,15 +387,26 @@ function Centres({ examenId }: { examenId: number }) {
                   <Button size="compact-xs" variant="subtle" onClick={() => setCentreIncidents(c)}>
                     Incidents
                   </Button>
-                  <Button size="compact-xs" color="red" variant="subtle" onClick={() => suppression.mutate(c.id)}>
-                    Retirer
+                  <Button size="compact-xs" variant="subtle" onClick={() => setCentrePreparation(c)}>
+                    Préparation
                   </Button>
+                  {gestion && (
+                    <Button size="compact-xs" variant="subtle" onClick={() => setCentreChefs(c)}>
+                      Chefs de centre
+                    </Button>
+                  )}
+                  {gestion && (
+                    <Button size="compact-xs" color="red" variant="subtle" onClick={() => suppression.mutate(c.id)}>
+                      Retirer
+                    </Button>
+                  )}
                 </Table.Td>
               </Table.Tr>
             ))}
           </Table.Tbody>
         </Table>
       )}
+      {gestion && (
       <Group align="flex-end">
         <Select
           label="Désigner un établissement éligible comme centre"
@@ -268,9 +426,12 @@ function Centres({ examenId }: { examenId: number }) {
           Affecter automatiquement les candidats
         </Button>
       </Group>
+      )}
       {centreDeroulement && <DeroulementCentreModal examenId={examenId} centre={centreDeroulement} onFermer={() => setCentreDeroulement(null)} />}
       {centreIncidents && <IncidentsCentreModal examenId={examenId} centre={centreIncidents} onFermer={() => setCentreIncidents(null)} />}
       {centrePersonnel && <PersonnelCentreModal examenId={examenId} centre={centrePersonnel} onFermer={() => setCentrePersonnel(null)} />}
+      {centrePreparation && <PreparationCentreModal examenId={examenId} centre={centrePreparation} onFermer={() => setCentrePreparation(null)} />}
+      {centreChefs && <ChefsCentreModal examenId={examenId} centre={centreChefs} onFermer={() => setCentreChefs(null)} />}
       {centreSalles && <SallesCentre examenId={examenId} centre={centreSalles} onFermer={() => setCentreSalles(null)} />}
       {erreur && <Alert color="red" variant="light">{erreur}</Alert>}
       {resultat && (
@@ -286,6 +447,7 @@ function Centres({ examenId }: { examenId: number }) {
 
 /** Plan d'un centre : salles de 30 candidats au plus, une table chacun, et numéro de PV de chaque candidat. */
 function SallesCentre({ examenId, centre, onFermer }: { examenId: number; centre: { id: number; nom: string }; onFermer: () => void }) {
+  const { gestion } = useDroitsExamens()
   const queryClient = useQueryClient()
   const plan = useQuery({ queryKey: ['repartition-centre', examenId, centre.id], queryFn: () => repartitionCentre(examenId, centre.id) })
   const generation = useMutation({
@@ -320,9 +482,11 @@ function SallesCentre({ examenId, centre, onFermer }: { examenId: number; centre
               l'arrivée de nouveaux candidats : les numéros de PV sont recalculés.
             </Text>
             <Group>
-              <Button loading={generation.isPending} disabled={p.candidats === 0} onClick={() => generation.mutate()}>
-                {p.repartie ? 'Refaire la répartition' : 'Répartir en salles et numéroter'}
-              </Button>
+              {gestion && (
+                <Button loading={generation.isPending} disabled={p.candidats === 0} onClick={() => generation.mutate()}>
+                  {p.repartie ? 'Refaire la répartition' : 'Répartir en salles et numéroter'}
+                </Button>
+              )}
               <Button variant="light" disabled={!p.repartie} loading={liste.isPending} onClick={() => liste.mutate()}>
                 Liste d'appel (PDF)
               </Button>

@@ -1,9 +1,9 @@
 import { useState } from 'react'
-import { Alert, Button, Group, Modal, Select, Stack, TextInput } from '@mantine/core'
+import { Alert, Button, FileInput, Group, Modal, Select, Stack, Text, TextInput } from '@mantine/core'
 import { useForm } from '@mantine/form'
 import { notifications } from '@mantine/notifications'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { modifierEleve } from '../../api/endpoints'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { envoyerPhotoEleve, infoPhotoEleve, modifierEleve, supprimerPhotoEleve } from '../../api/endpoints'
 import type { Eleve } from '../../api/types'
 import { aujourdhui } from '../../utils/dates'
 
@@ -18,15 +18,35 @@ interface Valeurs {
   prenom: string
   dateNaissance: string
   sexe: string | null
+  lieuNaissance: string
+  nomPere: string
+  nomMere: string
 }
 
 /** Correction de l'identité d'un élève. Le matricule ne change jamais. */
 export default function ModifierEleveModal({ eleve, etablissementId, onFermer }: Props) {
   const queryClient = useQueryClient()
   const [erreur, setErreur] = useState<string | null>(null)
+  const [fichier, setFichier] = useState<File | null>(null)
+  const photo = useQuery({ queryKey: ['photo-eleve', eleve.id], queryFn: () => infoPhotoEleve(eleve.id) })
+  const envoi = useMutation({
+    mutationFn: () => envoyerPhotoEleve(eleve.id, fichier as File),
+    onSuccess: () => {
+      setFichier(null)
+      void queryClient.invalidateQueries({ queryKey: ['photo-eleve', eleve.id] })
+      notifications.show({ color: 'green', title: 'Photo enregistrée', message: `Matricule ${eleve.matricule}` })
+    },
+    onError: (e) => setErreur(e.message),
+  })
+  const retrait = useMutation({
+    mutationFn: () => supprimerPhotoEleve(eleve.id),
+    onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['photo-eleve', eleve.id] }),
+    onError: (e) => setErreur(e.message),
+  })
 
   const formulaire = useForm<Valeurs>({
-    initialValues: { nom: eleve.nom, prenom: eleve.prenom, dateNaissance: eleve.dateNaissance, sexe: eleve.sexe },
+    initialValues: { nom: eleve.nom, prenom: eleve.prenom, dateNaissance: eleve.dateNaissance, sexe: eleve.sexe,
+      lieuNaissance: eleve.lieuNaissance ?? '', nomPere: eleve.nomPere ?? '', nomMere: eleve.nomMere ?? '' },
     validate: {
       nom: (v) => (v.trim() === '' ? 'Nom requis' : null),
       prenom: (v) => (v.trim() === '' ? 'Prénom requis' : null),
@@ -37,7 +57,15 @@ export default function ModifierEleveModal({ eleve, etablissementId, onFermer }:
 
   const modification = useMutation({
     mutationFn: (v: Valeurs) =>
-      modifierEleve(eleve.id, { nom: v.nom.trim(), prenom: v.prenom.trim(), dateNaissance: v.dateNaissance, sexe: v.sexe }),
+      modifierEleve(eleve.id, {
+        nom: v.nom.trim(),
+        prenom: v.prenom.trim(),
+        dateNaissance: v.dateNaissance,
+        sexe: v.sexe,
+        lieuNaissance: v.lieuNaissance.trim(),
+        nomPere: v.nomPere.trim(),
+        nomMere: v.nomMere.trim(),
+      }),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['inscriptions', etablissementId] })
       notifications.show({ color: 'green', title: 'Identité corrigée', message: `Matricule ${eleve.matricule}` })
@@ -71,6 +99,28 @@ export default function ModifierEleveModal({ eleve, etablissementId, onFermer }:
               {...formulaire.getInputProps('sexe')}
             />
           </Group>
+          <TextInput label="Lieu de naissance" description="Figure sur les diplômes" {...formulaire.getInputProps('lieuNaissance')} />
+          <Group grow align="flex-start">
+            <TextInput label="Père" {...formulaire.getInputProps('nomPere')} />
+            <TextInput label="Mère" {...formulaire.getInputProps('nomMere')} />
+          </Group>
+          <Stack gap={4}>
+            <Text size="sm" fw={500}>Photo d'identité (JPEG ou PNG, 1 Mo au plus)</Text>
+            <Text size="xs" c="dimmed">
+              {photo.data?.presente ? `Photo enregistrée (${Math.round(photo.data.taille / 1024)} Ko) : elle figure sur le diplôme.` : 'Aucune photo enregistrée.'}
+            </Text>
+            <Group align="flex-end" gap="xs">
+              <FileInput size="xs" placeholder="Choisir une photo" accept="image/jpeg,image/png" value={fichier} onChange={setFichier} clearable w={220} />
+              <Button size="xs" variant="light" disabled={fichier === null} loading={envoi.isPending} onClick={() => envoi.mutate()}>
+                Envoyer
+              </Button>
+              {photo.data?.presente && (
+                <Button size="xs" variant="subtle" color="red" loading={retrait.isPending} onClick={() => retrait.mutate()}>
+                  Retirer
+                </Button>
+              )}
+            </Group>
+          </Stack>
           {erreur !== null && (
             <Alert color="red" variant="light">
               {erreur}

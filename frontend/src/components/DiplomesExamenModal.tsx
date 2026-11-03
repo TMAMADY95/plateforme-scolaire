@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useDroitsExamens } from '../auth/useDroitsExamens'
 import { Alert, Badge, Button, Group, Modal, Stack, Table, Text, TextInput } from '@mantine/core'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { delivrerDiplomes, diplomesExamen, revoquerDiplome } from '../api/endpoints'
@@ -18,6 +19,7 @@ export default function DiplomesExamenModal({ examen, onFermer }: { examen: Exam
   }
   const delivrance = useMutation({ mutationFn: () => delivrerDiplomes(examen.id), onSuccess: appliquer, onError: (e) => setErreur(e.message) })
   const d = donnees.data
+  const { dgecs } = useDroitsExamens()
 
   return (
     <Modal opened onClose={onFermer} size="xl" title={`Diplômes : ${examen.libelle}`}>
@@ -36,7 +38,7 @@ export default function DiplomesExamenModal({ examen, onFermer }: { examen: Exam
             </Text>
             {d.statutResultats !== 'PROCLAME' ? (
               <Alert color="gray" variant="light">Les diplômes sont délivrés après la proclamation des résultats.</Alert>
-            ) : (
+            ) : !dgecs ? null : (
               <Group>
                 <Button size="xs" loading={delivrance.isPending} disabled={d.delivres >= d.admis} onClick={() => delivrance.mutate()}>
                   Délivrer les diplômes des admis
@@ -56,7 +58,7 @@ export default function DiplomesExamenModal({ examen, onFermer }: { examen: Exam
                   </Table.Tr>
                 </Table.Thead>
                 <Table.Tbody>
-                  {d.diplomes.map((x) => <LigneDiplome key={`${x.id}-${x.revoque}`} diplome={x} examenId={examen.id} onChange={appliquer} />)}
+                  {d.diplomes.map((x) => <LigneDiplome dgecs={dgecs} key={`${x.id}-${x.revoque}`} diplome={x} examenId={examen.id} onChange={appliquer} />)}
                 </Table.Tbody>
               </Table>
             )}
@@ -67,7 +69,7 @@ export default function DiplomesExamenModal({ examen, onFermer }: { examen: Exam
   )
 }
 
-function LigneDiplome({ diplome: x, examenId, onChange }: { diplome: DiplomesExamen['diplomes'][number]; examenId: number; onChange: (d: DiplomesExamen) => void }) {
+function LigneDiplome({ diplome: x, examenId, onChange, dgecs }: { dgecs: boolean; diplome: DiplomesExamen['diplomes'][number]; examenId: number; onChange: (d: DiplomesExamen) => void }) {
   const [motif, setMotif] = useState('')
   const [saisie, setSaisie] = useState(false)
   const revocation = useMutation({ mutationFn: () => revoquerDiplome(examenId, x.id, motif.trim()), onSuccess: onChange })
@@ -87,9 +89,9 @@ function LigneDiplome({ diplome: x, examenId, onChange }: { diplome: DiplomesExa
               Confirmer
             </Button>
           </Group>
-        ) : (
+        ) : dgecs ? (
           <Button size="compact-xs" color="red" variant="subtle" onClick={() => setSaisie(true)}>Révoquer</Button>
-        )}
+        ) : null}
       </Table.Td>
     </Table.Tr>
   )

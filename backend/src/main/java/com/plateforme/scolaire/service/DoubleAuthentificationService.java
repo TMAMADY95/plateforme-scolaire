@@ -43,7 +43,8 @@ public class DoubleAuthentificationService {
 
     public boolean requise(UtilisateurPrincipal p) {
         return active && p.getAffectations().stream()
-                .anyMatch(a -> a.role() == Role.MINISTERE || a.role() == Role.DIRECTION_REGIONALE);
+                .anyMatch(a -> a.role() == Role.MINISTERE || a.role() == Role.DGECS
+                        || a.role() == Role.DIRECTION_REGIONALE || a.role() == Role.DIRECTION_LOCALE);
     }
 
     public void envoyerCode(Long utilisateurId, String email) {

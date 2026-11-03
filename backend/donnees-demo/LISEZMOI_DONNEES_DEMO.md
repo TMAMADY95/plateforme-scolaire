@@ -8,7 +8,7 @@ Un réseau scolaire de Guinée complet pour tester tous les scénarios de la pla
 
 ## Charger les données
 
-1. Démarrez le backend une première fois (les migrations Flyway, jusqu'à V36, créent les tables).
+1. Démarrez le backend une première fois (les migrations Flyway, jusqu'à V65, créent les tables).
 2. Chargez le script, **une seule fois** :
 
 ```bash
@@ -20,7 +20,42 @@ docker exec -e PGCLIENTENCODING=UTF8 scolaire-db psql -U scolaire -d scolaire -v
 psql -h localhost -p 5433 -U scolaire -d scolaire -v ON_ERROR_STOP=1 -1 -f backend/donnees-demo/demo_donnees.sql
 ```
 
-Le script ajoute des données sans toucher à vos classes, salles, factures ou comptes existants (seuls deux réglages de référence sont ajustés : le niveau des types d'examen CEE, BEPC et BAC s'il n'était pas renseigné, et les conditions pour être centre d'examen, réglées sur « autorisé, 3 salles, 60 places ») et s'arrête avec un message s'il a déjà été chargé.
+**Complément d'examens (recommandé).** Après `demo_donnees.sql`, chargez une fois `demo_examens_complements.sql` : il ajoute l'examen **« CEE blanc 6e année 2026 »**
+(4 centres, ≈ 120 candidats de 6e année des écoles GN-0001, GN-0004, GN-0007 et GN-0011, résultats **proclamés**) avec les fonctionnalités des migrations V37 à V49 :
+notes par épreuve et coefficients, listes validées et dossiers complets, personnel et préparation des centres, incidents (dont une fraude avec élimination), plis ouverts et
+rapports de surveillance, commissions de correction, banque de sujets, diplômes, calendrier prévisionnel (avec retards sur le BEPC et le baccalauréat 2026) et comptes de chefs de centre.
+Les parents et élèves voient les résultats dans l'onglet « Examens ».
+
+```bash
+docker cp backend/donnees-demo/demo_examens_complements.sql scolaire-db:/tmp/demo_examens_complements.sql
+docker exec -e PGCLIENTENCODING=UTF8 scolaire-db psql -U scolaire -d scolaire -v ON_ERROR_STOP=1 -1 -f /tmp/demo_examens_complements.sql
+```
+Il corrige aussi les comptes préfectoraux et communaux déjà chargés avec l'ancien rôle (ils deviennent DPE/DCE). `supprimer_donnees_demo.sql` supprime aussi cet examen et, avec lui, les données du complément DGECS.
+
+**Complément DGECS (facultatif).** Après `demo_examens_complements.sql`, chargez une fois `demo_dgecs_complements.sql` (migrations V55 à V57) : fournitures livrées aux 4 centres
+(le dernier est en retard), 6 réclamations (acceptées, rejetées, ouvertes dont une hors délai) et un budget par rubrique pour le « CEE blanc 6e année 2026 ».
+Il alimente les onglets « Qualité et réclamations », « Logistique des centres » et « Indicateurs et budget » de la page DGECS (`dgecs.demo@demo.gn`).
+
+```bash
+docker cp backend/donnees-demo/demo_dgecs_complements.sql scolaire-db:/tmp/demo_dgecs_complements.sql
+docker exec -e PGCLIENTENCODING=UTF8 scolaire-db psql -U scolaire -d scolaire -v ON_ERROR_STOP=1 -1 -f /tmp/demo_dgecs_complements.sql
+```
+
+**Complément DGECS, partie 2 (facultatif).** Après `demo_dgecs_complements.sql`, chargez une fois `demo_dgecs_complements2.sql` (migrations V58 et V59) : caractéristiques des 4 centres
+(un centre enclavé et exposé aux inondations, un autre aux installations en mauvais état), 3 candidats avec aménagement (handicap) et une situation statistique **provisoire**
+calculée sur les chiffres de l'année. Il alimente la section « État des centres d'examen » et l'onglet « Situation statistique ». Aucune situation définitive n'est créée (elle exige que tous les examens soient proclamés).
+
+```bash
+docker cp backend/donnees-demo/demo_dgecs_complements2.sql scolaire-db:/tmp/demo_dgecs_complements2.sql
+docker exec -e PGCLIENTENCODING=UTF8 scolaire-db psql -U scolaire -d scolaire -v ON_ERROR_STOP=1 -1 -f /tmp/demo_dgecs_complements2.sql
+```
+
+**Simulation d'un baccalauréat, pas à pas (facultatif).** Après `demo_donnees.sql` et `demo_examens_complements.sql`, le dossier `simulation-bac/` contient neuf scripts à charger
+**un par un** pour suivre l'organisation complète d'un baccalauréat national (« Baccalauréat simulé 2026 », 331 candidats, 7 centres) : préparation, candidatures et listes, centres et affectation,
+sujets et logistique, déroulement des épreuves (fraudes, fuite de sujet), correction et notes, délibération, proclamation et diplômes, réclamations, rectifications, vérifications de diplômes.
+Le détail de chaque étape et les écrans à regarder sont dans `simulation-bac/LISEZMOI_SIMULATION_BAC.md` ; `simulation-bac/supprimer_simulation_bac.sql` supprime tout.
+
+Le script principal ajoute des données sans toucher à vos classes, salles, factures ou comptes existants (seuls deux réglages de référence sont ajustés : le niveau des types d'examen CEE, BEPC et BAC s'il n'était pas renseigné, et les conditions pour être centre d'examen, réglées sur « autorisé, 3 salles, 60 places ») et s'arrête avec un message s'il a déjà été chargé.
 Il est exécuté dans une transaction : en cas d'erreur, rien n'est enregistré.
 
 **Tout supprimer** (établissements `GN-xxxx`, comptes `@demo.gn`, élèves `DEMO-xxxxxx`, zones « Guinée », examens de démonstration) :
@@ -38,9 +73,11 @@ la suppression peut être refusée : dans ce cas, recréez la base.)
 |---|---|---|
 | Administrateur technique | `admin@demo.gn` | national |
 | Ministère | `ministere.demo@demo.gn`, `secretaire.general@demo.gn` (et `ministere@example.org` du profil dev) | national |
-| Direction régionale | `dr.conakry@demo.gn`, `dr.kindia@demo.gn`, `dr.labe@demo.gn`, `dr.kankan@demo.gn`, `dr.nzerekore@demo.gn` | une région |
-| Direction préfectorale | `dp.coyah@demo.gn`, `dp.kindia@demo.gn` | une préfecture |
-| Direction communale | `dc.coyah@demo.gn` (Coyah-centre), `dc.ratoma@demo.gn` (Ratoma) | une commune |
+| DGECS (direction nationale des examens) | `dgecs.demo@demo.gn` | national |
+| Direction régionale (IRE) | `dr.conakry@demo.gn`, `dr.kindia@demo.gn`, `dr.labe@demo.gn`, `dr.kankan@demo.gn`, `dr.nzerekore@demo.gn` | une région |
+| DPE (direction préfectorale) | `dp.coyah@demo.gn`, `dp.kindia@demo.gn` | une préfecture |
+| DCE (direction communale) | `dc.coyah@demo.gn` (Coyah-centre), `dc.ratoma@demo.gn` (Ratoma) | une commune |
+| Chef de centre d'examen (complément) | `chef.centre1@demo.gn` … `chef.centre4@demo.gn` | son centre d'examen |
 | Direction d'établissement | `dir.0001@demo.gn` … `dir.0029@demo.gn` (le numéro est celui du code `GN-0001` … `GN-0029`) | un établissement |
 | Secrétariat / comptabilité | `sec.0001@demo.gn` … `sec.0029@demo.gn` | un établissement |
 | Enseignants | `ens.0003.01@demo.gn`, `ens.0003.02@demo.gn`… (établissement puis numéro : un enseignant par matière et par école) | un établissement |
@@ -64,7 +101,7 @@ la suppression peut être refusée : dans ce cas, recréez la base.)
 
 ## Scénarios couverts et où les tester
 
-- **Périmètres et hiérarchie** : `dr.*` ne voit que sa région ; `dp.*` et `dc.*` (préfecture, commune) ne voient que leur zone. Le ministère voit tout.
+- **Périmètres et hiérarchie** : `dr.*` ne voit que sa région ; `dp.*` et `dc.*` (préfecture, commune) ne voient que leur zone. Le ministère voit tout et consulte l'ensemble des examens ; la DGECS gère l'aspect technique national. Hiérarchie : établissements → DPE/DCE → IRE → ministère.
 - **Établissements** : secteurs public/privé, 5 types (classique, communautaire, franco-arabe, confessionnel, technique), statuts actif/suspendu/fermé,
   autorisations (autorisée, en attente : GN-0014, GN-0015, GN-0022 ; non autorisée : GN-0026 ; retirée : GN-0028). Filtres et statistiques par type.
 - **Élèves au niveau national** (ministère) : ≈ 4 750 élèves à filtrer par zone, secteur, type, cycle, niveau, sexe, statut, avec export PDF.
@@ -73,6 +110,10 @@ la suppression peut être refusée : dans ce cas, recréez la base.)
 - **Pédagogie** : classes (1ère année à Terminale), un enseignant par matière, coefficients, **emplois du temps sans conflit** (salles et enseignants),
   évaluations et notes de la 1re période de 2026-2027 et des périodes complètes de 2025-2026. Les écoles privées, franco-arabes et techniques
   fonctionnent en **semestres** ; les autres en **trimestres** (utile pour la réussite du réseau par période).
+- **Programme officiel** : non chargé par le script. Connecté en `ministere@example.org`, ouvrir Référentiels > Programme officiel et cliquer sur
+  « Importer la grille du COC 2023 » (année 2026-2027), puis, sur une classe, « Coefficients » > « Appliquer le programme officiel » ; la carte
+  « Conformité au programme officiel » de l'emploi du temps de la classe compare ensuite les heures. Les classes de lycée des établissements de démo ont une série
+  (section A = sciences mathématiques, B = sciences sociales).
 - **Vie scolaire** : ≈ 70 000 présences (12 au 30 octobre 2026), élèves très absents, **justifications d'absence** (en attente, acceptées, refusées),
   devoirs (faits ou non), annonces de classe, cahier de textes, rendez-vous parents-enseignants, autorisations de sortie, messagerie.
 - **SMS d'absence aux parents** : activez `SMS_ABSENCES=true`, puis saisissez une absence avec un compte direction : les parents qui ont un téléphone

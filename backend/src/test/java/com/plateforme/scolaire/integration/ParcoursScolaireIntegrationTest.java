@@ -156,6 +156,7 @@ class ParcoursScolaireIntegrationTest {
     private final String suffixe = UUID.randomUUID().toString().substring(0, 8);
 
     private String jetonMinistere;
+    private String jetonDgecs;
     private String jetonDirection;
     private String jetonEnseignant;
     private String jetonParent;
@@ -179,6 +180,7 @@ class ParcoursScolaireIntegrationTest {
     @Order(1)
     void leMinisterePrepareLesReferentiels() throws Exception {
         jetonMinistere = jeton("ministere@example.org", MDP_DEMO);
+        jetonDgecs = jeton("dgecs@example.org", MDP_DEMO);
 
         Reponse etablissements = get("/api/etablissements", jetonMinistere).attendre(200);
         ecole1 = idEtablissement(etablissements, "ECOLE-DEMO-1");
@@ -619,11 +621,14 @@ class ParcoursScolaireIntegrationTest {
     @Test
     @Order(20)
     void lesExamensNationauxSontSaisisEtCalcules() throws Exception {
-        examenId = post("/api/examens", jetonMinistere, """
+        // l'organisation des examens revient à la DGECS ; le ministère les suit et ne saisit rien
+        examenId = post("/api/examens", jetonDgecs, """
                 {"libelle":"BEPC IT %s","anneeScolaireId":%d}""".formatted(suffixe, anneeId)).attendre(201).id("$.id");
         post("/api/examens", jetonRegion, """
                 {"libelle":"Autre IT","anneeScolaireId":%d}""".formatted(anneeId)).attendre(403);
         post("/api/examens", jetonMinistere, """
+                {"libelle":"Autre IT","anneeScolaireId":%d}""".formatted(anneeId)).attendre(403);
+        post("/api/examens", jetonDgecs, """
                 {"libelle":"BEPC IT %s","anneeScolaireId":%d}""".formatted(suffixe, anneeId)).attendre(409);
 
         String chemin = "/api/examens/" + examenId + "/resultats/";

@@ -1,5 +1,6 @@
 package com.plateforme.scolaire.web;
 
+import com.plateforme.scolaire.security.DroitsExamen;
 import com.plateforme.scolaire.service.ExamenService;
 import com.plateforme.scolaire.web.dto.ExamenDto;
 import com.plateforme.scolaire.web.dto.ExamenRequest;
@@ -21,21 +22,21 @@ public class ExamenController {
     private final com.plateforme.scolaire.service.TypeExamenService typesExamen;
 
     @GetMapping("/api/types-examen")
-    @PreAuthorize("hasAnyRole('MINISTERE','DIRECTION_REGIONALE')")
+    @PreAuthorize(DroitsExamen.CONSULTATION)
     public List<com.plateforme.scolaire.web.dto.TypeExamenDto> types() {
         return typesExamen.lister();
     }
 
     @PostMapping("/api/types-examen")
     @ResponseStatus(HttpStatus.CREATED)
-    @PreAuthorize("hasRole('MINISTERE')")
+    @PreAuthorize(DroitsExamen.NATIONAL)
     public com.plateforme.scolaire.web.dto.TypeExamenDto creerType(
             @Valid @RequestBody com.plateforme.scolaire.web.dto.TypeExamenRequest r) {
         return typesExamen.creer(r);
     }
 
     @PutMapping("/api/types-examen/{id}")
-    @PreAuthorize("hasRole('MINISTERE')")
+    @PreAuthorize(DroitsExamen.NATIONAL)
     public com.plateforme.scolaire.web.dto.TypeExamenDto modifierType(
             @PathVariable Long id, @Valid @RequestBody com.plateforme.scolaire.web.dto.TypeExamenRequest r) {
         return typesExamen.modifier(id, r);
@@ -43,52 +44,52 @@ public class ExamenController {
 
     @DeleteMapping("/api/types-examen/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    @PreAuthorize("hasRole('MINISTERE')")
+    @PreAuthorize(DroitsExamen.NATIONAL)
     public void supprimerType(@PathVariable Long id) {
         typesExamen.supprimer(id);
     }
 
     /** NATIONAL et les types de zone du référentiel : les niveaux qui peuvent organiser un examen. */
     @GetMapping("/api/examens/niveaux-organisation")
-    @PreAuthorize("hasAnyRole('MINISTERE','DIRECTION_REGIONALE')")
+    @PreAuthorize(DroitsExamen.CONSULTATION)
     public List<String> niveauxOrganisation() {
         return examenService.niveauxOrganisation();
     }
 
     @GetMapping("/api/examens")
-    @PreAuthorize("hasAnyRole('MINISTERE','DIRECTION_REGIONALE')")
+    @PreAuthorize(DroitsExamen.CONSULTATION)
     public List<ExamenDto> lister(@RequestParam Long anneeScolaireId) {
         return examenService.lister(anneeScolaireId);
     }
 
     @PostMapping("/api/examens")
     @ResponseStatus(HttpStatus.CREATED)
-    @PreAuthorize("hasRole('MINISTERE')")
+    @PreAuthorize(DroitsExamen.NATIONAL)
     public ExamenDto creer(@Valid @RequestBody ExamenRequest r) {
         return examenService.creer(r);
     }
 
     @GetMapping("/api/ministere/examens/{examenId}")
-    @PreAuthorize("hasRole('MINISTERE')")
+    @PreAuthorize("hasAnyRole('MINISTERE','DGECS')")
     public RapportExamenDto nationale(@PathVariable Long examenId, @RequestParam(required = false) Long zoneId) {
         return examenService.nationale(examenId, zoneId);
     }
 
     @GetMapping("/api/region/examens/{examenId}")
-    @PreAuthorize("hasRole('DIRECTION_REGIONALE')")
+    @PreAuthorize("hasAnyRole('DIRECTION_REGIONALE','DIRECTION_LOCALE')")
     public RapportExamenDto regionale(@PathVariable Long examenId) {
         return examenService.regionale(examenId);
     }
 
     @PutMapping("/api/examens/{examenId}/resultats/{etablissementId}")
-    @PreAuthorize("hasAnyRole('MINISTERE','DIRECTION_REGIONALE') and @perimetre.peutAccederEtablissement(#etablissementId)")
+    @PreAuthorize(DroitsExamen.GESTION + " and @perimetre.peutAccederEtablissement(#etablissementId)")
     public void saisir(@PathVariable Long examenId, @PathVariable Long etablissementId,
                        @Valid @RequestBody ResultatExamenRequest r) {
         examenService.saisir(examenId, etablissementId, r);
     }
 
     @PutMapping("/api/examens/{examenId}/periode")
-    @PreAuthorize("hasAnyRole('MINISTERE','DIRECTION_REGIONALE')")
+    @PreAuthorize(DroitsExamen.GESTION)
     public ExamenDto periode(@PathVariable Long examenId,
                              @RequestBody com.plateforme.scolaire.web.dto.PeriodeExamenRequest r) {
         return examenService.definirPeriode(examenId, r);
@@ -96,7 +97,7 @@ public class ExamenController {
 
     @DeleteMapping("/api/examens/{examenId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    @PreAuthorize("hasAnyRole('MINISTERE','DIRECTION_REGIONALE')")
+    @PreAuthorize(DroitsExamen.GESTION)
     public void supprimer(@PathVariable Long examenId, @RequestParam(defaultValue = "false") boolean forcer) {
         examenService.supprimer(examenId, forcer);
     }

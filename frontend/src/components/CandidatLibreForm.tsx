@@ -10,14 +10,20 @@ export default function CandidatLibreForm({ etablissementId, examenId, onInscrit
   const [prenom, setPrenom] = useState('')
   const [naissance, setNaissance] = useState('')
   const [sexe, setSexe] = useState<string | null>(null)
+  const [lieu, setLieu] = useState('')
+  const [pere, setPere] = useState('')
+  const [mere, setMere] = useState('')
   const [erreur, setErreur] = useState<string | null>(null)
   const inscription = useMutation({
-    mutationFn: () => inscrireCandidatLibre(etablissementId, examenId, { nom: nom.trim(), prenom: prenom.trim(), dateNaissance: naissance, sexe }),
+    mutationFn: () => inscrireCandidatLibre(etablissementId, examenId, { nom: nom.trim(), prenom: prenom.trim(), dateNaissance: naissance, sexe, lieuNaissance: lieu.trim(), nomPere: pere.trim(), nomMere: mere.trim() }),
     onSuccess: () => {
       setNom('')
       setPrenom('')
       setNaissance('')
       setSexe(null)
+      setLieu('')
+      setPere('')
+      setMere('')
       setErreur(null)
       notifications.show({ color: 'green', title: 'Candidat libre inscrit', message: 'Complétez maintenant son dossier de candidature.' })
       onInscrit()
@@ -35,6 +41,9 @@ export default function CandidatLibreForm({ etablissementId, examenId, onInscrit
         <TextInput size="xs" label="Prénom" value={prenom} onChange={(e) => setPrenom(e.currentTarget.value)} w={160} />
         <TextInput size="xs" label="Date de naissance" type="date" value={naissance} onChange={(e) => setNaissance(e.currentTarget.value)} />
         <Select size="xs" label="Sexe" clearable data={[{ value: 'F', label: 'Féminin' }, { value: 'M', label: 'Masculin' }]} value={sexe} onChange={setSexe} w={110} />
+        <TextInput size="xs" label="Lieu de naissance" value={lieu} onChange={(e) => setLieu(e.currentTarget.value)} w={150} />
+        <TextInput size="xs" label="Père" value={pere} onChange={(e) => setPere(e.currentTarget.value)} w={150} />
+        <TextInput size="xs" label="Mère" value={mere} onChange={(e) => setMere(e.currentTarget.value)} w={150} />
         <Button size="xs" variant="light" disabled={nom.trim() === '' || prenom.trim() === '' || naissance === ''} loading={inscription.isPending} onClick={() => inscription.mutate()}>
           Inscrire
         </Button>

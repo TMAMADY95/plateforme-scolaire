@@ -84,15 +84,18 @@ public class ExamenService {
     }
 
     /**
-     * Qui peut saisir les résultats : le ministère toujours. Pour un examen organisé par une zone (commune,
+     * Qui peut saisir les résultats : la DGECS toujours ; jamais le ministère, qui consulte et valide. Pour un examen organisé par une zone (commune,
      * préfecture, région…), un compte de zone seulement si cette zone organisatrice est la sienne ou est placée sous
      * la sienne : un compte communal ne saisit donc pas un examen régional. Pour un examen national, la saisie reste
      * ouverte à tout compte dont le périmètre couvre l'établissement (le contrôle de périmètre est fait en amont).
      */
     static boolean peutSaisir(Etablissement e, String niveauOrganisation,
                               java.util.Collection<com.plateforme.scolaire.security.UtilisateurPrincipal.AffectationInfo> affectations) {
-        if (affectations.stream().anyMatch(a -> a.role() == com.plateforme.scolaire.domain.Role.MINISTERE)) {
+        if (affectations.stream().anyMatch(a -> a.role() == com.plateforme.scolaire.domain.Role.DGECS)) {
             return true;
+        }
+        if (affectations.stream().anyMatch(x -> x.role() == com.plateforme.scolaire.domain.Role.MINISTERE)) {
+            return false; // le ministère consulte et valide, il ne saisit rien
         }
         if (niveauOrganisation == null || NATIONAL.equalsIgnoreCase(niveauOrganisation)) {
             return true;
@@ -103,8 +106,7 @@ public class ExamenService {
         }
         for (ZoneGeographique z = organisatrice; z != null; z = z.getParent()) {
             for (var a : affectations) {
-                if (a.role() == com.plateforme.scolaire.domain.Role.DIRECTION_REGIONALE && a.zoneId() != null
-                        && a.zoneId().equals(z.getId())) {
+                if (estDirectionDeZone(a.role()) && a.zoneId() != null && a.zoneId().equals(z.getId())) {
                     return true;
                 }
             }
@@ -161,6 +163,7 @@ public class ExamenService {
         e.setLibelle(libelle);
         e.setAnneeScolaire(annee);
         e.setCycle(cycle);
+        e.setBareme(com.plateforme.scolaire.domain.BaremeExamen.pour(cycle == null ? null : cycle.getCode()));
         ExamenNational enregistre = examenRepository.save(e);
         auditService.enregistrer("EXAMEN_CREE", "ExamenNational", enregistre.getId(), Map.of("libelle", libelle));
         return ExamenDto.de(enregistre);
@@ -172,14 +175,20 @@ public class ExamenService {
         }
     }
 
-    /** Qui gère le calendrier d'un examen : le ministère ; une direction régionale seulement hors examen national. */
+    /** Inspection régionale (IRE) ou direction préfectorale/communale (DPE/DCE) : les rôles liés à une zone. */
+    static boolean estDirectionDeZone(com.plateforme.scolaire.domain.Role role) {
+        return role == com.plateforme.scolaire.domain.Role.DIRECTION_REGIONALE
+                || role == com.plateforme.scolaire.domain.Role.DIRECTION_LOCALE;
+    }
+
+    /** Qui gère le calendrier d'un examen : la DGECS ; une direction de zone seulement hors examen national. Le ministère ne saisit rien. */
     static boolean peutGererCalendrier(ExamenNational examen,
                                        java.util.Collection<com.plateforme.scolaire.security.UtilisateurPrincipal.AffectationInfo> affectations) {
-        if (affectations.stream().anyMatch(a -> a.role() == com.plateforme.scolaire.domain.Role.MINISTERE)) {
+        if (affectations.stream().anyMatch(a -> a.role() == com.plateforme.scolaire.domain.Role.DGECS)) {
             return true;
         }
         boolean national = examen.getNiveauOrganisation() == null || NATIONAL.equalsIgnoreCase(examen.getNiveauOrganisation());
-        return !national && affectations.stream().anyMatch(a -> a.role() == com.plateforme.scolaire.domain.Role.DIRECTION_REGIONALE);
+        return !national && affectations.stream().anyMatch(a -> estDirectionDeZone(a.role()));
     }
 
     void verifierGestionCalendrier(ExamenNational examen) {

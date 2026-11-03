@@ -5,7 +5,7 @@ import java.util.List;
 import java.util.Map;
 
 /** Candidats d'un établissement à un examen avec leurs notes : tableau de saisie des résultats individuels. */
-public record NotesCandidatsDto(Long examenId, String statutResultats, List<Epreuve> epreuves, List<Candidat> candidats) {
+public record NotesCandidatsDto(Long examenId, String statutResultats, int bareme, List<Epreuve> epreuves, List<Candidat> candidats) {
 
     public record Epreuve(Long id, String nom, int coefficient) {
     }

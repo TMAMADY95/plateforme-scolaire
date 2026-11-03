@@ -16,7 +16,7 @@ public class RegionController {
     private final RegionService regionService;
 
     @GetMapping("/api/region/synthese")
-    @PreAuthorize("hasRole('DIRECTION_REGIONALE')")
+    @PreAuthorize("hasAnyRole('DIRECTION_REGIONALE','DIRECTION_LOCALE')")
     public SyntheseNationaleDto synthese(@RequestParam Long anneeScolaireId) {
         return regionService.synthese(anneeScolaireId);
     }

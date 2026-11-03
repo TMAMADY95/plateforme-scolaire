@@ -23,32 +23,32 @@ public class RapportController {
     private final EvolutionService evolution;
 
     @GetMapping("/api/ministere/rapport.pdf")
-    @PreAuthorize("hasRole('MINISTERE')")
+    @PreAuthorize("hasAnyRole('MINISTERE','DGECS')")
     public ResponseEntity<byte[]> nationale(@RequestParam Long anneeScolaireId, @RequestParam(required = false) Long zoneId) {
         return pdf(rapports.nationale(anneeScolaireId, zoneId), "rapport-national.pdf");
     }
 
     @GetMapping("/api/region/rapport.pdf")
-    @PreAuthorize("hasRole('DIRECTION_REGIONALE')")
+    @PreAuthorize("hasAnyRole('DIRECTION_REGIONALE','DIRECTION_LOCALE')")
     public ResponseEntity<byte[]> regionale(@RequestParam Long anneeScolaireId) {
         return pdf(rapports.regionale(anneeScolaireId), "rapport-regional.pdf");
     }
 
     @GetMapping("/api/etablissements/{id}/rapport.pdf")
-    @PreAuthorize("@perimetre.peutGererEtablissement(#id) or (hasAnyRole('MINISTERE','DIRECTION_REGIONALE') "
+    @PreAuthorize("@perimetre.peutGererEtablissement(#id) or (hasAnyRole('MINISTERE','DGECS','DIRECTION_REGIONALE','DIRECTION_LOCALE') "
             + "and @perimetre.peutAccederEtablissement(#id))")
     public ResponseEntity<byte[]> etablissement(@PathVariable Long id, @RequestParam Long anneeScolaireId) {
         return pdf(rapports.etablissement(id, anneeScolaireId), "rapport-etablissement-" + id + ".pdf");
     }
 
     @GetMapping("/api/ministere/evolution")
-    @PreAuthorize("hasRole('MINISTERE')")
+    @PreAuthorize("hasAnyRole('MINISTERE','DGECS')")
     public EvolutionDto evolutionNationale(@RequestParam(required = false) Long zoneId) {
         return evolution.nationale(zoneId);
     }
 
     @GetMapping("/api/region/evolution")
-    @PreAuthorize("hasRole('DIRECTION_REGIONALE')")
+    @PreAuthorize("hasAnyRole('DIRECTION_REGIONALE','DIRECTION_LOCALE')")
     public EvolutionDto evolutionRegionale() {
         return evolution.regionale();
     }
