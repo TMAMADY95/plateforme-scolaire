@@ -2,9 +2,10 @@ import { useState } from 'react'
 import { Alert, Button, Group, Modal, Select, Stack, Text, TextInput } from '@mantine/core'
 import { useForm } from '@mantine/form'
 import { notifications } from '@mantine/notifications'
-import { identiteNationale, modifierEtatCivil } from '../../api/endpointsEcole'
-import { ACTES_NAISSANCE, libelleActe } from '../../api/typesEcole'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { identiteNationale, modifierEtatCivil } from '../../api/endpoints'
+import { ACTES_NAISSANCE, libelleActe } from '../../api/aideIdentite'
+import type { EtatCivilRequete, IdentiteNationale } from '../../api/types'
 
 interface Props {
   eleveId: number
@@ -17,10 +18,7 @@ interface Valeurs {
   numeroActeNaissance: string
 }
 
-/**
- * Pièce d'état civil d'un élève : extrait de naissance, jugement supplétif, ou aucun acte.
- * Un élève sans acte ne peut pas être inscrit aux examens nationaux (CEE, BEPC, BAC).
- */
+/** Piece d'etat civil d'un eleve : extrait, jugement suppletif, ou aucun acte. */
 export default function EtatCivilModal({ eleveId, ine, onFermer }: Props) {
   const queryClient = useQueryClient()
   const [erreur, setErreur] = useState<string | null>(null)
@@ -37,63 +35,61 @@ export default function EtatCivilModal({ eleveId, ine, onFermer }: Props) {
     validate: {
       typeActeNaissance: (v) => (v === null ? "Type d'acte requis" : null),
       numeroActeNaissance: (v, valeurs) =>
-        valeurs.typeActeNaissance !== 'AUCUN' && v.trim() === '' ? "Numéro de l'acte requis" : null,
+        valeurs.typeActeNaissance !== 'AUCUN' && v.trim() === '' ? "Numero de l'acte requis" : null,
     },
   })
 
-  const enregistrement = useMutation({
-    mutationFn: (valeurs: Valeurs) =>
-      modifierEtatCivil(eleveId, {
-        // Le type est validé par le formulaire ; le serveur refusera toute autre valeur.
-        typeActeNaissance: valeurs.typeActeNaissance as 'EXTRAIT' | 'JUGEMENT_SUPPLETIF' | 'AUCUN',
-        numeroActeNaissance:
-          valeurs.typeActeNaissance === 'AUCUN' ? null : valeurs.numeroActeNaissance.trim(),
-      }),
+  const enregistrement = useMutation<IdentiteNationale, Error, EtatCivilRequete>({
+    mutationFn: (requete) => modifierEtatCivil(eleveId, requete),
     onSuccess: (resultat) => {
       queryClient.setQueryData(['identite-nationale', eleveId], resultat)
       notifications.show({
         color: 'green',
-        title: 'État civil enregistré',
-        message:
-          resultat.sansActe
-            ? `${resultat.nom} ${resultat.prenom} reste sans acte de naissance`
-            : `${resultat.nom} ${resultat.prenom} : ${libelleActe(resultat.typeActeNaissance)}`,
+        title: 'Etat civil enregistre',
+        message: resultat.sansActe
+          ? `${resultat.nom} ${resultat.prenom} reste sans acte de naissance`
+          : `${resultat.nom} ${resultat.prenom} : ${libelleActe(resultat.typeActeNaissance)}`,
       })
       onFermer()
     },
-    onError: (e) => setErreur(e.message),
+    onError: (e: Error) => setErreur(e.message),
   })
 
   return (
-    <Modal opened onClose={onFermer} title={ine ? `État civil — INE ${ine}` : "État civil de l'élève"}>
-      <form onSubmit={formulaire.onSubmit((valeurs) => {
-        setErreur(null)
-        enregistrement.mutate(valeurs)
-      })}>
+    <Modal opened onClose={onFermer} title={ine ? `Etat civil - INE ${ine}` : "Etat civil de l'eleve"}>
+      <form
+        onSubmit={formulaire.onSubmit((valeurs) => {
+          setErreur(null)
+          enregistrement.mutate({
+            typeActeNaissance: valeurs.typeActeNaissance as EtatCivilRequete['typeActeNaissance'],
+            numeroActeNaissance: valeurs.typeActeNaissance === 'AUCUN' ? null : valeurs.numeroActeNaissance.trim(),
+          })
+        })}
+      >
         <Stack>
           {identite.data && (
             <Text size="sm" c="dimmed">
-              {identite.data.prenom} {identite.data.nom} — né(e) le {identite.data.dateNaissance}
-              {identite.data.lieuNaissance ? ` à ${identite.data.lieuNaissance}` : ''}
+              {identite.data.prenom} {identite.data.nom} - ne(e) le {identite.data.dateNaissance}
+              {identite.data.lieuNaissance ? ` a ${identite.data.lieuNaissance}` : ''}
             </Text>
           )}
           <Select
-            label="Pièce d'état civil"
+            label="Piece d'etat civil"
             description="Figure dans le dossier d'examen national"
-            data={ACTES_NAISSANCE}
+            data={[...ACTES_NAISSANCE]}
             {...formulaire.getInputProps('typeActeNaissance')}
           />
           {formulaire.values.typeActeNaissance !== 'AUCUN' && (
             <TextInput
-              label="Numéro de l'acte"
-              placeholder="Numéro porté sur l'extrait ou le jugement"
+              label="Numero de l'acte"
+              placeholder="Numero porte sur l'extrait ou le jugement"
               {...formulaire.getInputProps('numeroActeNaissance')}
             />
           )}
           {identite.data?.sansActe && (
             <Alert color="orange" variant="light">
-              Cet élève est actuellement sans acte de naissance : il ne pourra pas être inscrit aux examens
-              nationaux tant que la situation n'est pas régularisée.
+              Cet eleve est sans acte de naissance : il ne pourra pas etre inscrit aux examens nationaux tant
+              que la situation n'est pas regularisee.
             </Alert>
           )}
           {erreur !== null && (

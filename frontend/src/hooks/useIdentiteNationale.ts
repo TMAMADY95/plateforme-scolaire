@@ -1,8 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { eleveParIne, elevesSansActe, identiteNationale, modifierEtatCivil } from './endpointsEcole'
-import type { EtatCivilRequete, IdentiteNationale } from './typesEcole'
+import { eleveParIne, elevesSansActe, identiteNationale, modifierEtatCivil } from '../api/endpoints'
+import type { EtatCivilRequete, IdentiteNationale } from '../api/types'
 
-/** Retrouver un élève par son INE. */
+/** Retrouver un eleve par son INE ; la requete ne part qu'avec une saisie non vide. */
 export const useEleveParIne = (ine: string | null) =>
   useQuery({
     queryKey: ['eleve-ine', ine],
@@ -15,17 +15,14 @@ export const useIdentiteNationale = (eleveId: number) =>
   useQuery({ queryKey: ['identite-nationale', eleveId], queryFn: () => identiteNationale(eleveId) })
 
 export const useElevesSansActe = (etablissementId: number) =>
-  useQuery({
-    queryKey: ['eleves-sans-acte', etablissementId],
-    queryFn: () => elevesSansActe(etablissementId),
-  })
+  useQuery({ queryKey: ['eleves-sans-acte', etablissementId], queryFn: () => elevesSansActe(etablissementId) })
 
-/** Saisie de la pièce d'état civil ; l'identité nationale est rafraîchie après succès. */
+/** Saisie de la piece d'etat civil ; le cache de la fiche est mis a jour apres succes. */
 export function useModifierEtatCivil(eleveId: number) {
   const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: (requete: EtatCivilRequete) => modifierEtatCivil(eleveId, requete),
-    onSuccess: (identite: IdentiteNationale) => {
+  return useMutation<IdentiteNationale, Error, EtatCivilRequete>({
+    mutationFn: (requete) => modifierEtatCivil(eleveId, requete),
+    onSuccess: (identite) => {
       queryClient.setQueryData(['identite-nationale', eleveId], identite)
     },
   })
