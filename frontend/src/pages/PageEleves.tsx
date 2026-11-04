@@ -40,7 +40,7 @@ export default function PageEleves() {
   if (etablissementId === undefined) {
     return (
       <Alert color="orange" variant="light">
-        Aucun établissement n'est associé à votre compte.
+        Aucun etablissement n'est associe a votre compte.
       </Alert>
     )
   }
@@ -59,11 +59,11 @@ export default function PageEleves() {
 
   return (
     <Stack>
-      <Title order={2}>Élèves</Title>
+      <Title order={2}>Eleves</Title>
 
       <Group align="flex-end">
         <Select
-          label="Année scolaire"
+          label="Annee scolaire"
           data={options}
           value={anneeId}
           onChange={(valeur) => {
@@ -84,7 +84,7 @@ export default function PageEleves() {
         />
         <TextInput
           label="Rechercher"
-          placeholder="Nom, prénom, matricule ou INE"
+          placeholder="Nom, prenom, matricule ou INE"
           value={recherche}
           onChange={(e) => setRecherche(e.currentTarget.value)}
           w={260}
@@ -100,7 +100,7 @@ export default function PageEleves() {
         </Alert>
       )}
       {inscriptions.data && visibles.length === 0 && (
-        <Text c="dimmed">Aucun élève ne correspond à ces critères. Seuls les élèves dont l'inscription est acceptée sont listés ici.</Text>
+        <Text c="dimmed">Aucun eleve ne correspond a ces criteres. Seuls les eleves dont l'inscription est acceptee sont listes ici.</Text>
       )}
       {visibles.length > 0 && (
         <>
@@ -109,7 +109,7 @@ export default function PageEleves() {
               <Table.Thead>
                 <Table.Tr>
                   <Table.Th>Nom</Table.Th>
-                  <Table.Th>Prénom</Table.Th>
+                  <Table.Th>Prenom</Table.Th>
                   <Table.Th>Matricule</Table.Th>
                   <Table.Th>INE</Table.Th>
                   <Table.Th>Naissance</Table.Th>
@@ -132,13 +132,13 @@ export default function PageEleves() {
                           Modifier
                         </Button>
                         <Button size="compact-sm" variant="light" color="orange" onClick={() => setEtatCivilDe(i)}>
-                          État civil
+                          Etat civil
                         </Button>
                         <Button size="compact-sm" variant="light" color="teal" onClick={() => setParentsDe(i)}>
                           Parents
                         </Button>
                         <Button size="compact-sm" variant="light" color="grape" onClick={() => setEcrireA(i)}>
-                          Écrire
+                          Ecrire
                         </Button>
                       </Group>
                     </Table.Td>
@@ -148,7 +148,7 @@ export default function PageEleves() {
             </Table>
           </Table.ScrollContainer>
           <Text size="sm" c="dimmed">
-            {visibles.length} élève(s)
+            {visibles.length} eleve(s)
           </Text>
         </>
       )}
