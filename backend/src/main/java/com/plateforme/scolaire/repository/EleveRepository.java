@@ -12,6 +12,15 @@ public interface EleveRepository extends JpaRepository<Eleve, Long> {
 
     Optional<Eleve> findByMatricule(String matricule);
 
+    /** Recherche par identifiant national (INE). */
+    Optional<Eleve> findByIne(String ine);
+
+    /** Élèves d'un établissement (inscription en attente ou acceptée) sans pièce d'état civil renseignée. */
+    @Query("select distinct e from Eleve e where (e.typeActeNaissance is null or e.typeActeNaissance = 'AUCUN') "
+            + "and e.id in (select i.eleve.id from Inscription i where i.etablissement.id = :etablissementId "
+            + "and i.statut in ('EN_ATTENTE', 'ACCEPTEE')) order by e.nom, e.prenom")
+    List<Eleve> sansActeNaissance(@Param("etablissementId") Long etablissementId);
+
     /** Le dossier élève rattaché à un compte de connexion (rôle ELEVE). */
     Optional<Eleve> findByUtilisateurId(Long utilisateurId);
 
