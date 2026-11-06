@@ -1,10 +1,17 @@
 package com.plateforme.scolaire.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.contains;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import com.plateforme.scolaire.web.dto.StatistiquesExamensDto.Resultats;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.Query;
 import java.util.List;
 import org.junit.jupiter.api.Test;
+import org.mockito.Answers;
 
 class StatistiquesExamensServiceTest {
 
@@ -20,6 +27,31 @@ class StatistiquesExamensServiceTest {
         assertThat(StatistiquesExamensService.remplissage(60, 2)).isEqualTo(100.0);
         assertThat(StatistiquesExamensService.remplissage(45, 3)).isEqualTo(50.0);
         assertThat(StatistiquesExamensService.remplissage(10, 0)).isNull();
+    }
+
+    /** Un candidat affecté à un centre mais pas encore placé en salle n'occupe aucune place (le taux dépassait 100 %). */
+    @Test
+    void remplissageNeCompteQueLesCandidatsPlacesEnSalle() {
+        EntityManager em = mock(EntityManager.class);
+        Query vide = mock(Query.class, Answers.RETURNS_SELF);
+        when(vide.getResultList()).thenReturn(List.of());
+        when(vide.getSingleResult()).thenReturn(0L);
+        Query centres = mock(Query.class, Answers.RETURNS_SELF);
+        when(centres.getResultList()).thenReturn(List.of(
+                // id, nom, zone, examen, candidats, salles utilisées, établissement, candidats placés en salle
+                new Object[] {1L, "Centre A", "Kaloum", "BAC", 60L, 2L, null, 45L},
+                new Object[] {2L, "Centre B", "Dixinn", "BEPC", 40L, 0L, null, 0L}));
+        when(em.createQuery(anyString())).thenReturn(vide);
+        when(em.createQuery(contains("from CentreExamen ce"))).thenReturn(centres);
+
+        var stats = new StatistiquesExamensService(em).statistiques(1L);
+
+        assertThat(stats.salles().candidatsAffectes()).isEqualTo(100);
+        assertThat(stats.salles().sallesUtilisees()).isEqualTo(2);
+        assertThat(stats.salles().remplissage()).isEqualTo(75.0);
+        assertThat(stats.centres().get(0).candidats()).isEqualTo(60);
+        assertThat(stats.centres().get(0).remplissage()).isEqualTo(75.0);
+        assertThat(stats.centres().get(1).remplissage()).isNull();
     }
 
     @Test

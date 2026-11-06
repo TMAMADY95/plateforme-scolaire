@@ -170,23 +170,27 @@ public class StatistiquesExamensService {
             sallesPhysiques.put(((Number) r[0]).longValue(), new int[] {entier(r[1]), entier(r[2])});
         }
         List<Object[]> centresBruts = em.createQuery(
-                "select ce.id, ce.nom, z.nom, x.libelle, count(c.id), count(distinct c.salle), ce.etablissement.id "
+                "select ce.id, ce.nom, z.nom, x.libelle, count(c.id), count(distinct c.salle), ce.etablissement.id, count(c.salle) "
                         + "from CentreExamen ce join ce.examen x left join ce.zone z left join CandidatExamen c on c.centre = ce "
                         + "where x.anneeScolaire.id = :a group by ce.id, ce.nom, z.nom, x.libelle, ce.etablissement.id order by x.libelle, ce.nom")
                 .setParameter("a", anneeScolaireId).getResultList();
         List<StatistiquesExamensDto.LigneCentre> centres = new ArrayList<>();
         int sallesUtilisees = 0;
         int affectes = 0;
+        // Seuls les candidats placés en salle occupent une place : un candidat affecté à un centre peut ne pas encore avoir de salle.
+        int places = 0;
         int sallesDispo = 0;
         int capacite = 0;
         for (Object[] r : centresBruts) {
             int candidats = entier(r[4]);
             int salles = entier(r[5]);
+            int enSalle = entier(r[7]);
             int[] phys = r[6] == null ? null : sallesPhysiques.get(((Number) r[6]).longValue());
             centres.add(new StatistiquesExamensDto.LigneCentre(((Number) r[0]).longValue(), (String) r[1], (String) r[2], (String) r[3], candidats,
-                    salles, phys == null ? null : phys[0], phys == null ? null : phys[1], remplissage(candidats, salles)));
+                    salles, phys == null ? null : phys[0], phys == null ? null : phys[1], remplissage(enSalle, salles)));
             sallesUtilisees += salles;
             affectes += candidats;
+            places += enSalle;
             if (phys != null) {
                 sallesDispo += phys[0];
                 capacite += phys[1];
@@ -195,7 +199,7 @@ public class StatistiquesExamensService {
         int sansCentre = entier(em.createQuery("select count(c.id) from CandidatExamen c where c.examen.anneeScolaire.id = :a and c.centre is null")
                 .setParameter("a", anneeScolaireId).getSingleResult());
         var salles = new StatistiquesExamensDto.Salles(centres.size(), sallesUtilisees, affectes, sansCentre, sallesDispo, capacite,
-                remplissage(affectes, sallesUtilisees));
+                remplissage(places, sallesUtilisees));
         List<StatistiquesExamensDto.LigneLycee> lycee = ((List<Object[]>) em.createQuery(
                 "select n.libelle, n.ordre, cl.serie, count(distinct cl.id), count(distinct i.id) from Inscription i join i.classe cl join cl.niveau n "
                         + "where cl.anneeScolaire.id = :a and cl.serie is not null and i.statut in ('EN_ATTENTE', 'ACCEPTEE') "
