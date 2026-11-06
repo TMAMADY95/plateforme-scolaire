@@ -9,7 +9,7 @@
 
 ## À faire par toi
 1. [ ] Créer `deploiement/.env` depuis `.env.example` (secrets aléatoires, `SITE_URL` en https).
-2. [ ] Mettre un HTTPS devant le service `web` (port 8081) ; transmettre `X-Forwarded-Proto`.
+2. [ ] Mettre un HTTPS devant le service `web` (port 8081) ; transmettre `X-Forwarded-Proto`. **Obligatoire pour se connecter au site web** : le cookie de session est `Secure`.
 3. [ ] Lancer : `docker compose -f deploiement/docker-compose.prod.yml --env-file deploiement/.env up -d --build`.
 4. [ ] Créer le compte administrateur technique à la main (mot de passe long), ne pas utiliser `DEV_PASSWORD`.
 5. [ ] Planifier `sauvegarde.sh` (cron) + copie hors serveur ; **essayer `restauration.sh` sur une machine de test**.

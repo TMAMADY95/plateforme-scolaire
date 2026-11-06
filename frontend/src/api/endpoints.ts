@@ -336,12 +336,12 @@ export const exonererFacture = (factureId: number, requete: ExonerationRequete) 
 
 export const annulerFacture = (factureId: number) => api.post<Facture>(`/api/factures/${factureId}/annulation`)
 
-/** Sans jeton : l'utilisateur a oublié son mot de passe. Répond toujours pareil, que l'adresse existe ou non. */
+/** Sans session : l'utilisateur a oublié son mot de passe. Répond toujours pareil, que l'adresse existe ou non. */
 export const demanderReinitialisation = (email: string) =>
-  api.post<void>('/api/auth/mot-de-passe-oublie', { email }, { sansJeton: true })
+  api.post<void>('/api/auth/mot-de-passe-oublie', { email }, { appelPublic: true })
 
 export const reinitialiserAvecJeton = (jeton: string, nouveauMotDePasse: string) =>
-  api.post<void>('/api/auth/reinitialisation', { jeton, nouveauMotDePasse }, { sansJeton: true })
+  api.post<void>('/api/auth/reinitialisation', { jeton, nouveauMotDePasse }, { appelPublic: true })
 
 export const telechargerBulletin = (eleveId: number, periodeId: number) =>
   telecharger(`/api/eleves/${eleveId}/bulletin.pdf?periodeId=${periodeId}`, `bulletin-${eleveId}-${periodeId}.pdf`)
@@ -811,7 +811,7 @@ export const revoquerDiplome = (examenId: number, diplomeId: number, motif: stri
 export const telechargerDiplomes = (etablissementId: number, examenId: number) =>
   telecharger(`/api/etablissements/${etablissementId}/examens/${examenId}/diplomes.pdf`, `diplomes-${examenId}.pdf`)
 export const verifierDiplome = (code: string) =>
-  api.get<VerificationDiplome>(`/api/verification-diplome/${encodeURIComponent(code)}`, { sansJeton: true })
+  api.get<VerificationDiplome>(`/api/verification-diplome/${encodeURIComponent(code)}`, { appelPublic: true })
 
 export const inscrireCandidatLibre = (
   etablissementId: number,

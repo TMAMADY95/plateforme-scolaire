@@ -2,6 +2,9 @@ app:
   jwt:
     # Obligatoire en production : pas de valeur par défaut
     secret: ${JWT_SECRET}
+  cookie:
+    # Le cookie de session n'est envoyé qu'en HTTPS. Sans HTTPS, le navigateur le refuse et la connexion web échoue.
+    secure: ${COOKIE_SECURE:true}
 
 server:
   # Derrière un répartiteur de charge ou un proxy inverse : "native" (ou "framework") pour lire l'adresse réelle du

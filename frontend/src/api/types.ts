@@ -42,14 +42,6 @@ export interface VerificationRequise {
   verificationRequise: true
 }
 
-export interface LoginResponse {
-  token: string
-  type: string
-  utilisateurId: number
-  email: string
-  changementMotDePasseRequis: boolean
-}
-
 export interface Cycle {
   id: number
   code: string

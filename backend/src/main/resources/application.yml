@@ -70,6 +70,9 @@ app:
     # 32 caractères minimum. Valeur de développement uniquement.
     secret: ${JWT_SECRET:dev-only-secret-change-me-dev-only-secret-change-me}
     expiration-minutes: 60
+  cookie:
+    # En développement, le site tourne en HTTP ; vrai par défaut dans application-prod.yml.
+    secure: ${COOKIE_SECURE:false}
   cors:
     allowed-origins: ${CORS_ORIGINS:http://localhost:5173,http://localhost:3000}
   mail:

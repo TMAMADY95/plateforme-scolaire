@@ -1,7 +1,10 @@
-// Client HTTP minimal : ajoute le jeton, convertit les erreurs de l'API en ApiError
+// Client HTTP minimal : joint le cookie de session, convertit les erreurs de l'API en ApiError
 // avec un message lisible, et prévient l'application quand la session n'est plus valide.
 
 const BASE = import.meta.env.VITE_API_URL ?? ''
+
+/** Exigé par le serveur sur les écritures authentifiées par cookie (protection contre les requêtes forgées). */
+const ENTETE_APPLICATION = { 'X-Requested-With': 'EduManage' }
 
 export class ApiError extends Error {
   readonly statut: number
@@ -14,15 +17,15 @@ export class ApiError extends Error {
 }
 
 interface Rappels {
-  /** Le serveur a refusé le jeton (expiré, révoqué, compte verrouillé). */
+  /** Le serveur a refusé la session (expirée, révoquée, compte verrouillé). */
   nonAutorise?: () => void
   /** Le serveur exige le changement du mot de passe initial. */
   motDePasseRequis?: () => void
 }
 
 interface Options {
-  /** Pour les appels sans jeton (connexion). */
-  sansJeton?: boolean
+  /** Pour les routes publiques (connexion) : un refus n'y signifie pas que la session a expiré. */
+  appelPublic?: boolean
 }
 
 interface CorpsErreur {
@@ -31,12 +34,7 @@ interface CorpsErreur {
   erreur?: string
 }
 
-let jetonCourant: string | null = null
 const rappels: Rappels = {}
-
-export function definirJeton(jeton: string | null): void {
-  jetonCourant = jeton
-}
 
 export function enregistrerRappels(nouveaux: Rappels): void {
   Object.assign(rappels, nouveaux)
@@ -73,15 +71,14 @@ async function requete<T>(
   corps?: unknown,
   options: Options = {},
 ): Promise<T> {
-  const entetes: Record<string, string> = { Accept: 'application/json' }
+  const entetes: Record<string, string> = { Accept: 'application/json', ...ENTETE_APPLICATION }
   if (corps !== undefined) entetes['Content-Type'] = 'application/json'
-  const avecJeton = jetonCourant !== null && !options.sansJeton
-  if (avecJeton) entetes.Authorization = `Bearer ${jetonCourant}`
 
   let reponse: Response
   try {
     reponse = await fetch(`${BASE}${chemin}`, {
       method: methode,
+      credentials: 'include',
       headers: entetes,
       body: corps !== undefined ? JSON.stringify(corps) : undefined,
     })
@@ -96,20 +93,18 @@ async function requete<T>(
   }
 
   const erreur = enCorpsErreur(lireJson(await reponse.text()))
-  if (reponse.status === 401 && avecJeton) rappels.nonAutorise?.()
+  if (reponse.status === 401 && !options.appelPublic) rappels.nonAutorise?.()
   if (reponse.status === 403 && erreur.erreur === 'CHANGEMENT_MOT_DE_PASSE_REQUIS') {
     rappels.motDePasseRequis?.()
   }
   throw new ApiError(reponse.status, erreur.detail ?? erreur.message ?? messageParDefaut(reponse.status))
 }
 
-/** Télécharge un fichier protégé (le jeton ne passe pas par un simple lien) et l'enregistre sous `nomFichier`. */
+/** Télécharge un fichier protégé et l'enregistre sous `nomFichier` (les erreurs restent ainsi affichées dans la page). */
 export async function telecharger(chemin: string, nomFichier: string): Promise<void> {
-  const entetes: Record<string, string> = {}
-  if (jetonCourant !== null) entetes.Authorization = `Bearer ${jetonCourant}`
   let reponse: Response
   try {
-    reponse = await fetch(`${BASE}${chemin}`, { headers: entetes })
+    reponse = await fetch(`${BASE}${chemin}`, { credentials: 'include', headers: ENTETE_APPLICATION })
   } catch {
     throw new ApiError(0, 'Le serveur est injoignable. Vérifiez votre connexion.')
   }
@@ -130,13 +125,12 @@ export async function telecharger(chemin: string, nomFichier: string): Promise<v
 
 /** Envoie un fichier (multipart) ; le navigateur fixe lui-même l'en-tête Content-Type avec sa limite. */
 export async function envoyerFichier<T>(chemin: string, fichier: File): Promise<T> {
-  const entetes: Record<string, string> = { Accept: 'application/json' }
-  if (jetonCourant !== null) entetes.Authorization = `Bearer ${jetonCourant}`
+  const entetes: Record<string, string> = { Accept: 'application/json', ...ENTETE_APPLICATION }
   const formulaire = new FormData()
   formulaire.append('fichier', fichier)
   let reponse: Response
   try {
-    reponse = await fetch(`${BASE}${chemin}`, { method: 'POST', headers: entetes, body: formulaire })
+    reponse = await fetch(`${BASE}${chemin}`, { method: 'POST', credentials: 'include', headers: entetes, body: formulaire })
   } catch {
     throw new ApiError(0, 'Le serveur est injoignable. Vérifiez votre connexion.')
   }

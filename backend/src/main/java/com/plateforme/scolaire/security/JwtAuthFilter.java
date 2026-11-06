@@ -2,6 +2,7 @@ package com.plateforme.scolaire.security;
 
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
+import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
@@ -12,16 +13,20 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.web.filter.OncePerRequestFilter;
+import org.springframework.web.util.WebUtils;
 
 /**
- * Lit le jeton "Authorization: Bearer ...", recharge l'utilisateur en base et refuse le jeton si :
- * le compte est désactivé ou verrouillé, ou si le mot de passe a été changé après l'émission du jeton.
+ * Lit le jeton "Authorization: Bearer ..." (application mobile) ou, à défaut, le cookie de session (site web), recharge
+ * l'utilisateur en base et refuse le jeton si : le compte est désactivé ou verrouillé, ou si le mot de passe a été changé
+ * après l'émission du jeton. Une écriture authentifiée par cookie doit porter l'en-tête de l'application.
+ * Le cookie est ignoré sur les routes publiques d'un navigateur : un ancien cookie ne doit gêner ni une reconnexion ni une vérification de diplôme.
  * Tant qu'un mot de passe initial n'a pas été changé, seuls /api/me et /api/me/mot-de-passe sont accessibles.
  * Instancié dans SecurityConfig : ne pas l'annoter @Component (il serait enregistré deux fois).
  */
 public class JwtAuthFilter extends OncePerRequestFilter {
 
     private static final Set<String> CHEMINS_AVANT_CHANGEMENT = Set.of("/api/me", "/api/me/mot-de-passe");
+    private static final Set<String> METHODES_SANS_ECRITURE = Set.of("GET", "HEAD", "OPTIONS");
 
     private final JwtService jwtService;
     private final CustomUserDetailsService userDetailsService;
@@ -35,9 +40,15 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
             throws ServletException, IOException {
         String header = request.getHeader(HttpHeaders.AUTHORIZATION);
-        if (header != null && header.startsWith("Bearer ")
-                && SecurityContextHolder.getContext().getAuthentication() == null) {
-            Optional<UtilisateurPrincipal> utilisateur = jwtService.analyser(header.substring(7))
+        boolean parEntete = header != null && header.startsWith("Bearer ");
+        String jetonBrut = parEntete ? header.substring(7) : jetonDuCookie(request);
+        if (jetonBrut != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+            if (!parEntete && !METHODES_SANS_ECRITURE.contains(request.getMethod())
+                    && request.getHeader(CookieSession.ENTETE_APPLICATION) == null) {
+                refuserSansEnTeteApplication(response);
+                return;
+            }
+            Optional<UtilisateurPrincipal> utilisateur = jwtService.analyser(jetonBrut)
                     .flatMap(jeton -> userDetailsService.chargerParId(jeton.idUtilisateur())
                             .filter(p -> jetonAccepte(jeton, p)));
             if (utilisateur.isPresent()) {
@@ -53,6 +64,22 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             }
         }
         chain.doFilter(request, response);
+    }
+
+    private static String jetonDuCookie(HttpServletRequest request) {
+        String chemin = request.getRequestURI();
+        if (chemin.startsWith("/api/auth/") || chemin.startsWith("/api/verification-diplome/")) {
+            return null;
+        }
+        Cookie cookie = WebUtils.getCookie(request, CookieSession.NOM);
+        return cookie == null || cookie.getValue().isEmpty() ? null : cookie.getValue();
+    }
+
+    private static void refuserSansEnTeteApplication(HttpServletResponse response) throws IOException {
+        response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+        response.setContentType("application/json;charset=UTF-8");
+        response.getWriter().write("{\"erreur\":\"EN_TETE_APPLICATION_REQUIS\","
+                + "\"message\":\"Requête refusée : elle ne provient pas de l'application.\"}");
     }
 
     private static boolean jetonAccepte(JwtService.JetonInfo jeton, UtilisateurPrincipal p) {
