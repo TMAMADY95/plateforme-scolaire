@@ -88,7 +88,7 @@ public class InscriptionService {
         }
 
         Eleve eleve = avecMatricule
-                ? eleveRepository.findByMatricule(r.matriculeEleve().trim())
+                ? IdentifiantNational.trouver(eleveRepository, r.matriculeEleve())
                         .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
                                 "Aucun élève avec ce matricule"))
                 : creerEleve(r.nouvelEleve(), Boolean.TRUE.equals(r.confirmerHomonyme()));

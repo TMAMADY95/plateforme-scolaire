@@ -5,6 +5,7 @@ import { useQuery } from '@tanstack/react-query'
 import { listerAffectationsClasse, listerClasses } from '../../api/endpoints'
 import { useAnneeScolaire } from '../../hooks/useAnneeScolaire'
 import AffectationModal from './AffectationModal'
+import { libelleClasse } from '../../utils/classes'
 
 export default function AffectationsClasse({ etablissementId }: { etablissementId: number }) {
   const { anneeId, setAnneeChoisie, options } = useAnneeScolaire()
@@ -25,7 +26,7 @@ export default function AffectationsClasse({ etablissementId }: { etablissementI
     enabled: classe !== undefined,
   })
 
-  const optionsClasses = (classes.data ?? []).map((c) => ({ value: String(c.id), label: `${c.nom} — ${c.niveauLibelle}` }))
+  const optionsClasses = (classes.data ?? []).map((c) => ({ value: String(c.id), label: libelleClasse(c) }))
 
   return (
     <Stack mt="md">

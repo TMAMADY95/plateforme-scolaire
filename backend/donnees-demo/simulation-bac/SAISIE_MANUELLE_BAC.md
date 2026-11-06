@@ -6,6 +6,8 @@ Pour chaque étape : le compte à utiliser, l'écran, l'action.
 > Les libellés exacts des boutons peuvent différer légèrement de ceux écrits ici. Rien n'a été exécuté ni compilé pour rédiger ce guide ; il est fondé sur la lecture du code des écrans.
 > Saisir 331 candidats et 2 170 notes à la main n'est pas raisonnable : saisissez un **échantillon** (ex. 1 établissement, 10 candidats, 1 centre) pour valider le parcours, et utilisez les scripts SQL pour le volume.
 
+> Dans l'accueil de l'établissement, choisissez l'année **2025-2026** (sélecteur en haut) pour voir l'examen de simulation.
+
 ## Comptes et rôles
 
 | Rôle | Sert à |
@@ -19,14 +21,15 @@ Pour chaque étape : le compte à utiliser, l'écran, l'action.
 ## Étape 1 : Préparation de l'examen (compte DGECS)
 
 1. Espace ministère → onglet **Examens** → vue de planification → **Planifier un examen** : type BAC, année scolaire, dates, barème (20), seuil d'admission.
-2. Même écran, ajouter les **7 épreuves** (intitulé, coefficient, durée, date, série concernée).
+   Choisissez le **cycle Lycée** : c'est lui qui active les séries. Le niveau choisi doit appartenir au cycle.
+2. Même écran, ajouter les **7 épreuves** (matière, coefficient, horaire, date). Pour un examen du lycée, choisissez la **série** de chaque épreuve (vide = commune à toutes les séries) : chaque série a ainsi son propre emploi du temps, et un candidat ne compose que les épreuves communes et celles de sa série.
 3. Onglet **Logistique** : renseigner les **besoins** globaux, puis les besoins **par épreuve** (écran « Besoins par épreuve »).
 4. Onglet **Budget** : bouton **Modifier** sur chaque rubrique pour saisir le budget prévu.
 
 ## Étape 2 : Candidatures (compte direction d'établissement)
 
 1. Accueil établissement → **Examens** → choisir l'examen → **Candidats**.
-2. Inscrire chaque candidat (élève de l'établissement ; candidat libre pour les non scolarisés).
+2. Inscrire chaque candidat (élève de l'établissement ; candidat libre pour les non scolarisés). Un candidat libre doit être du cycle de l'examen et, au lycée, **déclarer sa série**.
 3. Ouvrir la fiche du candidat : ajouter les **pièces** (acte de naissance, photo…) et les **aménagements** (tiers-temps, etc.).
 4. **Transmettre** la liste de l'établissement.
 5. Compte IRE/DPE : écran de **vérification des listes** → valider ou renvoyer (c'est ainsi qu'une liste « renvoyée » apparaît).

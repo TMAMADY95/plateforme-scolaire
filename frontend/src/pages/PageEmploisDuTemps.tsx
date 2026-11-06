@@ -11,6 +11,7 @@ import ConfirmationModal from '../components/ConfirmationModal'
 import type { Creneau } from '../api/types'
 import CreneauModal from './emplois/CreneauModal'
 import GestionSalles from './emplois/GestionSalles'
+import { libelleClasse } from '../utils/classes'
 
 interface CibleCreneau {
   classeId: number
@@ -102,7 +103,7 @@ export default function PageEmploisDuTemps() {
             label="Ajouter un créneau à la classe"
             placeholder="Choisir une classe"
             searchable
-            data={classes.data.map((c) => ({ value: String(c.id), label: c.nom }))}
+            data={classes.data.map((c) => ({ value: String(c.id), label: libelleClasse(c) }))}
             value={classeAjout}
             onChange={setClasseAjout}
           />

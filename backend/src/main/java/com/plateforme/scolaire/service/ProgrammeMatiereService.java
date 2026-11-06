@@ -6,11 +6,13 @@ import com.plateforme.scolaire.domain.Matiere;
 import com.plateforme.scolaire.domain.Niveau;
 import com.plateforme.scolaire.domain.ProgrammeMatiere;
 import com.plateforme.scolaire.domain.SerieLycee;
+import com.plateforme.scolaire.domain.TypeEtablissement;
 import com.plateforme.scolaire.repository.AnneeScolaireRepository;
 import com.plateforme.scolaire.repository.ClasseRepository;
 import com.plateforme.scolaire.repository.MatiereRepository;
 import com.plateforme.scolaire.repository.NiveauRepository;
 import com.plateforme.scolaire.repository.ProgrammeMatiereRepository;
+import com.plateforme.scolaire.repository.TypeEtablissementRepository;
 import com.plateforme.scolaire.web.dto.CoefficientMatiereDto;
 import com.plateforme.scolaire.web.dto.CoefficientsRequest;
 import com.plateforme.scolaire.web.dto.CopieProgrammeRequest;
@@ -50,6 +52,7 @@ public class ProgrammeMatiereService {
     static final String RESSOURCE_COC = "referentiel/coc-2023.csv";
 
     private final ProgrammeMatiereRepository programmes;
+    private final TypeEtablissementRepository types;
     private final AnneeScolaireRepository annees;
     private final NiveauRepository niveaux;
     private final MatiereRepository matieres;
@@ -83,20 +86,12 @@ public class ProgrammeMatiereService {
         return resultat;
     }
 
-    /** Pur : coefficients à appliquer à une classe ; une ligne propre à la série l'emporte sur la ligne commune du niveau. */
+    /** Pur : coefficients à appliquer à une classe ; la ligne la plus précise (type d'établissement, série) l'emporte sur la ligne commune du niveau. */
     static Map<Long, BigDecimal> coefficientsResolus(List<ProgrammeMatiere> lignes) {
-        Map<Long, ProgrammeMatiere> retenues = new LinkedHashMap<>();
-        for (ProgrammeMatiere p : lignes) {
-            if (p.getCoefficient() == null) {
-                continue;
-            }
-            ProgrammeMatiere deja = retenues.get(p.getMatiere().getId());
-            if (deja == null || (deja.getSerie() == null && p.getSerie() != null)) {
-                retenues.put(p.getMatiere().getId(), p);
-            }
-        }
+        // Les lignes sans coefficient sont écartées avant le choix : une ligne précise sans coefficient ne masque pas une ligne commune qui en a un
+        List<ProgrammeMatiere> retenues = ProgrammeApplicable.retenir(lignes.stream().filter(p -> p.getCoefficient() != null).toList());
         Map<Long, BigDecimal> resultat = new LinkedHashMap<>();
-        retenues.forEach((k, v) -> resultat.put(k, v.getCoefficient()));
+        retenues.forEach(v -> resultat.put(v.getMatiere().getId(), v.getCoefficient()));
         return resultat;
     }
 
@@ -105,8 +100,12 @@ public class ProgrammeMatiereService {
         return lignes.stream().map(ProgrammeMatiere::getHeuresHebdo).filter(h -> h != null).reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 
-    private static String cle(Long niveauId, String serie, Long matiereId) {
-        return niveauId + "|" + (serie == null ? "" : serie) + "|" + matiereId;
+    private static String cle(Long niveauId, String serie, Long typeId, Long matiereId) {
+        return niveauId + "|" + (serie == null ? "" : serie) + "|" + (typeId == null ? 0 : typeId) + "|" + matiereId;
+    }
+
+    private static Long typeId(ProgrammeMatiere p) {
+        return p.getTypeEtablissement() == null ? null : p.getTypeEtablissement().getId();
     }
 
     @Transactional(readOnly = true)
@@ -122,16 +121,21 @@ public class ProgrammeMatiereService {
         Niveau niveau = niveaux.findById(r.niveauId()).orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Niveau inconnu"));
         Matiere matiere = matieres.findById(r.matiereId()).orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Matière inconnue"));
         String serie = normaliserSerie(r.serie());
+        TypeEtablissement type = r.typeEtablissementId() == null ? null : types.findById(r.typeEtablissementId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Type d'établissement inconnu"));
+        Long typeId = type == null ? null : type.getId();
         boolean existe = programmes.deLAnneeEtNiveau(annee.getId(), niveau.getId()).stream()
-                .anyMatch(p -> p.getMatiere().getId().equals(matiere.getId()) && java.util.Objects.equals(p.getSerie(), serie));
+                .anyMatch(p -> p.getMatiere().getId().equals(matiere.getId()) && java.util.Objects.equals(p.getSerie(), serie)
+                        && java.util.Objects.equals(typeId(p), typeId));
         if (existe) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Cette matière figure déjà au programme de ce niveau pour cette série");
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Cette matière figure déjà au programme de ce niveau pour cette série et ce type d'établissement");
         }
         ProgrammeMatiere p = new ProgrammeMatiere();
         p.setAnneeScolaire(annee);
         p.setNiveau(niveau);
         p.setMatiere(matiere);
         p.setSerie(serie);
+        p.setTypeEtablissement(type);
         remplir(p, r);
         programmes.save(p);
         audit.enregistrer("PROGRAMME_LIGNE_CREEE", "ProgrammeMatiere", p.getId(), Map.of("niveau", niveau.getLibelle(), "matiere", matiere.getLibelle()));
@@ -180,7 +184,7 @@ public class ProgrammeMatiereService {
         Map<String, Matiere> parCode = new HashMap<>();
         matieres.findAll().forEach(m -> parCode.put(m.getCode(), m));
         Set<String> existantes = new HashSet<>();
-        programmes.deLAnnee(anneeScolaireId).forEach(p -> existantes.add(cle(p.getNiveau().getId(), p.getSerie(), p.getMatiere().getId())));
+        programmes.deLAnnee(anneeScolaireId).forEach(p -> existantes.add(cle(p.getNiveau().getId(), p.getSerie(), typeId(p), p.getMatiere().getId())));
 
         int creees = 0;
         int ignorees = 0;
@@ -203,7 +207,7 @@ public class ProgrammeMatiereService {
                     ignorees++;
                     continue;
                 }
-                if (!existantes.add(cle(niveau.getId(), l.serie(), matiere.getId()))) {
+                if (!existantes.add(cle(niveau.getId(), l.serie(), null, matiere.getId()))) {
                     ignorees++;
                     continue;
                 }
@@ -231,11 +235,11 @@ public class ProgrammeMatiereService {
         }
         AnneeScolaire vers = annees.findById(r.versAnneeScolaireId()).orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Année de destination inconnue"));
         Set<String> existantes = new HashSet<>();
-        programmes.deLAnnee(vers.getId()).forEach(p -> existantes.add(cle(p.getNiveau().getId(), p.getSerie(), p.getMatiere().getId())));
+        programmes.deLAnnee(vers.getId()).forEach(p -> existantes.add(cle(p.getNiveau().getId(), p.getSerie(), typeId(p), p.getMatiere().getId())));
         int creees = 0;
         int ignorees = 0;
         for (ProgrammeMatiere source : programmes.deLAnnee(r.deAnneeScolaireId())) {
-            if (!existantes.add(cle(source.getNiveau().getId(), source.getSerie(), source.getMatiere().getId()))) {
+            if (!existantes.add(cle(source.getNiveau().getId(), source.getSerie(), typeId(source), source.getMatiere().getId()))) {
                 ignorees++;
                 continue;
             }
@@ -243,6 +247,7 @@ public class ProgrammeMatiereService {
             p.setAnneeScolaire(vers);
             p.setNiveau(source.getNiveau());
             p.setSerie(source.getSerie());
+            p.setTypeEtablissement(source.getTypeEtablissement());
             p.setMatiere(source.getMatiere());
             p.setHeuresHebdo(source.getHeuresHebdo());
             p.setCoefficient(source.getCoefficient());
@@ -258,7 +263,7 @@ public class ProgrammeMatiereService {
     /** Applique les coefficients du programme (niveau et série de la classe, année de la classe) aux coefficients de la classe. */
     public List<CoefficientMatiereDto> appliquerAClasse(Long classeId) {
         Classe classe = classes.findById(classeId).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Classe introuvable"));
-        List<ProgrammeMatiere> lignes = programmes.pourClasse(classe.getAnneeScolaire().getId(), classe.getNiveau().getId(), classe.getSerie());
+        List<ProgrammeMatiere> lignes = ProgrammeApplicable.pourClasse(programmes, classe);
         Map<Long, BigDecimal> coefs = coefficientsResolus(lignes);
         if (coefs.isEmpty()) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Aucun coefficient au programme de ce niveau pour cette année");

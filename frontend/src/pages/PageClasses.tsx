@@ -11,6 +11,7 @@ import { SERIES_LYCEE, libelleSerie } from '../api/types'
 import type { Classe } from '../api/types'
 import AnnoncesModal from './classes/AnnoncesModal'
 import CoefficientsModal from './classes/CoefficientsModal'
+import ConseilClasseModal from './classes/ConseilClasseModal'
 import ModifierClasseModal from './classes/ModifierClasseModal'
 
 interface ValeursClasse {
@@ -29,6 +30,7 @@ export default function PageClasses() {
   const [anneeChoisie, setAnneeChoisie] = useState<string | null>(null)
   const [aModifier, setAModifier] = useState<Classe | null>(null)
   const [coefficientsDe, setCoefficientsDe] = useState<Classe | null>(null)
+  const [conseilDe, setConseilDe] = useState<Classe | null>(null)
   const [annoncesDe, setAnnoncesDe] = useState<Classe | null>(null)
 
   const annees = useQuery({ queryKey: ['annees'], queryFn: listerAnnees })
@@ -146,6 +148,9 @@ export default function PageClasses() {
                     <Button size="compact-xs" variant="light" onClick={() => setAnnoncesDe(classe)}>
                       Annonces
                     </Button>
+                    <Button size="compact-xs" variant="light" onClick={() => setConseilDe(classe)}>
+                      Conseil de classe
+                    </Button>
                   </Group>
                 </Table.Td>
               </Table.Tr>
@@ -160,6 +165,7 @@ export default function PageClasses() {
 
       {annoncesDe && <AnnoncesModal classe={annoncesDe} onFermer={() => setAnnoncesDe(null)} />}
 
+      {conseilDe && <ConseilClasseModal classe={conseilDe} onFermer={() => setConseilDe(null)} />}
       {coefficientsDe && <CoefficientsModal classe={coefficientsDe} onFermer={() => setCoefficientsDe(null)} />}
 
       <Modal opened={modalOuverte} onClose={close} title="Nouvelle classe">

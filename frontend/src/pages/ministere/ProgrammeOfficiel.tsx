@@ -10,6 +10,7 @@ import {
   listerMatieres,
   listerNiveaux,
   listerProgramme,
+  listerTypesEtablissement,
   modifierLigneProgramme,
   supprimerLigneProgramme,
 } from '../../api/endpoints'
@@ -39,7 +40,9 @@ function LigneEditable({ ligne, onChange }: { ligne: LigneProgramme; onChange: (
   })
   return (
     <Table.Tr>
+      <Table.Td>{ligne.cycle ?? '—'}</Table.Td>
       <Table.Td>{ligne.niveau}</Table.Td>
+      <Table.Td>{ligne.typeEtablissement ?? 'Tous types'}</Table.Td>
       <Table.Td>{libelleSerie(ligne.serie) === '—' ? 'Toutes' : libelleSerie(ligne.serie)}</Table.Td>
       <Table.Td>
         <Text size="sm">{ligne.matiere}</Text>
@@ -76,6 +79,9 @@ export default function ProgrammeOfficiel() {
   const matieres = useQuery({ queryKey: ['matieres'], queryFn: listerMatieres })
   const [anneeId, setAnneeId] = useState<string | null>(null)
   const [niveauId, setNiveauId] = useState<string | null>(null)
+  const [typeFiltre, setTypeFiltre] = useState<string | null>(null)
+  const [cycleFiltre, setCycleFiltre] = useState<string | null>(null)
+  const types = useQuery({ queryKey: ['types-etablissement'], queryFn: listerTypesEtablissement })
   const [source, setSource] = useState<string | null>(null)
   const anneeCourante = anneeId ?? (annees.data && annees.data.length > 0 ? String(annees.data[0].id) : null)
 
@@ -84,6 +90,13 @@ export default function ProgrammeOfficiel() {
     queryFn: () => listerProgramme(Number(anneeCourante), niveauId === null ? undefined : Number(niveauId)),
     enabled: anneeCourante !== null,
   })
+  // Filtres de lecture : le programme dépend du cycle, du niveau, de la série et du type d'établissement.
+  const cycles = [...new Map((lignes.data ?? []).filter((l) => l.cycleId !== null).map((l): [string, string] => [String(l.cycleId), l.cycle ?? ''])).entries()]
+  const affichees = (lignes.data ?? []).filter(
+    (l) =>
+      (cycleFiltre === null || String(l.cycleId) === cycleFiltre) &&
+      (typeFiltre === null || (typeFiltre === '0' ? l.typeEtablissementId === null : l.typeEtablissementId === null || String(l.typeEtablissementId) === typeFiltre)),
+  )
   const rafraichir = () => void queryClient.invalidateQueries({ queryKey: ['programme'] })
   const bilan = (titre: string) => (r: { lignesCreees: number; lignesIgnorees: number; matieresCreees: number; avertissements: string[] }) => {
     rafraichir()
@@ -108,6 +121,7 @@ export default function ProgrammeOfficiel() {
   const [nMatiere, setNMatiere] = useState<string | null>(null)
   const [nNiveau, setNNiveau] = useState<string | null>(null)
   const [nSerie, setNSerie] = useState<string | null>(null)
+  const [nType, setNType] = useState<string | null>(null)
   const [nHeures, setNHeures] = useState<number | string>('')
   const [nCoef, setNCoef] = useState<number | string>('')
   const ajouter = useMutation({
@@ -120,6 +134,7 @@ export default function ProgrammeOfficiel() {
         heuresHebdo: nHeures === '' ? null : Number(nHeures),
         coefficient: nCoef === '' ? null : Number(nCoef),
         note: null,
+        typeEtablissementId: nType === null ? null : Number(nType),
       }),
     onSuccess: () => {
       rafraichir()
@@ -132,7 +147,7 @@ export default function ProgrammeOfficiel() {
 
   // Total d'heures par niveau et série affiché en tête de la liste.
   const totaux = new Map<string, number>()
-  for (const l of lignes.data ?? []) {
+  for (const l of affichees) {
     const cle = `${l.niveau} · ${libelleSerie(l.serie) === '—' ? 'toutes séries' : libelleSerie(l.serie)}`
     totaux.set(cle, (totaux.get(cle) ?? 0) + (l.heuresHebdo ?? 0))
   }
@@ -143,13 +158,23 @@ export default function ProgrammeOfficiel() {
         <div>
           <Title order={4}>Programme officiel</Title>
           <Text c="dimmed" size="sm">
-            Matières, horaires hebdomadaires et coefficients de chaque niveau (et série au lycée), année par année. Ces valeurs
+            Matières, horaires hebdomadaires et coefficients par cycle, niveau, type d'établissement (classique, franco-arabe, technique…) et série au lycée, année par année. Une ligne propre à un type remplace la ligne commune pour la même matière ; elle peut aussi ajouter une matière. Ces valeurs
             évoluent : modifiez-les à tout moment. Elles servent à préremplir les coefficients des classes.
           </Text>
         </div>
         <Group align="flex-end">
           <Select label="Année scolaire" data={(annees.data ?? []).map((a) => ({ value: String(a.id), label: a.libelle }))} value={anneeCourante} onChange={setAnneeId} allowDeselect={false} w={180} />
           <Select label="Niveau" placeholder="Tous" clearable data={(niveaux.data ?? []).map((n) => ({ value: String(n.id), label: n.libelle }))} value={niveauId} onChange={setNiveauId} w={180} />
+          <Select label="Cycle" placeholder="Tous" clearable data={cycles.map(([value, label]) => ({ value, label }))} value={cycleFiltre} onChange={setCycleFiltre} w={160} />
+          <Select
+            label="Type d'établissement"
+            placeholder="Tous"
+            clearable
+            data={[{ value: '0', label: 'Communes à tous les types' }, ...(types.data ?? []).map((t) => ({ value: String(t.id), label: t.libelle }))]}
+            value={typeFiltre}
+            onChange={setTypeFiltre}
+            w={230}
+          />
           <Button variant="light" loading={importer.isPending} disabled={anneeCourante === null} onClick={() => importer.mutate()}>
             Importer la grille du COC 2023
           </Button>
@@ -174,7 +199,9 @@ export default function ProgrammeOfficiel() {
           <Table striped withTableBorder verticalSpacing="xs">
             <Table.Thead>
               <Table.Tr>
+                <Table.Th>Cycle</Table.Th>
                 <Table.Th>Niveau</Table.Th>
+                <Table.Th>Type d'établissement</Table.Th>
                 <Table.Th>Série</Table.Th>
                 <Table.Th>Matière</Table.Th>
                 <Table.Th>Heures / sem.</Table.Th>
@@ -183,10 +210,10 @@ export default function ProgrammeOfficiel() {
               </Table.Tr>
             </Table.Thead>
             <Table.Tbody>
-              {lignes.data?.length === 0 && (
-                <Table.Tr><Table.Td colSpan={6}><Text c="dimmed">Aucune ligne pour cette sélection.</Text></Table.Td></Table.Tr>
+              {affichees.length === 0 && (
+                <Table.Tr><Table.Td colSpan={8}><Text c="dimmed">Aucune ligne pour cette sélection.</Text></Table.Td></Table.Tr>
               )}
-              {(lignes.data ?? []).map((l) => (
+              {affichees.map((l) => (
                 <LigneEditable key={`${l.id}-${l.heuresHebdo}-${l.coefficient}`} ligne={l} onChange={rafraichir} />
               ))}
             </Table.Tbody>
@@ -195,6 +222,7 @@ export default function ProgrammeOfficiel() {
         <Group align="flex-end">
           <Select label="Niveau" data={(niveaux.data ?? []).map((n) => ({ value: String(n.id), label: n.libelle }))} value={nNiveau} onChange={setNNiveau} w={160} />
           <Select label="Série" placeholder="Toutes" clearable data={SERIES_LYCEE} value={nSerie} onChange={setNSerie} w={200} />
+          <Select label="Type d'établissement" placeholder="Tous les types" clearable data={(types.data ?? []).map((t) => ({ value: String(t.id), label: t.libelle }))} value={nType} onChange={setNType} w={220} />
           <Select label="Matière" searchable data={(matieres.data ?? []).map((m) => ({ value: String(m.id), label: m.libelle }))} value={nMatiere} onChange={setNMatiere} w={220} />
           <NumberInput label="Heures" min={0} max={99} step={0.25} decimalScale={2} decimalSeparator="," value={nHeures} onChange={setNHeures} w={90} />
           <NumberInput label="Coef." min={0.01} max={99} decimalScale={2} decimalSeparator="," value={nCoef} onChange={setNCoef} w={90} />

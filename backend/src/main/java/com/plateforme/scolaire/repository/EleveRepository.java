@@ -12,6 +12,12 @@ public interface EleveRepository extends JpaRepository<Eleve, Long> {
 
     Optional<Eleve> findByMatricule(String matricule);
 
+    Optional<Eleve> findByIdentifiantNational(String identifiantNational);
+
+    /** Un identifiant (matricule ou identifiant national) d'un dossier absorbé par une fusion désigne l'élève conservé. */
+    @Query(value = "select e.* from eleve e join ancien_identifiant_eleve a on a.eleve_id = e.id where a.identifiant = :identifiant", nativeQuery = true)
+    Optional<Eleve> findParAncienIdentifiant(@Param("identifiant") String identifiant);
+
     /** Le dossier élève rattaché à un compte de connexion (rôle ELEVE). */
     Optional<Eleve> findByUtilisateurId(Long utilisateurId);
 

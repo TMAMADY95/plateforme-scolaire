@@ -18,6 +18,12 @@ import PanneauStatistiques from '../../components/PanneauStatistiques'
 import type { NomIcone } from '../../components/Icone'
 import EnteteSection from '../../components/EnteteSection'
 import { useAnneeScolaire } from '../../hooks/useAnneeScolaire'
+import CarteScolaire from './CarteScolaire'
+import AbandonsSynthese from './AbandonsSynthese'
+import AnnuaireStatistique from './AnnuaireStatistique'
+import EnseignantsSynthese from './EnseignantsSynthese'
+import InfrastructuresSynthese from './InfrastructuresSynthese'
+import ManuelsNational from './ManuelsNational'
 
 function Chiffre({ libelle, valeur, icone, couleur }: { libelle: string; valeur: number; icone: NomIcone; couleur?: string }) {
   return <CarteChiffre libelle={libelle} valeur={new Intl.NumberFormat('fr-FR').format(valeur)} icone={icone} couleur={couleur} />
@@ -176,6 +182,12 @@ export default function SyntheseNationale({
       {anneeId !== null && filtreZone === undefined && (
         <CarteReussiteReseau cle={`${cle}-reussite`} anneeScolaireId={anneeId} charger={chargerReussite} />
       )}
+      {anneeId !== null && filtreZone === undefined && <InfrastructuresSynthese anneeId={anneeId} />}
+      {anneeId !== null && filtreZone === undefined && <AnnuaireStatistique anneeId={anneeId} />}
+      {anneeId !== null && filtreZone === undefined && <CarteScolaire anneeId={anneeId} />}
+      {anneeId !== null && filtreZone === undefined && <AbandonsSynthese anneeId={anneeId} />}
+      {filtreZone === undefined && <EnseignantsSynthese />}
+      {anneeId !== null && filtreZone === undefined && <ManuelsNational anneeId={anneeId} />}
       {detail && anneeId !== null && (
         <DetailEtablissementModal etablissement={detail} anneeScolaireId={anneeId} onFermer={() => setDetail(null)} />
       )}

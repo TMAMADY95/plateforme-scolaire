@@ -23,6 +23,10 @@ public class Eleve {
     @Column(nullable = false, unique = true, length = 50)
     private String matricule;
 
+    /** Identifiant national GN-AA-NNNNNNN-CC, attribué par la base à la création (jamais écrit par l'application). */
+    @Column(name = "identifiant_national", insertable = false, updatable = false, length = 20)
+    private String identifiantNational;
+
     @Column(nullable = false, length = 100)
     private String nom;
 

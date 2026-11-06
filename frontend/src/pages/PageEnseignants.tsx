@@ -2,6 +2,7 @@ import { Alert, Stack, Tabs, Title } from '@mantine/core'
 import { etablissementCourant } from '../auth/roles'
 import { useUtilisateur } from '../auth/useAuth'
 import AffectationsClasse from './enseignants/AffectationsClasse'
+import ProfilsEnseignants from './enseignants/ProfilsEnseignants'
 import ListeEnseignants from './enseignants/ListeEnseignants'
 
 export default function PageEnseignants() {
@@ -23,12 +24,16 @@ export default function PageEnseignants() {
         <Tabs.List>
           <Tabs.Tab value="enseignants">Enseignants</Tabs.Tab>
           <Tabs.Tab value="affectations">Affectations par classe</Tabs.Tab>
+          <Tabs.Tab value="profils">Fiches professionnelles</Tabs.Tab>
         </Tabs.List>
         <Tabs.Panel value="enseignants">
           <ListeEnseignants etablissementId={etablissementId} />
         </Tabs.Panel>
         <Tabs.Panel value="affectations">
           <AffectationsClasse etablissementId={etablissementId} />
+        </Tabs.Panel>
+        <Tabs.Panel value="profils">
+          <ProfilsEnseignants etablissementId={etablissementId} />
         </Tabs.Panel>
       </Tabs>
     </Stack>

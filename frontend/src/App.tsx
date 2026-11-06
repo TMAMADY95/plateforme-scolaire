@@ -14,6 +14,8 @@ const PageChangementMotDePasse = lazy(() => import('./pages/PageChangementMotDeP
 const PageClasseEnseignant = lazy(() => import('./pages/PageClasseEnseignant'))
 const PageClasses = lazy(() => import('./pages/PageClasses'))
 const PageComptes = lazy(() => import('./pages/PageComptes'))
+const PageDiscipline = lazy(() => import('./pages/PageDiscipline'))
+const PageSuiviEleves = lazy(() => import('./pages/PageSuiviEleves'))
 const PageEleves = lazy(() => import('./pages/PageEleves'))
 const PageEmploiDuTempsClasse = lazy(() => import('./pages/PageEmploiDuTempsClasse'))
 const PageEmploisDuTemps = lazy(() => import('./pages/PageEmploisDuTemps'))
@@ -21,6 +23,7 @@ const PageEnfant = lazy(() => import('./pages/PageEnfant'))
 const PageEnseignants = lazy(() => import('./pages/PageEnseignants'))
 const PageFinances = lazy(() => import('./pages/PageFinances'))
 const PageInscriptions = lazy(() => import('./pages/PageInscriptions'))
+const PageManuels = lazy(() => import('./pages/PageManuels'))
 const PageMessages = lazy(() => import('./pages/PageMessages'))
 const PageMesClasses = lazy(() => import('./pages/PageMesClasses'))
 const PageMesEnfants = lazy(() => import('./pages/PageMesEnfants'))
@@ -80,6 +83,9 @@ export default function App() {
         />
         <Route path="finances" element={<RequiertRole autorise={estGestionnaire}><PageFinances /></RequiertRole>} />
         <Route path="comptes" element={<RequiertRole autorise={estDirectionEtablissement}><PageComptes /></RequiertRole>} />
+        <Route path="manuels" element={<RequiertRole autorise={estDirectionEtablissement}><PageManuels /></RequiertRole>} />
+        <Route path="discipline" element={<RequiertRole autorise={estDirectionEtablissement}><PageDiscipline /></RequiertRole>} />
+        <Route path="suivi-eleves" element={<RequiertRole autorise={estDirectionEtablissement}><PageSuiviEleves /></RequiertRole>} />
         <Route path="alertes-parents" element={<RequiertRole autorise={estDirectionEtablissement}><PageAlertesParents /></RequiertRole>} />
 
         {/* Retour du prestataire de paiement simulé (dev) */}

@@ -149,6 +149,8 @@ export interface ClasseModificationRequete {
 export interface Eleve {
   id: number
   matricule: string
+  /** Identifiant national GN-AA-NNNNNNN-CC. */
+  identifiantNational?: string | null
   nom: string
   prenom: string
   dateNaissance: string
@@ -1055,6 +1057,8 @@ export interface Examen {
   typesEtablissementIds: number[]
   typesEtablissement: string[]
   statutResultats: 'EN_COURS' | 'DELIBERE' | 'PROCLAME'
+  /** Examen du cycle lycée : épreuves et candidats par série. */
+  lycee: boolean
   dateDeliberation: string | null
   dateProclamation: string | null
   /** Barème des notes : 10 (primaire) ou 20. */
@@ -1397,6 +1401,7 @@ export interface CentreExamen {
 }
 
 export interface Epreuve {
+  serie: string | null
   id: number
   examenId: number
   matiereId: number | null
@@ -1414,6 +1419,7 @@ export interface EpreuveRequete {
   heureDebut: string
   heureFin: string
   coefficient?: number
+  serie?: string | null
 }
 
 export type StatutCandidat = 'INSCRIT' | 'PRESENT' | 'ABSENT' | 'ELIMINE'
@@ -1876,6 +1882,10 @@ export interface LigneProgramme {
   heuresHebdo: number | null
   coefficient: number | null
   note: string | null
+  typeEtablissementId: number | null
+  typeEtablissement: string | null
+  cycleId: number | null
+  cycle: string | null
 }
 
 export interface LigneProgrammeRequete {
@@ -1886,6 +1896,7 @@ export interface LigneProgrammeRequete {
   heuresHebdo: number | null
   coefficient: number | null
   note: string | null
+  typeEtablissementId?: number | null
 }
 
 export interface ResultatProgramme {
@@ -2320,4 +2331,383 @@ export interface VerificationsDiplome {
   tauxInconnus: number | null
   seuilSuspect: number
   suspects: { code: string; tentatives: number; derniere: string }[]
+}
+
+export interface InfrastructureRequete {
+  sallesDur: number
+  sallesProvisoires: number
+  sallesARehabiliter: number
+  placesAssises: number
+  latrinesFilles: number
+  latrinesGarcons: number
+  latrinesPersonnel: number
+  eau: string
+  electricite: string
+  cloture: boolean
+  lavageMains: boolean
+  bibliotheque: boolean
+  laboratoire: boolean
+  salleInformatique: boolean
+  cantine: boolean
+  terrainSport: boolean
+  observation: string | null
+}
+
+export interface InfrastructureEtablissement {
+  etablissementId: number
+  anneeId: number
+  renseignee: boolean
+  effectifs: { total: number; filles: number; garcons: number }
+  fiche: InfrastructureRequete
+  indicateurs: {
+    elevesParSalle: number | null
+    elevesParPlace: number | null
+    fillesParLatrine: number | null
+    garconsParLatrine: number | null
+    alertes: string[]
+  }
+  misAJourLe: string | null
+  misAJourPar: string | null
+}
+
+export interface InfrastructuresSynthese {
+  anneeId: number
+  resume: {
+    etablissements: number
+    renseignes: number
+    avecAlertes: number
+    salles: number
+    sallesProvisoires: number
+    sallesARehabiliter: number
+    elevesParSalle: number | null
+    sansEau: number
+    sansElectricite: number
+    sansLatrinesFilles: number
+  }
+  lignes: {
+    etablissementId: number
+    etablissement: string
+    zone: string | null
+    eleves: number
+    renseignee: boolean
+    salles: number
+    elevesParSalle: number | null
+    elevesParPlace: number | null
+    eau: string | null
+    electricite: string | null
+    alertes: string[]
+  }[]
+}
+
+export interface TransfertEleve {
+  id: number
+  eleveId: number
+  matricule: string
+  eleve: string
+  origineId: number
+  origine: string
+  destinationId: number
+  destination: string
+  motif: string
+  commentaire: string | null
+  statut: 'DEMANDE' | 'APPROUVE' | 'REFUSE' | 'ANNULE'
+  motifRefus: string | null
+  demandeLe: string
+  demandePar: string | null
+  traiteLe: string | null
+  traitePar: string | null
+  nouvelleInscriptionId: number | null
+}
+
+export interface TransfertsEtablissement {
+  etablissementId: number
+  anneeId: number
+  sortants: TransfertEleve[]
+  entrants: TransfertEleve[]
+}
+
+export interface ConseilClasseLigne {
+  inscriptionId: number
+  eleve: { id: number; matricule: string; nom: string; prenom: string }
+  moyennesPeriodes: Record<string, number | null>
+  moyenneAnnuelle: number | null
+  rang: number | null
+  suggestion: 'ADMIS' | 'A_DELIBERER' | 'REDOUBLE' | null
+  mention: 'FELICITATIONS' | 'ENCOURAGEMENTS' | 'TABLEAU_HONNEUR' | null
+  decision: 'PASSAGE' | 'REDOUBLEMENT' | 'EXCLUSION' | null
+  observation: string | null
+}
+
+export interface ConseilClasse {
+  classeId: number
+  classe: string
+  niveau: string
+  periodes: { id: number; libelle: string }[]
+  resume: {
+    effectif: number
+    evalues: number
+    admis: number
+    aDeliberer: number
+    redouble: number
+    decides: number
+    passages: number
+    redoublements: number
+    exclusions: number
+    tauxPassage: number | null
+  }
+  eleves: ConseilClasseLigne[]
+}
+
+export interface Rentree {
+  etablissementId: number
+  anneeId: number
+  anneeSuivanteId: number | null
+  anneeSuivante: string | null
+  resume: { aReinscrire: number; dejaInscrits: number; finDeParcours: number; exclus: number; sansDecision: number }
+  classes: { classeId: number; classe: string; niveau: string; passages: number; redoublements: number; exclusions: number; sansDecision: number; finDeParcours: number }[]
+}
+
+export interface DoublonsEleves {
+  groupes: {
+    nom: string
+    prenom: string
+    dateNaissance: string
+    dossiers: { id: number; matricule: string; identifiantNational: string; lieuNaissance: string | null; nomMere: string | null; inscriptions: number; dernierEtablissement: string | null }[]
+  }[]
+}
+
+export interface IncidentDisciplinaire {
+  id: number
+  eleveId: number
+  matricule: string
+  eleve: string
+  dateFaits: string
+  type: string
+  gravite: 'LEGERE' | 'GRAVE' | 'TRES_GRAVE'
+  description: string
+  statut: 'OUVERT' | 'SANCTIONNE' | 'CLASSE'
+  sanction: string | null
+  exclusionJours: number | null
+  exclusionDebut: string | null
+  observation: string | null
+  parentsInformes: boolean
+  signalePar: string | null
+  signaleLe: string
+  decidePar: string | null
+  decideLe: string | null
+  incidentsAnnee: number
+  recidiviste: boolean
+}
+
+export interface Discipline {
+  etablissementId: number
+  anneeId: number
+  resume: { incidents: number; ouverts: number; sanctionnes: number; classes: number; exclusions: number; recidivistes: number }
+  incidents: IncidentDisciplinaire[]
+}
+
+export interface ManuelCatalogue {
+  id: number
+  matiereId: number
+  matiere: string
+  niveauId: number
+  niveau: string
+  titre: string
+  editeur: string | null
+  anneeEdition: number | null
+  serie: string | null
+}
+
+export interface LigneDotationManuel {
+  manuelId: number
+  matiere: string
+  niveau: string
+  titre: string
+  effectif: number
+  recus: number
+  distribues: number
+  perdus: number
+  disponibles: number
+  exemplaires: number
+  couverture: number | null
+  etat: 'COMPLET' | 'PARTIEL' | 'INSUFFISANT' | 'SANS_ELEVE'
+  observation: string | null
+}
+
+export interface DotationManuels {
+  etablissementId: number
+  anneeId: number
+  lignes: LigneDotationManuel[]
+}
+
+export interface SyntheseManuels {
+  anneeId: number
+  besoin: number
+  exemplaires: number
+  couverture: number | null
+  etablissementsInsuffisants: number
+  etablissements: { etablissementId: number; etablissement: string; zone: string | null; besoin: number; exemplaires: number; couverture: number | null; manuelsInsuffisants: number; manuelsConcernes: number }[]
+}
+
+// ---------- Profils professionnels des enseignants ----------
+
+export interface ProfilEnseignant {
+  enseignantId: number
+  nom: string
+  prenom: string
+  matricule: string | null
+  dateNaissance: string | null
+  age: number | null
+  sexe: string | null
+  statut: string | null
+  formationAcademique: string | null
+  formationProfessionnelle: string | null
+  matierePrincipaleId: number | null
+  matierePrincipale: string | null
+  datePriseService: string | null
+  handicap: string | null
+  renseigne: boolean
+  forme: boolean
+}
+
+export interface ProfilEnseignantRequete {
+  dateNaissance: string | null
+  sexe: string | null
+  statut: string | null
+  formationAcademique: string | null
+  formationProfessionnelle: string | null
+  matierePrincipaleId: number | null
+  datePriseService: string | null
+  handicap: string | null
+}
+
+export interface EnseignantsSyntheseLigne {
+  etablissementId: number
+  etablissement: string
+  zone: string | null
+  enseignants: number
+  profilsRenseignes: number
+  formes: number
+  nonTitulaires: number
+  postes: number | null
+  deficit: number | null
+}
+
+export interface EnseignantsSynthese {
+  resume: { etablissements: number; enseignants: number; profilsRenseignes: number; formes: number; nonTitulaires: number; femmes: number; deficitTotal: number }
+  etablissements: EnseignantsSyntheseLigne[]
+}
+
+export const STATUTS_ENSEIGNANT = [
+  { value: 'FONCTIONNAIRE', label: 'Fonctionnaire' },
+  { value: 'CONTRACTUEL', label: 'Contractuel' },
+  { value: 'VOLONTAIRE', label: 'Volontaire' },
+  { value: 'VACATAIRE', label: 'Vacataire' },
+]
+
+export const FORMATIONS_ACADEMIQUES = [
+  { value: 'BAC', label: 'Baccalauréat' },
+  { value: 'BAC_2', label: 'Bac + 2' },
+  { value: 'LICENCE', label: 'Licence' },
+  { value: 'MASTER', label: 'Master' },
+  { value: 'DOCTORAT', label: 'Doctorat' },
+  { value: 'AUTRE', label: 'Autre' },
+]
+
+export const FORMATIONS_PROFESSIONNELLES = [
+  { value: 'AUCUNE', label: 'Aucune' },
+  { value: 'ENI', label: 'École normale d\'instituteurs (ENI)' },
+  { value: 'ENS', label: 'École normale supérieure (ENS)' },
+  { value: 'AUTRE', label: 'Autre formation' },
+]
+
+export const TYPES_HANDICAP = [
+  { value: 'MOTEUR', label: 'Moteur' },
+  { value: 'VISUEL', label: 'Visuel' },
+  { value: 'AUDITIF', label: 'Auditif' },
+  { value: 'INTELLECTUEL', label: 'Intellectuel' },
+  { value: 'AUTRE', label: 'Autre' },
+]
+
+export const libelleDans = (liste: { value: string; label: string }[], code: string | null) => liste.find((x) => x.value === code)?.label ?? '—'
+
+// ---------- Annuaire statistique ----------
+
+export interface Annuaire {
+  anneeId: number
+  annee: string
+  generalites: { etablissements: number; classes: number; eleves: number; filles: number; redoublants: number; elevesParClasse: number | null; elevesParEnseignant: number | null }
+  niveaux: { niveauId: number; niveau: string; classes: number; eleves: number; filles: number; redoublants: number; elevesParClasse: number | null }[]
+  ages: { age: number; garcons: number; filles: number }[]
+  types: { type: string; etablissements: number; eleves: number }[]
+  enseignants: { total: number; femmes: number; profilsRenseignes: number; formes: number; nonTitulaires: number }
+}
+
+// ---------- Abandon scolaire et vulnérabilités ----------
+
+export interface LigneSuiviEleve {
+  inscriptionId: number
+  eleveId: number
+  matricule: string
+  nom: string
+  classe: string | null
+  sexe: string | null
+  orphelin: string
+  handicap: string | null
+  abandon: { id: number; dateAbandon: string; motif: string; observation: string | null } | null
+}
+
+export interface SuiviEleves {
+  etablissementId: number
+  anneeId: number
+  eleves: LigneSuiviEleve[]
+}
+
+export interface AbandonsSynthese {
+  anneeId: number
+  resume: { eleves: number; abandons: number; fillesAbandons: number; tauxAbandon: number | null; orphelins: number; handicapes: number }
+  motifs: { motif: string; nombre: number }[]
+  etablissements: { etablissementId: number; etablissement: string; zone: string | null; eleves: number; abandons: number; fillesAbandons: number; tauxAbandon: number | null; orphelins: number; handicapes: number }[]
+}
+
+export const MOTIFS_ABANDON = [
+  { value: 'MALADIE', label: 'Maladie' },
+  { value: 'MARIAGE_PRECOCE', label: 'Mariage précoce' },
+  { value: 'GROSSESSE', label: 'Grossesse' },
+  { value: 'TRAVAIL', label: 'Travail' },
+  { value: 'DISTANCE', label: 'Éloignement de l\'école' },
+  { value: 'DIFFICULTES_FINANCIERES', label: 'Difficultés financières' },
+  { value: 'DEMENAGEMENT', label: 'Déménagement' },
+  { value: 'DECES', label: 'Décès' },
+  { value: 'ECHEC_SCOLAIRE', label: 'Échec scolaire' },
+  { value: 'AUTRE', label: 'Autre' },
+]
+
+export const TYPES_ORPHELIN = [
+  { value: 'AUCUN', label: 'Non orphelin' },
+  { value: 'PERE', label: 'Orphelin de père' },
+  { value: 'MERE', label: 'Orphelin de mère' },
+  { value: 'DEUX', label: 'Orphelin des deux parents' },
+]
+
+// ---------- Carte scolaire : besoins en salles et en enseignants ----------
+
+export interface CarteScolaire {
+  anneeId: number
+  normeElevesParSalle: number
+  normeElevesParEnseignant: number
+  total: { etablissements: number; eleves: number; manqueSalles: number; manqueEnseignants: number; fichesManquantes: number }
+  zones: { zone: string; etablissements: number; eleves: number; manqueSalles: number; manqueEnseignants: number; fichesManquantes: number }[]
+  etablissements: {
+    etablissementId: number
+    etablissement: string
+    zone: string
+    eleves: number
+    salles: number | null
+    sallesNecessaires: number
+    manqueSalles: number | null
+    enseignants: number
+    enseignantsNecessaires: number
+    manqueEnseignants: number
+  }[]
 }

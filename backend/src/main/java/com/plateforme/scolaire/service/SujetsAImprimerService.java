@@ -48,13 +48,15 @@ public class SujetsAImprimerService {
         }
         List<Epreuve> epreuves = new ArrayList<>();
         for (Object[] r : (List<Object[]>) em.createNativeQuery(
-                "SELECT e.id, coalesce(m.libelle, e.libelle, 'Épreuve'), e.date_epreuve::text, coalesce(sum(ec.nb_exemplaires), 0) "
+                "SELECT e.id, coalesce(m.libelle, e.libelle, 'Épreuve'), e.date_epreuve::text, coalesce(sum(ec.nb_exemplaires), 0), "
+                        + "(SELECT count(*) FROM candidat_examen k WHERE k.examen_id = e.examen_id AND (e.serie IS NULL OR k.serie = e.serie)) "
                         + "FROM epreuve_examen e LEFT JOIN matiere m ON m.id = e.matiere_id LEFT JOIN epreuve_centre ec ON ec.epreuve_id = e.id "
-                        + "WHERE e.examen_id = :e GROUP BY e.id, m.libelle, e.libelle, e.date_epreuve, e.heure_debut ORDER BY e.date_epreuve, e.heure_debut")
+                        + "WHERE e.examen_id = :e GROUP BY e.id, m.libelle, e.libelle, e.date_epreuve, e.heure_debut, e.serie, e.examen_id ORDER BY e.date_epreuve, e.heure_debut")
                 .setParameter("e", examenId).getResultList()) {
-            int aImprimer = sujets(candidats);
+            int concernes = ((Number) r[4]).intValue();
+            int aImprimer = sujets(concernes);
             int conditionnes = ((Number) r[3]).intValue();
-            epreuves.add(new Epreuve(((Number) r[0]).longValue(), (String) r[1], (String) r[2], candidats, aImprimer, candidats * FEUILLES_PAR_CANDIDAT, salles,
+            epreuves.add(new Epreuve(((Number) r[0]).longValue(), (String) r[1], (String) r[2], concernes, aImprimer, concernes * FEUILLES_PAR_CANDIDAT, salles,
                     conditionnes, ecart(conditionnes, aImprimer)));
         }
         List<SujetsAImprimerDto.Option> options = new ArrayList<>();

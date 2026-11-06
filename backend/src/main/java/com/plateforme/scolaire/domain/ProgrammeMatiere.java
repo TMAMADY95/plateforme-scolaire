@@ -31,6 +31,11 @@ public class ProgrammeMatiere {
     @Column(length = 30)
     private String serie;
 
+    /** Type d'établissement concerné ; null = tous les types. */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "type_etablissement_id")
+    private TypeEtablissement typeEtablissement;
+
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "matiere_id")
     private Matiere matiere;

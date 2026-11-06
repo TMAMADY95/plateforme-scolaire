@@ -7,14 +7,18 @@ import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import java.time.LocalDate;
 
-/** Candidature libre : identité du candidat (F ou M pour le sexe, lieu de naissance, père et mère : facultatifs). */
+/** Candidature libre : identité du candidat (F ou M pour le sexe, lieu de naissance, père et mère : facultatifs). serie : obligatoire pour un examen du lycée, interdite sinon. */
 public record CandidatLibreRequest(@NotBlank @Size(max = 100) String nom, @NotBlank @Size(max = 100) String prenom,
                                    @NotNull @Past LocalDate dateNaissance, @Pattern(regexp = "[FM]") String sexe,
                                    @Size(max = 150) String lieuNaissance, @Size(max = 150) String nomPere,
-                                   @Size(max = 150) String nomMere) {
+                                   @Size(max = 150) String nomMere, @Size(max = 30) String serie) {
+
+    public CandidatLibreRequest(String nom, String prenom, LocalDate dateNaissance, String sexe, String lieuNaissance, String nomPere, String nomMere) {
+        this(nom, prenom, dateNaissance, sexe, lieuNaissance, nomPere, nomMere, null);
+    }
 
     public CandidatLibreRequest(String nom, String prenom, LocalDate dateNaissance, String sexe) {
-        this(nom, prenom, dateNaissance, sexe, null, null, null);
+        this(nom, prenom, dateNaissance, sexe, null, null, null, null);
     }
 
     private static String propre(String s) {

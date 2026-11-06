@@ -137,6 +137,9 @@ public class ExamenService {
                     .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Niveau inconnu"));
             if (cycle == null) {
                 cycle = niveau.getCycle();
+            } else if (niveau.getCycle() != null && !niveau.getCycle().getId().equals(cycle.getId())) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                        "Le niveau « " + niveau.getLibelle() + " » n'appartient pas au cycle « " + cycle.getLibelle() + " »");
             }
         }
         String organisation = r.niveauOrganisation() == null || r.niveauOrganisation().isBlank()

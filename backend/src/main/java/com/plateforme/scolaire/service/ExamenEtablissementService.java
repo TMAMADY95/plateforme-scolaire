@@ -378,7 +378,7 @@ public class ExamenEtablissementService {
                 .filter(c -> "PRESENT".equals(c.getStatutEpreuves()) || "ELIMINE".equals(c.getStatutEpreuves()))
                 .map(c -> new GenerateurPdf.Releve((c.getEleve().getPrenom() + " " + c.getEleve().getNom()).trim(),
                         c.getEleve().getMatricule(), c.getNumeroPv(), c.getStatutEpreuves(),
-                        liste.stream().map(x -> new GenerateurPdf.LigneReleve(x.nom(), x.getCoefficient(), c.getNotes().get(x.getId()))).toList(),
+                        liste.stream().filter(x -> x.concerne(c.getSerie())).map(x -> new GenerateurPdf.LigneReleve(x.nom(), x.getCoefficient(), c.getNotes().get(x.getId()))).toList(),
                         c.getMoyenne(), c.getDecision()))
                 .toList();
         return pdf.releves(new GenerateurPdf.DonneesReleves(etab.getNom(), examen.getLibelle(),

@@ -4,6 +4,7 @@ import { notifications } from '@mantine/notifications'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { deciderInscription, listerClasses } from '../../api/endpoints'
 import type { Inscription } from '../../api/types'
+import { libelleClasse } from '../../utils/classes'
 
 interface Props {
   inscription: Inscription
@@ -35,7 +36,7 @@ export default function AcceptationModal({ inscription, onFermer }: Props) {
     onError: (e) => setErreur(e.message),
   })
 
-  const options = (classes.data ?? []).map((c) => ({ value: String(c.id), label: `${c.nom} — ${c.niveauLibelle}` }))
+  const options = (classes.data ?? []).map((c) => ({ value: String(c.id), label: libelleClasse(c) }))
 
   return (
     <Modal opened onClose={onFermer} title="Accepter l'inscription">

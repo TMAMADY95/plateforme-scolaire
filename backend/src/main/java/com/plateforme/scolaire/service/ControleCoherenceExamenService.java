@@ -115,14 +115,15 @@ public class ControleCoherenceExamenService {
             }
 
             var notes = c.getNotes();
-            boolean aDesNotes = coefficients.keySet().stream().anyMatch(id -> notes.get(id) != null);
+            List<EpreuveExamen> epsC = eps.stream().filter(x -> x.concerne(c.getSerie())).toList();
+            boolean aDesNotes = epsC.stream().anyMatch(x -> notes.get(x.getId()) != null);
             if (("ABSENT".equals(statut) || "ELIMINE".equals(statut)) && aDesNotes) {
                 ajouter(res, "NOTES_SUR_" + statut, "ERREUR",
                         ("ABSENT".equals(statut) ? "Candidat absent" : "Candidat éliminé") + " mais des notes sont saisies", c);
             }
             if ("PRESENT".equals(statut)) {
                 List<String> manquantes = new ArrayList<>();
-                for (EpreuveExamen e : eps) {
+                for (EpreuveExamen e : epsC) {
                     if (notes.get(e.getId()) == null) {
                         manquantes.add(e.nom());
                     }
@@ -130,7 +131,7 @@ public class ControleCoherenceExamenService {
                 if (!manquantes.isEmpty()) {
                     ajouter(res, "NOTES_MANQUANTES", "ERREUR", "Note manquante : " + String.join(", ", manquantes), c);
                 }
-                for (EpreuveExamen e : eps) {
+                for (EpreuveExamen e : epsC) {
                     BigDecimal n = notes.get(e.getId());
                     if (n == null) {
                         continue;
@@ -147,7 +148,9 @@ public class ControleCoherenceExamenService {
                                 + moyenneEpreuve.get(e.getId()) + ")", c);
                     }
                 }
-                BigDecimal attendue = NotesExamenService.moyenne(coefficients, notes);
+                Map<Long, Integer> coefC = new LinkedHashMap<>();
+                epsC.forEach(x -> coefC.put(x.getId(), x.getCoefficient()));
+                BigDecimal attendue = NotesExamenService.moyenne(coefC, notes);
                 if (attendue != null && (c.getMoyenne() == null || c.getMoyenne().compareTo(attendue) != 0)) {
                     ajouter(res, "MOYENNE_INCOHERENTE", "ERREUR",
                             "Moyenne enregistrée " + (c.getMoyenne() == null ? "absente" : c.getMoyenne()) + ", attendue " + attendue, c);

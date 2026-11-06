@@ -15,6 +15,7 @@ import type { FiltresEleves } from '../../api/types'
 import EnteteSection from '../../components/EnteteSection'
 import { useAnneeScolaire } from '../../hooks/useAnneeScolaire'
 import { formaterDate } from '../../utils/dates'
+import DoublonsEleves from './DoublonsEleves'
 
 const TAILLE = 25
 
@@ -260,6 +261,7 @@ export default function ElevesNational() {
           )}
         </Card>
       )}
+      <DoublonsEleves />
     </Stack>
   )
 }

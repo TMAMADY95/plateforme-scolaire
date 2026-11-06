@@ -62,6 +62,9 @@ export default function MiseEnPage() {
 
   if (estDirectionEtablissement(utilisateur)) {
     liens.push({ chemin: '/comptes', libelle: 'Comptes', icone: 'comptes' })
+    liens.push({ chemin: '/manuels', libelle: 'Manuels scolaires', icone: 'classes' })
+    liens.push({ chemin: '/discipline', libelle: 'Discipline', icone: 'notes' })
+    liens.push({ chemin: '/suivi-eleves', libelle: 'Suivi des élèves', icone: 'eleves' })
     liens.push({ chemin: '/alertes-parents', libelle: 'Alertes parents', icone: 'alerte' })
   }
 

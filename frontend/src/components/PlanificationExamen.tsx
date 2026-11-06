@@ -12,7 +12,9 @@ import {
   listerTypesExamen,
   niveauxOrganisationExamen,
 } from '../api/endpoints'
+import { SERIES_LYCEE, libelleSerie } from '../api/types'
 import type { Examen } from '../api/types'
+import { epreuveEnConflit } from '../utils/epreuves'
 import { formaterDate } from '../utils/dates'
 import { libelleOrganisation } from '../utils/organisationExamen'
 import EnteteSection from './EnteteSection'
@@ -32,6 +34,7 @@ interface LigneEpreuve {
   debut: string
   fin: string
   coefficient: number
+  serie: string | null
 }
 
 /**
@@ -77,6 +80,7 @@ export default function PlanificationExamen({
   const [heureDebut, setHeureDebut] = useState('08:00')
   const [heureFin, setHeureFin] = useState('12:00')
   const [coefficient, setCoefficient] = useState<number | string>(1)
+  const [serie, setSerie] = useState<string | null>(null)
 
   // Choisir un type d'examen préremplit le libellé, l'organisateur, le cycle et la classe ; tout reste modifiable.
   const choisirModele = (valeur: string | null) => {
@@ -99,6 +103,9 @@ export default function PlanificationExamen({
     }
   }
 
+  // Au lycée, chaque série peut avoir ses propres épreuves : le cycle choisi, à défaut celui du niveau, décide.
+  const cycleEffectif = cycleId !== null ? Number(cycleId) : niveaux.data?.find((n) => String(n.id) === niveauId)?.cycleId ?? null
+  const lycee = cycles.data?.find((c) => c.id === cycleEffectif)?.code === 'LYCEE'
   const periodeValide = debut !== '' && fin !== '' && fin >= debut
   const epreuvePrete =
     date !== '' && (matiere !== null || libelleEpreuve.trim() !== '') && heureDebut !== '' && heureFin !== '' && heureFin > heureDebut
@@ -106,6 +113,15 @@ export default function PlanificationExamen({
   const ajouterLigne = () => {
     if (periodeValide && (date < debut || date > fin)) {
       setErreur(`La date de l'épreuve (${formaterDate(date)}) doit être comprise dans la période (${formaterDate(debut)} – ${formaterDate(fin)}).`)
+      return
+    }
+    const serieChoisie = lycee ? serie : null
+    const conflit = epreuveEnConflit(
+      lignes.map((l) => ({ date: l.date, heureDebut: l.debut, heureFin: l.fin, serie: l.serie, matiere: l.matiere })),
+      { date, heureDebut, heureFin, serie: serieChoisie },
+    )
+    if (conflit) {
+      setErreur(`Ce créneau chevauche « ${conflit.matiere} » (${conflit.heureDebut} – ${conflit.heureFin}) prévu pour les mêmes candidats.`)
       return
     }
     const m = matieres.data?.find((x) => String(x.id) === matiere)
@@ -121,6 +137,7 @@ export default function PlanificationExamen({
           debut: heureDebut,
           fin: heureFin,
           coefficient: Number(coefficient) >= 1 ? Number(coefficient) : 1,
+          serie: lycee ? serie : null,
         },
       ].sort((a, b) => (a.date + a.debut).localeCompare(b.date + b.debut)),
     )
@@ -151,6 +168,7 @@ export default function PlanificationExamen({
             heureDebut: l.debut,
             heureFin: l.fin,
             coefficient: l.coefficient,
+            serie: lycee ? l.serie : null,
           })
         } catch (e) {
           echecs.push(`${l.matiere} : ${(e as Error).message}`)
@@ -311,6 +329,7 @@ export default function PlanificationExamen({
             {matiere === null && (
               <TextInput label="Ou intitulé libre" placeholder="Ex. Dictée" value={libelleEpreuve} onChange={(e) => setLibelleEpreuve(e.currentTarget.value)} w={170} />
             )}
+            {lycee && <Select label="Série" placeholder="Toutes les séries" clearable data={SERIES_LYCEE} value={serie} onChange={setSerie} w={210} />}
             <NumberInput label="Coef." min={1} allowDecimal={false} value={coefficient} onChange={setCoefficient} w={80} />
             <Button variant="light" disabled={!epreuvePrete} onClick={ajouterLigne}>
               Ajouter l'épreuve
@@ -328,6 +347,7 @@ export default function PlanificationExamen({
                   <Table.Th>Date</Table.Th>
                   <Table.Th>Créneau</Table.Th>
                   <Table.Th>Matière</Table.Th>
+                  {lycee && <Table.Th>Série</Table.Th>}
                   <Table.Th>Coef.</Table.Th>
                   <Table.Th />
                 </Table.Tr>
@@ -340,6 +360,7 @@ export default function PlanificationExamen({
                       {l.debut} – {l.fin}
                     </Table.Td>
                     <Table.Td>{l.matiere}</Table.Td>
+                    {lycee && <Table.Td>{l.serie === null ? 'Toutes les séries' : libelleSerie(l.serie)}</Table.Td>}
                     <Table.Td>{l.coefficient}</Table.Td>
                     <Table.Td ta="right">
                       <ActionIcon variant="subtle" color="red" aria-label="Retirer l'épreuve" onClick={() => setLignes((x) => x.filter((y) => y.cle !== l.cle))}>

@@ -45,8 +45,17 @@ public class EpreuveExamen {
     @Column(nullable = false)
     private int coefficient = 1;
 
+    /** Série du lycée concernée ; null = épreuve commune à toutes les séries. */
+    @Column(length = 30)
+    private String serie;
+
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
+
+    /** Pur : un candidat compose cette épreuve si elle est commune ou propre à sa série. */
+    public boolean concerne(String serieCandidat) {
+        return serie == null || serie.equals(serieCandidat);
+    }
 
     public String nom() {
         return matiere != null ? matiere.getLibelle() : libelle;

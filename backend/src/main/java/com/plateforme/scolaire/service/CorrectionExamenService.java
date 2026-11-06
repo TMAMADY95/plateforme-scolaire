@@ -196,7 +196,8 @@ public class CorrectionExamenService {
         CommissionCorrection c = new CommissionCorrection();
         c.setExamen(examen);
         c.setEpreuve(epreuve);
-        c.setNom(epreuve == null ? niveau(examen.getNiveauOrganisation()) : "Sous-commission : " + epreuve.nom());
+        c.setNom(epreuve == null ? niveau(examen.getNiveauOrganisation()) : "Sous-commission : " + epreuve.nom()
+                + (epreuve.getSerie() == null ? "" : " (" + epreuve.getSerie().replace('_', ' ').toLowerCase() + ")"));
         c.setLieu(lieu == null || lieu.isBlank() ? null : lieu.trim());
         c.setNbCopies(copies);
         c.setNbCopiesCorrigees(corrigees);

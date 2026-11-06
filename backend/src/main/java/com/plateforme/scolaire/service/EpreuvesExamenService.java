@@ -10,6 +10,8 @@ import com.plateforme.scolaire.web.dto.EpreuveDto;
 import com.plateforme.scolaire.web.dto.EpreuveRequest;
 import java.time.Clock;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.List;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
@@ -42,6 +44,13 @@ public class EpreuvesExamenService {
         ExamenNational examen = examen(examenId);
         verifierGestion(examen);
         verifier(examen, r);
+        String serieChoisie = serieAutorisee(examen, r.serie());
+        for (EpreuveExamen autre : epreuves.findByExamenIdOrderByDateEpreuveAscHeureDebutAsc(examenId)) {
+            if (enConflit(autre, r.date(), r.heureDebut(), r.heureFin(), serieChoisie)) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT, "Le créneau chevauche l'épreuve « " + autre.nom() + " » ("
+                        + autre.getHeureDebut() + " – " + autre.getHeureFin() + ") déjà prévue pour les mêmes candidats");
+            }
+        }
         EpreuveExamen e = new EpreuveExamen();
         e.setExamen(examen);
         if (r.matiereId() != null) {
@@ -54,6 +63,7 @@ public class EpreuvesExamenService {
         e.setHeureDebut(r.heureDebut());
         e.setHeureFin(r.heureFin());
         e.setCoefficient(r.coefficient() == null ? 1 : r.coefficient());
+        e.setSerie(serieChoisie);
         e.setCreatedAt(Instant.now(clock));
         EpreuveExamen enregistre = epreuves.save(e);
         audit.enregistrer("EPREUVE_EXAMEN_AJOUTEE", "ExamenNational", examenId,
@@ -81,6 +91,36 @@ public class EpreuvesExamenService {
                 || examen.getDateFin() != null && r.date().isAfter(examen.getDateFin())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "La date est en dehors de la période de l'examen");
         }
+    }
+
+    /** Pur : deux épreuves concernent-elles les mêmes candidats ? Oui si l'une est commune à toutes les séries ou si les séries sont égales. */
+    static boolean memesCandidats(String serieA, String serieB) {
+        return serieA == null || serieB == null || serieA.equals(serieB);
+    }
+
+    /** Pur : la nouvelle épreuve se déroule-t-elle en même temps qu'une épreuve existante pour les mêmes candidats ? Des créneaux qui se touchent (fin = début) ne se chevauchent pas. */
+    static boolean enConflit(EpreuveExamen existante, LocalDate date, LocalTime debut, LocalTime fin, String serie) {
+        return existante.getDateEpreuve().equals(date) && memesCandidats(existante.getSerie(), serie)
+                && debut.isBefore(existante.getHeureFin()) && existante.getHeureDebut().isBefore(fin);
+    }
+
+    /** Pur : une série n'a de sens que pour un examen du lycée ; code normalisé, null si aucune. */
+    static String serieAutorisee(ExamenNational examen, String serie) {
+        String code;
+        try {
+            code = com.plateforme.scolaire.domain.SerieLycee.normaliser(serie);
+        } catch (IllegalArgumentException ex) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, ex.getMessage());
+        }
+        if (code != null && !estLycee(examen)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Les séries n'existent qu'au lycée : cet examen n'est pas un examen du lycée");
+        }
+        return code;
+    }
+
+    /** Pur : examen du cycle lycée. */
+    public static boolean estLycee(ExamenNational examen) {
+        return examen.getCycle() != null && "LYCEE".equals(examen.getCycle().getCode());
     }
 
     private void verifierGestion(ExamenNational examen) {

@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.plateforme.scolaire.domain.Matiere;
 import com.plateforme.scolaire.domain.ProgrammeMatiere;
+import com.plateforme.scolaire.domain.TypeEtablissement;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.math.BigDecimal;
@@ -71,5 +72,43 @@ class ProgrammeMatiereServiceTest {
     void ligneInvalideRefusee() {
         assertThatThrownBy(() -> ProgrammeMatiereService.lireCoc(List.of("1;;X"))).isInstanceOf(IllegalArgumentException.class);
         assertThatThrownBy(() -> ProgrammeMatiereService.lireCoc(List.of("11;LETTRES;X;Y;1;;"))).isInstanceOf(IllegalArgumentException.class);
+    }
+
+    private static ProgrammeMatiere ligneType(long matiereId, String serie, Long typeId, String coef) {
+        ProgrammeMatiere p = ligne(matiereId, serie, coef);
+        if (typeId != null) {
+            TypeEtablissement t = new TypeEtablissement();
+            t.setId(typeId);
+            p.setTypeEtablissement(t);
+        }
+        return p;
+    }
+
+    @Test
+    void ligneDuTypeEmporteSurLaLigneCommune() {
+        var retenues = ProgrammeApplicable.retenir(List.of(ligneType(1, null, null, "2"), ligneType(1, null, 5L, "3"), ligneType(2, null, null, "1")));
+        assertThat(retenues).hasSize(2);
+        assertThat(retenues.get(0).getCoefficient()).isEqualByComparingTo("3");
+    }
+
+    @Test
+    void typeEtSerieLEmportentSurLeTypeSeul() {
+        var retenues = ProgrammeApplicable.retenir(List.of(ligneType(1, null, 5L, "3"), ligneType(1, "SCIENCES_SOCIALES", 5L, "4"), ligneType(1, "SCIENCES_SOCIALES", null, "9")));
+        assertThat(retenues).hasSize(1);
+        assertThat(retenues.get(0).getCoefficient()).isEqualByComparingTo("4");
+    }
+
+    @Test
+    void unTypePeutAjouterUneMatiere() {
+        var retenues = ProgrammeApplicable.retenir(List.of(ligneType(1, null, null, "2"), ligneType(7, null, 5L, "2")));
+        assertThat(retenues).extracting(p -> p.getMatiere().getId()).containsExactly(1L, 7L);
+    }
+
+    @Test
+    void manuelAuProgrammeSeulementSiLaMatiereEstEnseignee() {
+        Map<Long, java.util.Set<Long>> programme = Map.of(11L, java.util.Set.of(1L, 2L));
+        assertThat(ManuelsService.auProgramme(programme, 11L, 1L)).isTrue();
+        assertThat(ManuelsService.auProgramme(programme, 11L, 9L)).isFalse();
+        assertThat(ManuelsService.auProgramme(programme, 12L, 9L)).isTrue();
     }
 }

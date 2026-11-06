@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { listerClasses } from '../api/endpoints'
 import { useAnneeScolaire } from './useAnneeScolaire'
+import { libelleClasse } from '../utils/classes'
 
 /** Sélection « année scolaire puis classe » d'un établissement. */
 export function useSelectionClasse(etablissementId: number | undefined) {
@@ -15,7 +16,7 @@ export function useSelectionClasse(etablissementId: number | undefined) {
   })
 
   const classe = classes.data?.find((c) => String(c.id) === classeChoisie)
-  const optionsClasses = (classes.data ?? []).map((c) => ({ value: String(c.id), label: `${c.nom} — ${c.niveauLibelle}` }))
+  const optionsClasses = (classes.data ?? []).map((c) => ({ value: String(c.id), label: libelleClasse(c) }))
 
   function changerAnnee(valeur: string | null) {
     setAnneeChoisie(valeur)

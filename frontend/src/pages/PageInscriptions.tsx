@@ -9,6 +9,8 @@ import { etablissementCourant } from '../auth/roles'
 import { useUtilisateur } from '../auth/useAuth'
 import BadgeStatutInscription from '../components/BadgeStatutInscription'
 import ConfirmationModal from '../components/ConfirmationModal'
+import PreparationRentree from '../components/PreparationRentree'
+import TransfertsEleves from '../components/TransfertsEleves'
 import { useAnneeScolaire } from '../hooks/useAnneeScolaire'
 import { formaterDate } from '../utils/dates'
 import AcceptationModal from './inscriptions/AcceptationModal'
@@ -162,6 +164,9 @@ export default function PageInscriptions() {
           </Table>
         </Table.ScrollContainer>
       )}
+
+      {anneeId !== null && <PreparationRentree etablissementId={etablissementId} anneeId={Number(anneeId)} />}
+      {anneeId !== null && <TransfertsEleves etablissementId={etablissementId} anneeId={Number(anneeId)} />}
 
       {nouvelleOuverte && (
         <NouvelleInscriptionModal

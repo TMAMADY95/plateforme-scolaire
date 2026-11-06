@@ -816,7 +816,7 @@ export const verifierDiplome = (code: string) =>
 export const inscrireCandidatLibre = (
   etablissementId: number,
   examenId: number,
-  requete: { nom: string; prenom: string; dateNaissance: string; sexe: string | null; lieuNaissance?: string; nomPere?: string; nomMere?: string },
+  requete: { nom: string; prenom: string; dateNaissance: string; sexe: string | null; lieuNaissance?: string; nomPere?: string; nomMere?: string; serie?: string | null },
 ) => api.post<Candidat>(`/api/etablissements/${etablissementId}/examens/${examenId}/candidats-libres`, requete)
 
 const baseDeroulement = (examenId: number, centreId: number) => `/api/examens/${examenId}/centres/${centreId}`
@@ -1099,3 +1099,97 @@ export const infoPhotoEleve = (eleveId: number) =>
 export const envoyerPhotoEleve = (eleveId: number, fichier: File) => envoyerFichier<void>(`/api/eleves/${eleveId}/photo`, fichier)
 
 export const supprimerPhotoEleve = (eleveId: number) => api.delete<void>(`/api/eleves/${eleveId}/photo`)
+
+export const infrastructureEtablissement = (etablissementId: number, anneeId: number) =>
+  api.get<import('./types').InfrastructureEtablissement>(`/api/etablissements/${etablissementId}/infrastructure?anneeId=${anneeId}`)
+
+export const enregistrerInfrastructure = (etablissementId: number, anneeId: number, requete: import('./types').InfrastructureRequete) =>
+  api.put<import('./types').InfrastructureEtablissement>(`/api/etablissements/${etablissementId}/infrastructure?anneeId=${anneeId}`, requete)
+
+export const synthesesInfrastructures = (anneeId: number) =>
+  api.get<import('./types').InfrastructuresSynthese>(`/api/infrastructures?anneeId=${anneeId}`)
+
+export const listerTransferts = (etablissementId: number, anneeId: number) =>
+  api.get<import('./types').TransfertsEtablissement>(`/api/etablissements/${etablissementId}/transferts?anneeId=${anneeId}`)
+
+export const demanderTransfert = (etablissementId: number, requete: { matriculeEleve: string; anneeId: number; motif: string; commentaire: string | null }) =>
+  api.post<import('./types').TransfertEleve>(`/api/etablissements/${etablissementId}/transferts`, requete)
+
+export const deciderTransfert = (id: number, requete: { decision: 'APPROUVE' | 'REFUSE'; motifRefus: string | null }) =>
+  api.post<import('./types').TransfertEleve>(`/api/transferts/${id}/decision`, requete)
+
+export const annulerTransfert = (id: number) => api.post<import('./types').TransfertEleve>(`/api/transferts/${id}/annulation`, {})
+
+export const conseilClasse = (classeId: number) => api.get<import('./types').ConseilClasse>(`/api/classes/${classeId}/conseil`)
+
+export const deciderConseilClasse = (classeId: number, decisions: { inscriptionId: number; decision: string | null; observation: string | null }[]) =>
+  api.put<import('./types').ConseilClasse>(`/api/classes/${classeId}/conseil/decisions`, { decisions })
+
+export const appliquerSuggestionsConseil = (classeId: number) => api.post<import('./types').ConseilClasse>(`/api/classes/${classeId}/conseil/suggestions`, {})
+
+export const rentree = (etablissementId: number, anneeId: number) =>
+  api.get<import('./types').Rentree>(`/api/etablissements/${etablissementId}/rentree?anneeId=${anneeId}`)
+
+export const preparerRentree = (etablissementId: number, anneeId: number) =>
+  api.post<{ crees: number; rentree: import('./types').Rentree }>(`/api/etablissements/${etablissementId}/rentree/preparation?anneeId=${anneeId}`, {})
+
+export const doublonsEleves = () => api.get<import('./types').DoublonsEleves>('/api/eleves-doublons')
+
+export const fusionnerEleves = (conserveId: number, doublonId: number, motif: string) =>
+  api.post<{ conserveId: number; conserveIdentifiant: string; absorbeIdentifiant: string; lignesReprises: number }>(`/api/eleves/${conserveId}/fusion`, { doublonId, motif })
+
+export const disciplineEtablissement = (etablissementId: number, anneeId: number) =>
+  api.get<import('./types').Discipline>(`/api/etablissements/${etablissementId}/discipline?anneeId=${anneeId}`)
+
+export const signalerIncidentDisciplinaire = (etablissementId: number, requete: { matriculeEleve: string; anneeId: number; dateFaits: string; type: string; gravite: string; description: string }) =>
+  api.post<import('./types').IncidentDisciplinaire>(`/api/etablissements/${etablissementId}/discipline`, requete)
+
+export const sanctionnerIncident = (id: number, requete: { sanction: string; exclusionJours: number | null; exclusionDebut: string | null; observation: string | null; parentsInformes: boolean }) =>
+  api.put<import('./types').IncidentDisciplinaire>(`/api/discipline/${id}/sanction`, requete)
+
+export const classerIncident = (id: number, motif: string) => api.post<import('./types').IncidentDisciplinaire>(`/api/discipline/${id}/classement`, { motif })
+
+export const catalogueManuels = () => api.get<import('./types').ManuelCatalogue[]>('/api/manuels')
+
+export const ajouterManuel = (requete: { matiereId: number; niveauId: number; titre: string; editeur: string | null; anneeEdition: number | null; serie?: string | null }) =>
+  api.post<import('./types').ManuelCatalogue>('/api/manuels', requete)
+
+export const supprimerManuel = (id: number) => api.delete<void>(`/api/manuels/${id}`)
+
+export const dotationManuels = (etablissementId: number, anneeId: number) =>
+  api.get<import('./types').DotationManuels>(`/api/etablissements/${etablissementId}/manuels?anneeId=${anneeId}`)
+
+export const declarerManuel = (etablissementId: number, anneeId: number, manuelId: number, quantites: { recus: number; distribues: number; perdus: number; observation: string | null }) =>
+  api.put<import('./types').DotationManuels>(`/api/etablissements/${etablissementId}/manuels/${manuelId}?anneeId=${anneeId}`, quantites)
+
+export const syntheseManuels = (anneeId: number) => api.get<import('./types').SyntheseManuels>(`/api/manuels-synthese?anneeId=${anneeId}`)
+
+export const listerProfilsEnseignants = (etablissementId: number) =>
+  api.get<import('./types').ProfilEnseignant[]>(`/api/etablissements/${etablissementId}/enseignants-profils`)
+
+export const enregistrerProfilEnseignant = (etablissementId: number, enseignantId: number, requete: import('./types').ProfilEnseignantRequete) =>
+  api.put<import('./types').ProfilEnseignant>(`/api/etablissements/${etablissementId}/enseignants/${enseignantId}/profil`, requete)
+
+export const syntheseEnseignants = () => api.get<import('./types').EnseignantsSynthese>('/api/enseignants-synthese')
+
+export const annuaireStatistique = (anneeId: number) => api.get<import('./types').Annuaire>(`/api/annuaire?anneeId=${anneeId}`)
+
+export const telechargerAnnuaire = (anneeId: number) => telecharger(`/api/annuaire.csv?anneeId=${anneeId}`, 'annuaire-statistique.csv')
+
+export const suiviEleves = (etablissementId: number, anneeId: number) =>
+  api.get<import('./types').SuiviEleves>(`/api/etablissements/${etablissementId}/suivi-eleves?anneeId=${anneeId}`)
+
+export const declarerAbandon = (etablissementId: number, requete: { inscriptionId: number; dateAbandon: string; motif: string; observation: string | null }) =>
+  api.post<import('./types').SuiviEleves>(`/api/etablissements/${etablissementId}/abandons`, requete)
+
+export const annulerAbandon = (id: number) => api.delete<import('./types').SuiviEleves>(`/api/abandons/${id}`)
+
+export const enregistrerVulnerabilite = (etablissementId: number, eleveId: number, requete: { orphelin: string; handicap: string | null }) =>
+  api.put<void>(`/api/etablissements/${etablissementId}/eleves/${eleveId}/vulnerabilite`, requete)
+
+export const syntheseAbandons = (anneeId: number) => api.get<import('./types').AbandonsSynthese>(`/api/abandons-synthese?anneeId=${anneeId}`)
+
+export const carteScolaire = (anneeId: number, normeElevesParSalle: number, normeElevesParEnseignant: number) =>
+  api.get<import('./types').CarteScolaire>(
+    `/api/carte-scolaire?anneeId=${anneeId}&normeElevesParSalle=${normeElevesParSalle}&normeElevesParEnseignant=${normeElevesParEnseignant}`,
+  )

@@ -24,6 +24,8 @@ import {
   telechargerListeAppel,
   suiviPreparationCentres,
 } from '../api/endpoints'
+import { SERIES_LYCEE, libelleSerie } from '../api/types'
+import { epreuveEnConflit } from '../utils/epreuves'
 import type { AffectationAutomatique, Examen } from '../api/types'
 import { formaterDate } from '../utils/dates'
 import SuiviListesModal from './SuiviListesModal'
@@ -49,7 +51,7 @@ export default function CalendrierExamenModal({ examen, onFermer }: { examen: Ex
         <Divider />
         <Previsionnel examenId={examen.id} />
         <Divider />
-        <Epreuves examenId={examen.id} />
+        <Epreuves examenId={examen.id} lycee={examen.lycee} />
         <Divider />
         <Centres examenId={examen.id} />
       </Stack>
@@ -199,7 +201,7 @@ function Previsionnel({ examenId }: { examenId: number }) {
   )
 }
 
-function Epreuves({ examenId }: { examenId: number }) {
+function Epreuves({ examenId, lycee }: { examenId: number; lycee: boolean }) {
   const { calendrier } = useDroitsExamens()
   const queryClient = useQueryClient()
   const liste = useQuery({ queryKey: ['epreuves', examenId], queryFn: () => epreuvesExamen(examenId) })
@@ -210,19 +212,26 @@ function Epreuves({ examenId }: { examenId: number }) {
   const [debut, setDebut] = useState('08:00')
   const [fin, setFin] = useState('10:00')
   const [coefficient, setCoefficient] = useState<number | string>(1)
+  const [serie, setSerie] = useState<string | null>(null)
   const [erreur, setErreur] = useState<string | null>(null)
 
   const rafraichir = () => void queryClient.invalidateQueries({ queryKey: ['epreuves', examenId] })
   const ajout = useMutation({
-    mutationFn: () =>
-      ajouterEpreuve(examenId, {
+    mutationFn: () => {
+      const conflit = epreuveEnConflit(liste.data ?? [], { date, heureDebut: debut, heureFin: fin, serie: lycee ? serie : null })
+      if (conflit) {
+        return Promise.reject(new Error(`Ce créneau chevauche « ${conflit.matiere} » (${conflit.heureDebut.slice(0, 5)} – ${conflit.heureFin.slice(0, 5)}) prévu pour les mêmes candidats.`))
+      }
+      return ajouterEpreuve(examenId, {
         matiereId: matiere === null ? null : Number(matiere),
         libelle: matiere === null ? libelle.trim() : null,
         date,
         heureDebut: debut,
         heureFin: fin,
         coefficient: Number(coefficient) >= 1 ? Number(coefficient) : 1,
-      }),
+        serie: lycee ? serie : null,
+      })
+    },
     onSuccess: () => {
       rafraichir()
       setLibelle('')
@@ -247,6 +256,7 @@ function Epreuves({ examenId }: { examenId: number }) {
               <Table.Th>Date</Table.Th>
               <Table.Th>Horaire</Table.Th>
               <Table.Th>Épreuve</Table.Th>
+              {lycee && <Table.Th>Série</Table.Th>}
               <Table.Th>Coef.</Table.Th>
               <Table.Th />
             </Table.Tr>
@@ -259,6 +269,7 @@ function Epreuves({ examenId }: { examenId: number }) {
                   {heure(e.heureDebut)} – {heure(e.heureFin)}
                 </Table.Td>
                 <Table.Td>{e.matiere}</Table.Td>
+                {lycee && <Table.Td>{e.serie === null ? 'Toutes les séries' : libelleSerie(e.serie)}</Table.Td>}
                 <Table.Td>{e.coefficient}</Table.Td>
                 <Table.Td ta="right">
                   {calendrier && (
@@ -290,6 +301,7 @@ function Epreuves({ examenId }: { examenId: number }) {
         <TextInput label="Date" type="date" value={date} onChange={(e) => setDate(e.currentTarget.value)} />
         <TextInput label="De" type="time" value={debut} onChange={(e) => setDebut(e.currentTarget.value)} w={110} />
         <TextInput label="À" type="time" value={fin} onChange={(e) => setFin(e.currentTarget.value)} w={110} />
+        {lycee && <Select label="Série" placeholder="Toutes les séries" clearable data={SERIES_LYCEE} value={serie} onChange={setSerie} w={200} />}
         <NumberInput label="Coef." min={1} allowDecimal={false} value={coefficient} onChange={setCoefficient} w={80} />
         <Button
           loading={ajout.isPending}

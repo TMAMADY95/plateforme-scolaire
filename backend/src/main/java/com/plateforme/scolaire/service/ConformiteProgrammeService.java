@@ -65,11 +65,8 @@ public class ConformiteProgrammeService {
     public ConformiteProgrammeDto controler(Long classeId) {
         Classe classe = classes.findById(classeId).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Classe introuvable"));
         Map<Long, ProgrammeMatiere> prevus = new LinkedHashMap<>();
-        for (ProgrammeMatiere p : programmes.pourClasse(classe.getAnneeScolaire().getId(), classe.getNiveau().getId(), classe.getSerie())) {
-            ProgrammeMatiere deja = prevus.get(p.getMatiere().getId());
-            if (deja == null || (deja.getSerie() == null && p.getSerie() != null)) {
-                prevus.put(p.getMatiere().getId(), p);
-            }
+        for (ProgrammeMatiere p : ProgrammeApplicable.pourClasse(programmes, classe)) {
+            prevus.put(p.getMatiere().getId(), p);
         }
         Map<Long, Long> minutes = new LinkedHashMap<>();
         Map<Long, Matiere> matieres = new LinkedHashMap<>();

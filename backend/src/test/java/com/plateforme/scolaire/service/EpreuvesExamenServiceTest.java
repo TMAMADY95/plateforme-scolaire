@@ -67,4 +67,63 @@ class EpreuvesExamenServiceTest {
         assertThat(ExamenService.peutGererCalendrier(examen("NATIONAL"), locale)).isFalse();
         assertThat(ExamenService.peutGererCalendrier(examen("PREFECTURE"), locale)).isTrue();
     }
+
+    private static ExamenNational examenCycle(String code) {
+        var c = new com.plateforme.scolaire.domain.CycleScolaire();
+        c.setCode(code);
+        ExamenNational e = examen("NATIONAL");
+        e.setCycle(c);
+        return e;
+    }
+
+    @Test
+    void uneSerieEstAcceptee_seulementPourUnExamenDuLycee() {
+        assertThat(EpreuvesExamenService.serieAutorisee(examenCycle("LYCEE"), "SCIENCES_SOCIALES")).isEqualTo("SCIENCES_SOCIALES");
+        assertThat(EpreuvesExamenService.serieAutorisee(examenCycle("LYCEE"), " ")).isNull();
+        assertThatThrownBy(() -> EpreuvesExamenService.serieAutorisee(examenCycle("COLLEGE"), "SCIENCES_SOCIALES")).isInstanceOf(ResponseStatusException.class);
+        assertThatThrownBy(() -> EpreuvesExamenService.serieAutorisee(examenCycle("LYCEE"), "INCONNUE")).isInstanceOf(ResponseStatusException.class);
+    }
+
+    @Test
+    void uneEpreuveDeSerieNeConcerneQueCetteSerie() {
+        var commune = new com.plateforme.scolaire.domain.EpreuveExamen();
+        var sociale = new com.plateforme.scolaire.domain.EpreuveExamen();
+        sociale.setSerie("SCIENCES_SOCIALES");
+        assertThat(commune.concerne("SCIENCES_MATHEMATIQUES")).isTrue();
+        assertThat(sociale.concerne("SCIENCES_SOCIALES")).isTrue();
+        assertThat(sociale.concerne("SCIENCES_MATHEMATIQUES")).isFalse();
+        assertThat(sociale.concerne(null)).isFalse();
+    }
+
+    private static com.plateforme.scolaire.domain.EpreuveExamen existante(String serie, String debut, String fin) {
+        var e = new com.plateforme.scolaire.domain.EpreuveExamen();
+        e.setDateEpreuve(LocalDate.of(2027, 5, 17));
+        e.setHeureDebut(LocalTime.parse(debut));
+        e.setHeureFin(LocalTime.parse(fin));
+        e.setSerie(serie);
+        return e;
+    }
+
+    @Test
+    void deuxEpreuvesMemeSerieMemeCreneauSontEnConflit() {
+        var maths = existante("SCIENCES_MATHEMATIQUES", "08:00", "12:00");
+        assertThat(EpreuvesExamenService.enConflit(maths, LocalDate.of(2027, 5, 17), LocalTime.parse("08:00"), LocalTime.parse("12:00"), "SCIENCES_MATHEMATIQUES")).isTrue();
+        assertThat(EpreuvesExamenService.enConflit(maths, LocalDate.of(2027, 5, 17), LocalTime.parse("10:00"), LocalTime.parse("13:00"), "SCIENCES_MATHEMATIQUES")).isTrue();
+    }
+
+    @Test
+    void uneEpreuveCommuneEntreEnConflitAvecToutesLesSeries() {
+        var commune = existante(null, "08:00", "12:00");
+        assertThat(EpreuvesExamenService.enConflit(commune, LocalDate.of(2027, 5, 17), LocalTime.parse("09:00"), LocalTime.parse("11:00"), "SCIENCES_SOCIALES")).isTrue();
+        var sociale = existante("SCIENCES_SOCIALES", "08:00", "12:00");
+        assertThat(EpreuvesExamenService.enConflit(sociale, LocalDate.of(2027, 5, 17), LocalTime.parse("09:00"), LocalTime.parse("11:00"), null)).isTrue();
+    }
+
+    @Test
+    void seriesDifferentesJoursDifferentsOuCreneauxQuiSeTouchentNeSontPasEnConflit() {
+        var maths = existante("SCIENCES_MATHEMATIQUES", "08:00", "12:00");
+        assertThat(EpreuvesExamenService.enConflit(maths, LocalDate.of(2027, 5, 17), LocalTime.parse("08:00"), LocalTime.parse("12:00"), "SCIENCES_SOCIALES")).isFalse();
+        assertThat(EpreuvesExamenService.enConflit(maths, LocalDate.of(2027, 5, 18), LocalTime.parse("08:00"), LocalTime.parse("12:00"), "SCIENCES_MATHEMATIQUES")).isFalse();
+        assertThat(EpreuvesExamenService.enConflit(maths, LocalDate.of(2027, 5, 17), LocalTime.parse("12:00"), LocalTime.parse("14:00"), "SCIENCES_MATHEMATIQUES")).isFalse();
+    }
 }

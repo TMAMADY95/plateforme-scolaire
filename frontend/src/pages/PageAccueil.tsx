@@ -8,6 +8,7 @@ import { BadgeSecteur, BadgesCycles } from '../components/BadgesEtablissement'
 import CarteChiffre from '../components/CarteChiffre'
 import CarteReussite from '../components/CarteReussite'
 import ExamensEtablissement from '../components/ExamensEtablissement'
+import InfrastructuresEtablissement from '../components/InfrastructuresEtablissement'
 import PlansActionEtablissement from '../components/PlansActionEtablissement'
 import { Barres, Courbe, libelleMois } from '../components/graphiques/Graphiques'
 import Icone from '../components/Icone'
@@ -141,6 +142,13 @@ export default function PageAccueil() {
         <Card withBorder padding="lg">
           <Text fw={600} mb="sm">Examens : candidats et convocations</Text>
           <ExamensEtablissement etablissementId={etablissementId} anneeScolaireId={anneeId} supervision={false} />
+        </Card>
+      )}
+
+      {estDirectionEtablissement(utilisateur) && anneeId !== undefined && etablissementId !== undefined && (
+        <Card withBorder padding="lg">
+          <Text fw={600} mb="sm">Infrastructures et équipements</Text>
+          <InfrastructuresEtablissement etablissementId={etablissementId} anneeId={anneeId} modifiable />
         </Card>
       )}
 

@@ -45,6 +45,27 @@ public class CandidatureLibreService {
         return DossierCandidatureService.diplomeRequis(niveauOrganisation);
     }
 
+    /**
+     * Pur : un candidat libre est du cycle de l'examen ; au lycée il passe l'examen dans sa série, qu'il doit donc déclarer
+     * (les épreuves, donc l'emploi du temps, dépendent de la série). Hors lycée, aucune série n'existe.
+     */
+    static String serieLibre(ExamenNational examen, String serie) {
+        String code;
+        try {
+            code = com.plateforme.scolaire.domain.SerieLycee.normaliser(serie);
+        } catch (IllegalArgumentException ex) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, ex.getMessage());
+        }
+        if (EpreuvesExamenService.estLycee(examen)) {
+            if (code == null) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Indiquez la série du candidat : l'emploi du temps du lycée dépend de la série");
+            }
+        } else if (code != null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Les séries n'existent qu'au lycée");
+        }
+        return code;
+    }
+
     public CandidatDto inscrire(Long etablissementId, Long examenId, CandidatLibreRequest r) {
         ExamenNational examen = examens.findById(examenId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Examen introuvable"));
@@ -57,6 +78,7 @@ public class CandidatureLibreService {
                 || (examen.getCycle() != null && etab.getCycles().stream().noneMatch(c -> c.getId().equals(examen.getCycle().getId())))) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Cet examen n'est pas organisé dans votre établissement");
         }
+        String serie = serieLibre(examen, r.serie());
         if (!"EN_COURS".equals(examen.getStatutResultats())) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Les inscriptions sont closes pour cet examen");
         }
@@ -90,6 +112,7 @@ public class CandidatureLibreService {
         c.setEleve(eleve);
         c.setEtablissement(etab);
         c.setLibre(true);
+        c.setSerie(serie);
         c.setCreatedAt(Instant.now(clock));
         CandidatExamen enregistre = candidats.save(c);
         enregistre.setNumero(ExamenEtablissementService.numero(examen, enregistre.getId()));

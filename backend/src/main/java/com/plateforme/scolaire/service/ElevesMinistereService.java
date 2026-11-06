@@ -108,7 +108,8 @@ public class ElevesMinistereService {
             if (f.q() != null && !f.q().isBlank()) {
                 String motif = "%" + f.q().trim().toLowerCase() + "%";
                 p.add(cb.or(cb.like(cb.lower(eleve.get("nom")), motif), cb.like(cb.lower(eleve.get("prenom")), motif),
-                        cb.like(cb.lower(eleve.get("matricule")), motif)));
+                        cb.like(cb.lower(eleve.get("matricule")), motif),
+                        cb.like(cb.lower(eleve.get("identifiantNational")), motif)));
             }
             if (idsZone != null) {
                 p.add(idsZone.isEmpty() ? cb.disjunction() : etab.get("id").in(idsZone));

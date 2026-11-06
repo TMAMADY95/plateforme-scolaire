@@ -2,12 +2,12 @@ package com.plateforme.scolaire.web.dto;
 
 import com.plateforme.scolaire.domain.ExamenNational;
 
-/** [niveauOrganisation] : NATIONAL ou un type de zone (COMMUNE, PREFECTURE, REGION…). */
+/** lycee : examen du cycle lycée (épreuves et candidats par série). [niveauOrganisation] : NATIONAL ou un type de zone (COMMUNE, PREFECTURE, REGION…). */
 public record ExamenDto(Long id, String libelle, Long anneeScolaireId, Long cycleId, String cycle,
                         Long niveauId, String niveau, String niveauOrganisation, java.time.LocalDate dateDebut,
                         java.time.LocalDate dateFin, java.util.List<Long> typesEtablissementIds,
                         java.util.List<String> typesEtablissement, String statutResultats,
-                        java.time.LocalDate dateDeliberation, java.time.LocalDate dateProclamation, int bareme) {
+                        java.time.LocalDate dateDeliberation, java.time.LocalDate dateProclamation, int bareme, boolean lycee) {
 
     public static ExamenDto de(ExamenNational e) {
         return new ExamenDto(e.getId(), e.getLibelle(), e.getAnneeScolaire().getId(),
@@ -16,6 +16,7 @@ public record ExamenDto(Long id, String libelle, Long anneeScolaireId, Long cycl
                 e.getNiveauOrganisation(), e.getDateDebut(), e.getDateFin(),
                 e.getTypesEtablissement().stream().map(com.plateforme.scolaire.domain.TypeEtablissement::getId).toList(),
                 e.getTypesEtablissement().stream().map(com.plateforme.scolaire.domain.TypeEtablissement::getLibelle).toList(),
-                e.getStatutResultats(), e.getDateDeliberation(), e.getDateProclamation(), e.getBareme());
+                e.getStatutResultats(), e.getDateDeliberation(), e.getDateProclamation(), e.getBareme(),
+                e.getCycle() != null && "LYCEE".equals(e.getCycle().getCode()));
     }
 }

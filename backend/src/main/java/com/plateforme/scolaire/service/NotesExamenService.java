@@ -64,7 +64,9 @@ public class NotesExamenService {
         if (r.statut() == null || !STATUTS.contains(r.statut())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Statut inconnu : " + r.statut());
         }
-        List<EpreuveExamen> liste = epreuves.findByExamenIdOrderByDateEpreuveAscHeureDebutAsc(examenId);
+        // Le candidat ne compose que les épreuves communes et celles de sa série
+        List<EpreuveExamen> liste = epreuves.findByExamenIdOrderByDateEpreuveAscHeureDebutAsc(examenId).stream()
+                .filter(e -> e.concerne(c.getSerie())).toList();
         Map<Long, BigDecimal> notes = new HashMap<>();
         if ("PRESENT".equals(r.statut()) && r.notes() != null) {
             Set<Long> connues = new java.util.HashSet<>();

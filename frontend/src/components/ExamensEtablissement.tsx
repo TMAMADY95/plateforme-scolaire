@@ -16,7 +16,8 @@ import {
   telechargerDiplomes,
   telechargerReleves,
 } from '../api/endpoints'
-import type { Candidat, ExamenEtablissement } from '../api/types'
+import { SERIES_LYCEE } from '../api/types'
+import type { Candidat, Epreuve, ExamenEtablissement } from '../api/types'
 import { libelleOrganisation } from '../utils/organisationExamen'
 import ControleCoherenceModal from './ControleCoherenceModal'
 import AmenagementCandidatModal from './AmenagementCandidatModal'
@@ -137,7 +138,7 @@ function DetailExamen({ etablissementId, examenId, anneeScolaireId, supervision 
 
   return (
     <Stack gap="md">
-      <Calendrier examenId={examenId} dateDebut={preparation.data.examen.dateDebut} dateFin={preparation.data.examen.dateFin} />
+      <Calendrier examenId={examenId} dateDebut={preparation.data.examen.dateDebut} dateFin={preparation.data.examen.dateFin} niveau={preparation.data.examen.niveau} lycee={preparation.data.examen.lycee} />
       <ListeCandidatsPanneau etablissementId={etablissementId} examenId={examenId} supervision={supervision} />
       {supervision && droits.gestion && <Centres etablissementId={etablissementId} examenId={examenId} onAffecte={rafraichir} />}
       {!supervision && (
@@ -162,7 +163,7 @@ function DetailExamen({ etablissementId, examenId, anneeScolaireId, supervision 
       )}
       {erreur && <Alert color="red" variant="light">{erreur}</Alert>}
       {!supervision && ['REGION', 'NATIONAL'].includes(preparation.data.examen.niveauOrganisation) && preparation.data.examen.statutResultats === 'EN_COURS' && (
-        <CandidatLibreForm etablissementId={etablissementId} examenId={examenId} onInscrit={rafraichir} />
+        <CandidatLibreForm etablissementId={etablissementId} examenId={examenId} lycee={preparation.data.examen.lycee} cycle={preparation.data.examen.cycle} onInscrit={rafraichir} />
       )}
       {candidats.length === 0 ? (
         <Text c="dimmed" size="sm">Aucun candidat inscrit.</Text>
@@ -251,30 +252,41 @@ function DetailExamen({ etablissementId, examenId, anneeScolaireId, supervision 
   )
 }
 
-function Calendrier({ examenId, dateDebut, dateFin }: { examenId: number; dateDebut: string | null; dateFin: string | null }) {
+function Calendrier({ examenId, dateDebut, dateFin, niveau, lycee }: { examenId: number; dateDebut: string | null; dateFin: string | null; niveau: string | null; lycee: boolean }) {
   const epreuves = useQuery({ queryKey: ['epreuves', examenId], queryFn: () => epreuvesExamen(examenId) })
   const jour = (iso: string) => new Date(iso).toLocaleDateString('fr-FR')
+  const liste = epreuves.data ?? []
+  // Au lycée, chaque série a son propre calendrier : épreuves communes + épreuves de la série (déjà triées par date et heure).
+  const parSerie = lycee && liste.some((e) => e.serie !== null)
+  const tableau = (lignes: Epreuve[]) => (
+    <Table verticalSpacing="xs">
+      <Table.Tbody>
+        {lignes.map((e) => (
+          <Table.Tr key={e.id}>
+            <Table.Td>{jour(e.date)}</Table.Td>
+            <Table.Td>
+              {e.heureDebut.slice(0, 5)} – {e.heureFin.slice(0, 5)}
+            </Table.Td>
+            <Table.Td>{e.matiere}</Table.Td>
+          </Table.Tr>
+        ))}
+      </Table.Tbody>
+    </Table>
+  )
   return (
     <Stack gap="xs">
-      <Text fw={600} size="sm">Calendrier officiel</Text>
+      <Text fw={600} size="sm">Calendrier officiel{niveau ? ` : ${niveau}` : ''}</Text>
       <Text size="sm" c="dimmed">
         {dateDebut ? `Épreuves du ${jour(dateDebut)}${dateFin ? ` au ${jour(dateFin)}` : ''}.` : 'La période n\'est pas encore publiée.'}
       </Text>
-      {epreuves.data && epreuves.data.length > 0 && (
-        <Table verticalSpacing="xs">
-          <Table.Tbody>
-            {epreuves.data.map((e) => (
-              <Table.Tr key={e.id}>
-                <Table.Td>{jour(e.date)}</Table.Td>
-                <Table.Td>
-                  {e.heureDebut.slice(0, 5)} – {e.heureFin.slice(0, 5)}
-                </Table.Td>
-                <Table.Td>{e.matiere}</Table.Td>
-              </Table.Tr>
-            ))}
-          </Table.Tbody>
-        </Table>
-      )}
+      {liste.length > 0 && !parSerie && tableau(liste)}
+      {parSerie &&
+        SERIES_LYCEE.map((s) => (
+          <Stack key={s.value} gap={2}>
+            <Text fw={600} size="sm">{niveau ? `${niveau} — ` : ''}{s.label}</Text>
+            {tableau(liste.filter((e) => e.serie === null || e.serie === s.value))}
+          </Stack>
+        ))}
     </Stack>
   )
 }
